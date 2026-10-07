@@ -291,6 +291,8 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
         value if value.is_none() || enabled(value) => Some(true),
         _ => Some(false),
     };
+    #[cfg(not(unix))]
+    let _ = (deep, strict);
     match crate::backend::select(crate::backend::Tool::Codesign) {
         crate::backend::Backend::Apple => {}
         #[cfg(unix)]
