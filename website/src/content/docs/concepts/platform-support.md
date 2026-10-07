@@ -27,11 +27,11 @@ The following table shows how each kind of operation runs on each platform:
 | Operation | macOS | Linux and Windows |
 | --- | --- | --- |
 | Downloads and web requests | curl | curl |
-| Zip and tar archives | `ditto` and `tar` | On Linux, a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On both, a built-in extractor for tar archives that use gzip, bzip2, or xz compression. On Windows, zip archives lose file modes and symbolic links. |
+| Zip and tar archives | `ditto` and `tar` | On Linux, a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On both, a built-in extractor for tar archives that use gzip, bzip2, or xz compression. Zip archives extracted on Windows lose file modes and symbolic links. |
 | Disk images | `hdiutil` | Linux: a built-in reader for read-only `.dmg` images in the `UDZO`, `UDBZ`, `ULFO`, `ULMO`, `UDCO`, and `UDRO` formats with HFS+ or APFS volumes. Creating images, encrypted images, and ISO images aren't supported. Windows: not supported |
 | Building and installing packages | Helper services, `pkgbuild`, and `installer` | Linux: a built-in package builder that doesn't need root. Installing packages isn't supported. Windows: not supported |
 | Expanding and flattening packages | `pkgutil`, `xar`, and `ditto` | Linux: built-in replacements that expand and flatten flat packages and unpack gzip and pbzx payloads. Windows: not supported |
-| macOS code signatures | `codesign` and `pkgutil` | Linux: built-in replacements that check app and installer package signatures against Apple's root certificates, without notarization or revocation checks. Windows: not supported |
+| macOS code signatures | `codesign` and `pkgutil` | Linux: built-in replacements that check app and installer package signatures against Apple's root certificates. They don't check notarization or revocation. Windows: not supported |
 | Authenticode signatures | Not supported | Windows: `SignToolVerifier` with `signtool.exe` |
 | Chocolatey packages | Not supported | Windows: `ChocolateyPackager` with `choco.exe` |
 | `StopProcessingIf` predicates | Foundation predicates | A documented subset of predicate syntax |
@@ -72,8 +72,8 @@ Russet generates Munki metadata natively. On Linux, it reads packages and disk
 images with its built-in readers, including `RestartAction`, which it derives
 from the package's `PackageInfo` or `Distribution` the way `installer` does.
 The `installerChoices` option needs macOS, because `Distribution` files can
-choose packages with JavaScript. Icon extraction works on Linux. On Windows,
-importing a package or disk image needs macOS. Processors that only edit
+choose packages with JavaScript. Icon extraction works on Linux. Windows can't import packages
+or disk images. Processors that only edit
 metadata, such as `MunkiPkginfoMerger`, and the `MakeCatalogsProcessor`
 catalog builder work on every platform.
 
@@ -82,6 +82,7 @@ records the platform name instead of a macOS version.
 
 ## What's next
 
+- [Native Apple formats](/concepts/native-apple-formats/)
 - [Processors](/reference/processors/)
 - [System requirements](/get-started/requirements/)
 - [Import software into Munki](/guides/import-into-munki/)

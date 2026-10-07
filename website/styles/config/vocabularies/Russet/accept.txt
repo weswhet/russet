@@ -45,3 +45,6 @@ bzip2
 xz
 Unarchiver
 Xcode
+cpio
+zlib
+pbzx
