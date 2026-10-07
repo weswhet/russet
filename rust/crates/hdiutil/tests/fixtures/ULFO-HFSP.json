@@ -1,0 +1,125 @@
+{
+  "format": "ULFO",
+  "volumes": [
+    [
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "App.app"
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "App.app/Contents"
+      },
+      {
+        "kind": "file",
+        "mode": 420,
+        "path": "App.app/Contents/Info.plist",
+        "sha256": "4f28393e4224eb43e50481ebf4c3ec58f988d4b95a81f3e8a78f06d2fab5bc3f",
+        "size": 4000
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "App.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "mode": 493,
+        "path": "App.app/Contents/MacOS/App",
+        "sha256": "9a3a45d01531a20e89ac6ae10b0b0beb0492acd7216a368aa062d1a5fecaf9cd",
+        "size": 6
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "App.app/Contents/Resources"
+      },
+      {
+        "kind": "symlink",
+        "mode": 0,
+        "path": "App.app/Contents/Resources/link.txt",
+        "target": "../../../Docs/text.txt"
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "Compressed.app"
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "Compressed.app/Contents"
+      },
+      {
+        "kind": "file",
+        "mode": 420,
+        "path": "Compressed.app/Contents/Info.plist",
+        "sha256": "4f28393e4224eb43e50481ebf4c3ec58f988d4b95a81f3e8a78f06d2fab5bc3f",
+        "size": 4000
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "Compressed.app/Contents/MacOS"
+      },
+      {
+        "kind": "file",
+        "mode": 493,
+        "path": "Compressed.app/Contents/MacOS/App",
+        "sha256": "9a3a45d01531a20e89ac6ae10b0b0beb0492acd7216a368aa062d1a5fecaf9cd",
+        "size": 6
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "Compressed.app/Contents/Resources"
+      },
+      {
+        "kind": "symlink",
+        "mode": 0,
+        "path": "Compressed.app/Contents/Resources/link.txt",
+        "target": "../../../Docs/text.txt"
+      },
+      {
+        "kind": "directory",
+        "mode": 493,
+        "path": "Docs"
+      },
+      {
+        "kind": "file",
+        "link_group": 0,
+        "mode": 384,
+        "path": "Docs/random-link.bin",
+        "sha256": "7d61449bddcefef6ce22c27e44ee2988f3f09f53e5e0271240fecd0b0828b1f5",
+        "size": 40000,
+        "xattrs": {
+          "com.apple.FinderInfo": "a6b9e6b15f980aa3ad0d0c5089ed03d6d01dcaf0d4bd5bd9b25ad09be97b7d68"
+        }
+      },
+      {
+        "kind": "file",
+        "link_group": 0,
+        "mode": 384,
+        "path": "Docs/random.bin",
+        "sha256": "7d61449bddcefef6ce22c27e44ee2988f3f09f53e5e0271240fecd0b0828b1f5",
+        "size": 40000,
+        "xattrs": {
+          "com.apple.FinderInfo": "a6b9e6b15f980aa3ad0d0c5089ed03d6d01dcaf0d4bd5bd9b25ad09be97b7d68"
+        }
+      },
+      {
+        "kind": "file",
+        "mode": 420,
+        "path": "Docs/text.txt",
+        "sha256": "f3573b96b0048dbe51f65a585fb54cfe9dadab66ceff723d657993404d59aab7",
+        "size": 72000,
+        "xattrs": {
+          "com.apple.ResourceFork": "9e6ccc94fb2d4da894de6081f31c57ab9c8fdd5772fa1bfe3533ea188462a18e",
+          "com.example.test": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        }
+      }
+    ]
+  ]
+}

@@ -50,6 +50,10 @@ pub(super) fn run_mounted(
     standalone: bool,
 ) -> Option<Result<()>> {
     let key = input_key(name)?;
+    if name == "Installer" && !cfg!(target_os = "macos") {
+        // Installing needs macOS; fail before reading the image.
+        return None;
+    }
     let original = env.get(key)?.as_string()?.to_string();
     let parsed = split(&original);
     if name == "Copier" && !RESOLVING_INPUT.with(std::cell::Cell::get) {

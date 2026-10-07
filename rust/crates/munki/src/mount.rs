@@ -7,8 +7,15 @@ pub(crate) struct Mount {
 }
 impl Mount {
     pub(crate) fn new(image: &str) -> Result<Self, String> {
-        if !cfg!(target_os = "macos") {
-            return Err("Disk image operations are only supported on macOS".into());
+        use autopkg_platform::backend::{select, Backend, Tool};
+        if select(Tool::Hdiutil) != Backend::Apple {
+            // Only attached images can be borrowed.
+            let owned = autopkg_platform::dmg::Mount::new(image)?;
+            let root = owned.path().to_owned();
+            return Ok(Self {
+                owned: Some(owned),
+                root,
+            });
         }
         let image_path = Path::new(image).canonicalize().map_err(|e| e.to_string())?;
         let output =

@@ -99,14 +99,27 @@ command again. For details, see
 the following:
 
 ```text
-Disk image operations are only supported on macOS
 Package creation and installation are only supported on macOS
+Code signature verification is only supported on macOS.
 ```
 
 **Cause:** the recipe uses a processor that needs macOS tools.
 
 **Resolution:** run the recipe on a Mac. To see which operations each platform
 supports, see [Platform support](/concepts/platform-support/).
+
+## Disk image can't be read on Linux
+
+**Symptom:** a recipe fails on Linux with an error that starts with
+`mounting` and names the image, such as `is an encrypted disk image` or
+`isn't a disk image that Russet can open natively`.
+
+**Cause:** Russet's built-in reader doesn't support the image. It reads
+read-only `.dmg` images with HFS+ or APFS volumes, but not encrypted images or
+ISO images.
+
+**Resolution:** run the recipe on a Mac. If the error mentions free space, set
+`RUSSET_SCRATCH_DIR` to a folder with room for the image's contents.
 
 ## Helper service unavailable
 

@@ -514,6 +514,7 @@ pub fn run_recipe_detailed(
     initial: Dictionary,
     options: &RunOptions,
 ) -> Result<RunResult, RunFailure> {
+    let _images = autopkg_platform::dmg::RecipeScope::new();
     if options.check_only {
         return match recipe.check_phase() {
             Ok(recipe) => run_recipe_detailed(

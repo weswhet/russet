@@ -12,12 +12,12 @@ operations work on each platform.
 Every platform registers the same processors, so a recipe loads on any
 platform. When a processor needs a tool that the current platform doesn't
 have, the processor fails with an error that names the limitation, such as
-`Disk image operations are only supported on macOS`. Russet doesn't skip the
+`Disk image operations are only supported on macOS and Linux`. Russet doesn't skip the
 step or substitute different behavior.
 
 Recipes that only download software and read metadata usually run on every
-platform. Recipes that mount disk images, build packages, or verify macOS code
-signatures need macOS.
+platform. Recipes that read disk images run on macOS and Linux. Recipes that
+build packages or verify macOS code signatures need macOS.
 
 ## Operations by platform
 
@@ -27,7 +27,7 @@ The following table shows how each kind of operation runs on each platform:
 | --- | --- | --- |
 | Downloads and web requests | curl | curl |
 | Zip and tar archives | `ditto` and `tar` | On Linux, a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On both, a built-in extractor for tar archives that use gzip, bzip2, or xz compression. On Windows, zip archives lose file modes and symbolic links. |
-| Disk images | `hdiutil` | Not supported |
+| Disk images | `hdiutil` | Linux: a built-in reader for read-only `.dmg` images in the `UDZO`, `UDBZ`, `ULFO`, `ULMO`, `UDCO`, and `UDRO` formats with HFS+ or APFS volumes. Creating images, encrypted images, and ISO images aren't supported. Windows: not supported |
 | Building and installing packages | Helper services, `pkgbuild`, and `installer` | Not supported |
 | Expanding and flattening packages | `pkgutil`, `xar`, and `ditto` | Not supported |
 | macOS code signatures | `codesign` and `pkgutil` | Not supported |
@@ -37,6 +37,20 @@ The following table shows how each kind of operation runs on each platform:
 | Munki metadata for packages and disk images | Supported | Not supported |
 | Munki catalogs and pkginfo edits | Supported | Supported |
 | Preferences | `com.github.autopkg` domain | `config.plist` or `config.json` file |
+
+## Disk images on Linux
+
+Linux can't mount Apple disk images, so Russet reads the image itself and
+copies each volume's contents into a scratch folder, where processors see the
+same files, permissions, symbolic links, hard links, and extended attributes
+that macOS shows for the mounted image. Transparently compressed files are
+decompressed. The copy is removed when the recipe finishes, and a recipe that
+opens the same image in several steps reads it once.
+
+The scratch folder needs free space about the size of the image's contents.
+By default it's in the system temporary folder; set `RUSSET_SCRATCH_DIR` to
+use another location. Because Linux can't hard-link folders, folder hard
+links become copies.
 
 ## Predicates on Linux and Windows
 
