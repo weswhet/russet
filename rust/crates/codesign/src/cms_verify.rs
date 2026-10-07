@@ -1,0 +1,163 @@
+//! Detached CMS signatures and the RFC 3161 timestamps inside them.
+
+use crate::trust::{self, digest, verify_message, Cert, Purpose};
+use cms::content_info::ContentInfo;
+use cms::signed_data::{SignedData, SignerIdentifier, SignerInfo};
+use der::asn1::{ObjectIdentifier, OctetStringRef};
+use der::{Decode, Encode};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+const SIGNED_DATA: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.7.2");
+const MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
+const TIMESTAMP_TOKEN: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.14");
+const TST_INFO: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.1.4");
+
+/// A CMS signature whose signer signed the expected content.
+#[derive(Clone, Debug)]
+pub struct VerifiedCms {
+    pub signer: Cert,
+    /// Every certificate the signature carries.
+    pub certificates: Vec<Cert>,
+    /// The time from a verified timestamp, if the signature has one.
+    pub timestamp: Option<SystemTime>,
+}
+
+/// Decodes a CMS `ContentInfo`, ignoring the zero padding that xar and code
+/// signatures add after it.
+fn signed_data(bytes: &[u8]) -> Result<SignedData, String> {
+    let (der, used) = crate::ber::to_der(bytes)?;
+    if bytes[used..].iter().any(|b| *b != 0) {
+        return Err("CMS signature is followed by unexpected data".into());
+    }
+    let info = ContentInfo::from_der(&der).map_err(|e| format!("Invalid CMS signature: {e}"))?;
+    if info.content_type != SIGNED_DATA {
+        return Err("CMS signature isn't SignedData".into());
+    }
+    info.content
+        .decode_as::<SignedData>()
+        .map_err(|e| format!("Invalid CMS SignedData: {e}"))
+}
+
+fn certificates(data: &SignedData) -> Result<Vec<Cert>, String> {
+    let mut out = Vec::new();
+    for choice in data.certificates.iter().flat_map(|set| set.0.iter()) {
+        if let cms::cert::CertificateChoices::Certificate(cert) = choice {
+            out.push(Cert::from_der(&cert.to_der().map_err(|e| e.to_string())?)?);
+        }
+    }
+    Ok(out)
+}
+
+fn signer_certificate(info: &SignerInfo, certificates: &[Cert]) -> Result<Cert, String> {
+    let SignerIdentifier::IssuerAndSerialNumber(id) = &info.sid else {
+        return Err("CMS signer is identified by key ID, which isn't supported".into());
+    };
+    certificates
+        .iter()
+        .find(|c| {
+            c.parsed.tbs_certificate.issuer == id.issuer
+                && c.parsed.tbs_certificate.serial_number == id.serial_number
+        })
+        .cloned()
+        .ok_or_else(|| "CMS signer certificate is missing".into())
+}
+
+/// Checks one signer: its signed attributes must carry the digest of
+/// `content`, and its signature must cover them.
+fn check_signer(info: &SignerInfo, signer: &Cert, content: &[u8]) -> Result<(), String> {
+    let attributes = info
+        .signed_attrs
+        .as_ref()
+        .ok_or("CMS signature has no signed attributes")?;
+    let expected = digest(&info.digest_alg.oid, content)?;
+    let mut digests = attributes
+        .iter()
+        .filter(|a| a.oid == MESSAGE_DIGEST)
+        .flat_map(|a| a.values.iter());
+    let value = digests
+        .next()
+        .ok_or("CMS signature has no message digest")?;
+    if digests.next().is_some() {
+        return Err("CMS signature has more than one message digest".into());
+    }
+    let actual = value
+        .decode_as::<OctetStringRef>()
+        .map_err(|e| e.to_string())?;
+    if actual.as_bytes() != expected.as_slice() {
+        return Err("CMS message digest doesn't match the signed content".into());
+    }
+    let signed = attributes.to_der().map_err(|e| e.to_string())?;
+    verify_message(
+        signer,
+        &info.signature_algorithm.oid,
+        Some(&info.digest_alg.oid),
+        &signed,
+        info.signature.as_bytes(),
+    )
+}
+
+/// Verifies a detached CMS signature over `content`. A timestamp in the
+/// signature is verified, including its Apple-anchored chain, and its time
+/// returned. The signer's own chain isn't validated here.
+pub fn verify_detached(bytes: &[u8], content: &[u8]) -> Result<VerifiedCms, String> {
+    let data = signed_data(bytes)?;
+    let certificates = certificates(&data)?;
+    let mut signers = data.signer_infos.0.iter();
+    let info = signers.next().ok_or("CMS signature has no signer")?;
+    if signers.next().is_some() {
+        return Err("CMS signature has more than one signer".into());
+    }
+    let signer = signer_certificate(info, &certificates)?;
+    check_signer(info, &signer, content)?;
+    let mut timestamp = None;
+    for attribute in info.unsigned_attrs.iter().flat_map(|a| a.iter()) {
+        if attribute.oid == TIMESTAMP_TOKEN {
+            let token = attribute.values.get(0).ok_or("Empty timestamp attribute")?;
+            let token = token.to_der().map_err(|e| e.to_string())?;
+            timestamp = Some(verify_timestamp(&token, info.signature.as_bytes())?);
+        }
+    }
+    Ok(VerifiedCms {
+        signer,
+        certificates,
+        timestamp,
+    })
+}
+
+/// Verifies an RFC 3161 timestamp token over `signature` and returns its
+/// time.
+fn verify_timestamp(token: &[u8], signature: &[u8]) -> Result<SystemTime, String> {
+    let data = signed_data(token)?;
+    if data.encap_content_info.econtent_type != TST_INFO {
+        return Err("Timestamp token doesn't hold TSTInfo".into());
+    }
+    let content = data
+        .encap_content_info
+        .econtent
+        .as_ref()
+        .ok_or("Timestamp token has no content")?
+        .decode_as::<OctetStringRef>()
+        .map_err(|e| e.to_string())?;
+    let tst = x509_tsp::TstInfo::from_der(content.as_bytes())
+        .map_err(|e| format!("Invalid TSTInfo: {e}"))?;
+    let imprint = digest(&tst.message_imprint.hash_algorithm.oid, signature)?;
+    if tst.message_imprint.hashed_message.as_bytes() != imprint.as_slice() {
+        return Err("Timestamp doesn't cover this signature".into());
+    }
+    let certificates = certificates(&data)?;
+    let info = data
+        .signer_infos
+        .0
+        .get(0)
+        .ok_or("Timestamp token has no signer")?;
+    let signer = signer_certificate(info, &certificates)?;
+    check_signer(info, &signer, content.as_bytes())?;
+    let time = UNIX_EPOCH + tst.gen_time.to_unix_duration();
+    let others: Vec<Cert> = certificates
+        .into_iter()
+        .filter(|c| c.der != signer.der)
+        .collect();
+    trust::validate(&signer, &others, time, Purpose::TimeStamping)?;
+    Ok(time)
+}

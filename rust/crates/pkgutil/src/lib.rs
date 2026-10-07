@@ -1,6 +1,7 @@
 //! Native replacement for the `pkgutil` operations Russet uses on flat
-//! packages: [`expand`] (`pkgutil --expand`) and [`flatten`]
-//! (`pkgutil --flatten`).
+//! packages: [`expand`] (`pkgutil --expand`), [`flatten`]
+//! (`pkgutil --flatten`), and [`check_signature`]
+//! (`pkgutil --check-signature`).
 #![forbid(unsafe_code)]
 
 #[cfg(unix)]
@@ -17,6 +18,44 @@ mod imp {
     use std::io::{self, Write};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     use std::path::{Path, PathBuf};
+
+    pub use russet_codesign::package::PackageSignature;
+
+    /// Checks a flat package's signature like
+    /// `pkgutil --check-signature package`, at time `now`. Fails when the
+    /// package is unsigned or the signature, its timestamp, or its chain to an
+    /// Apple root doesn't verify.
+    pub fn check_signature(
+        package: &Path,
+        now: std::time::SystemTime,
+    ) -> Result<PackageSignature, String> {
+        let archive = Archive::open(package).map_err(|e| e.to_string())?;
+        let (algorithm, checksum) = archive.checksum().ok_or("Status: no signature")?;
+        let rsa = archive
+            .signatures()
+            .iter()
+            .find(|s| s.style == "RSA")
+            .ok_or("Status: no signature")?;
+        let cms = archive.signatures().iter().find(|s| s.style == "CMS");
+        let style = match algorithm {
+            russet_xar::Algorithm::Sha1 => "sha1",
+            russet_xar::Algorithm::Sha256 => "sha256",
+            russet_xar::Algorithm::Sha512 => "sha512",
+            russet_xar::Algorithm::Md5 => {
+                return Err("Packages signed over an MD5 checksum aren't trusted".into())
+            }
+        };
+        russet_codesign::package::verify(
+            &russet_codesign::package::SignedPackage {
+                checksum_algorithm: russet_codesign::package::checksum_algorithm(style).unwrap(),
+                checksum,
+                rsa_signature: &rsa.bytes,
+                rsa_certificates: &rsa.certificates,
+                cms_signature: cms.map(|s| s.bytes.as_slice()),
+            },
+            now,
+        )
+    }
 
     /// Members that `pkgutil --flatten` compresses with bzip2.
     const COMPRESSED: [&str; 3] = ["Bom", "PackageInfo", "Distribution"];

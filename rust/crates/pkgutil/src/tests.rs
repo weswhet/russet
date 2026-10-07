@@ -145,3 +145,81 @@ fn expand_requires_a_new_destination_and_round_trips() {
     )
     .is_err());
 }
+
+fn signed_fixture() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/Nudge_LaunchAgent-1.0.1.pkg")
+}
+
+#[test]
+fn checks_a_developer_id_signature() {
+    use std::time::{Duration, UNIX_EPOCH};
+    // Signed 2026-09-08 with a certificate that expires 2028-02-09. The
+    // trusted timestamp keeps it valid after the certificate expires.
+    for now in [
+        UNIX_EPOCH + Duration::from_secs(1_790_000_000),
+        UNIX_EPOCH + Duration::from_secs(1_900_000_000),
+    ] {
+        let signature = crate::check_signature(&signed_fixture(), now).unwrap();
+        assert_eq!(
+            signature.chain.names(),
+            [
+                "Developer ID Installer: Mac Admins Open Source (T4SK8ZXCXG)",
+                "Developer ID Certification Authority",
+                "Apple Root CA"
+            ]
+        );
+        assert_eq!(
+            signature.status,
+            "signed by a developer certificate issued by Apple for distribution"
+        );
+        assert_eq!(
+            russet_codesign::package::format_time(signature.timestamp.unwrap()),
+            "2026-09-08 16:21:28 +0000"
+        );
+    }
+}
+
+#[test]
+fn rejects_unsigned_and_tampered_packages() {
+    let temp = tempfile::tempdir().unwrap();
+    let folder = temp.path().join("expanded");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("PackageInfo"), "<pkg-info/>").unwrap();
+    let unsigned = temp.path().join("unsigned.pkg");
+    flatten(&folder, &unsigned).unwrap();
+    let error = crate::check_signature(&unsigned, std::time::SystemTime::now()).unwrap_err();
+    assert!(error.contains("no signature"), "{error}");
+
+    // Flip one byte of the RSA signature, which sits just after the
+    // 20-byte TOC checksum at the start of the heap.
+    let mut bytes = fs::read(signed_fixture()).unwrap();
+    let heap = 28 + u64::from_be_bytes(bytes[8..16].try_into().unwrap()) as usize;
+    bytes[heap + 20 + 100] ^= 1;
+    let tampered = temp.path().join("tampered.pkg");
+    fs::write(&tampered, &bytes).unwrap();
+    let error = crate::check_signature(&tampered, std::time::SystemTime::now()).unwrap_err();
+    assert!(error.contains("signature is invalid"), "{error}");
+}
+
+/// Compares the chain with `pkgutil --check-signature`.
+#[cfg(target_os = "macos")]
+#[test]
+fn chain_matches_apple_pkgutil() {
+    let output = std::process::Command::new("/usr/sbin/pkgutil")
+        .arg("--check-signature")
+        .arg(signed_fixture())
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&output.stdout);
+    let apple: Vec<String> = text
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim_start();
+            let (n, rest) = l.split_once(". ")?;
+            n.parse::<u32>().ok().map(|_| rest.to_owned())
+        })
+        .collect();
+    let native = crate::check_signature(&signed_fixture(), std::time::SystemTime::now()).unwrap();
+    assert_eq!(native.chain.names(), apple);
+}

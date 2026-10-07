@@ -33,7 +33,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `AppDmgVersioner` | Reads the bundle identifier and version of the app in a disk image. | macOS, Linux | Mounts the disk image with `hdiutil` on macOS and reads it with a built-in reader on Linux. |
 | `AppPkgCreator` | Builds a package from an app. | macOS | Uses the `russet-server` helper service. |
 | `ChocolateyPackager` | Builds a NuGet package with `choco.exe`. | Windows | Rejects `license` and `contentFiles` values that are dictionaries or arrays. |
-| `CodeSignatureVerifier` | Verifies the code signature of an app or installer package. | macOS | Uses `codesign` and `pkgutil`. The `DISABLE_CODE_SIGNATURE_VERIFICATION` variable skips it on every platform. |
+| `CodeSignatureVerifier` | Verifies the code signature of an app or installer package. | macOS, Linux (packages) | Uses `codesign` and `pkgutil` on macOS. On Linux, verifies installer packages with a built-in replacement for `pkgutil --check-signature`; apps need macOS. The `DISABLE_CODE_SIGNATURE_VERIFICATION` variable skips it on every platform. |
 | `Copier` | Copies a file or folder. | All | Paths inside a disk image need macOS or Linux. |
 | `DeprecationWarning` | Prints a deprecation warning for a recipe. | All | None. |
 | `DmgCreator` | Creates a disk image from a folder. | macOS | Uses `hdiutil`. |

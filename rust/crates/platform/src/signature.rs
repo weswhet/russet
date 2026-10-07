@@ -35,13 +35,58 @@ fn input(env: &Dictionary) -> Result<&str, String> {
         .ok_or_else(|| "input_path must be a string".into())
 }
 
+const VERIFICATION_FAILED: &str = "Code signature verification failed. Note that all verification can be disabled by setting the variable DISABLE_CODE_SIGNATURE_VERIFICATION to a non-empty value.";
+
+/// Runs `pkgutil --check-signature`, logs its output, and returns the
+/// certificate chain's names.
+fn apple_package_chain(path: &std::path::Path) -> Result<Vec<String>, String> {
+    let output = Command::new("/usr/sbin/pkgutil")
+        .arg("--check-signature")
+        .arg(path)
+        .output()
+        .map_err(|e| e.to_string())?;
+    for line in String::from_utf8_lossy(&output.stderr)
+        .lines()
+        .chain(String::from_utf8_lossy(&output.stdout).lines())
+    {
+        super::processor_output(1, line);
+    }
+    if !output.status.success() {
+        return Err(VERIFICATION_FAILED.into());
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    let pattern = regex::Regex::new(r"\s+[1-9]+\. (?P<authority>.*)\n").unwrap();
+    Ok(pattern
+        .captures_iter(&text)
+        .map(|c| c["authority"].to_owned())
+        .collect())
+}
+
+/// Checks the signature with Russet's replacement for
+/// `pkgutil --check-signature`, logs a report in the same layout, and
+/// returns the certificate chain's names.
+#[cfg(unix)]
+fn native_package_chain(path: &std::path::Path) -> Result<Vec<String>, String> {
+    let name = path.file_name().unwrap_or_default().to_string_lossy();
+    match russet_pkgutil::check_signature(path, std::time::SystemTime::now()) {
+        Ok(signature) => {
+            for line in signature.report(&name) {
+                super::processor_output(1, line);
+            }
+            Ok(signature.chain.names())
+        }
+        Err(error) => {
+            super::processor_output(1, format!("Package \"{name}\":"));
+            super::processor_output(1, format!("   {error}"));
+            Err(VERIFICATION_FAILED.into())
+        }
+    }
+}
+
 pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
     if enabled(env.get("DISABLE_CODE_SIGNATURE_VERIFICATION")) {
         eprintln!("WARNING: Code signature verification disabled for this recipe run.");
         return Ok(());
-    }
-    if !cfg!(target_os = "macos") {
-        return Err("Code signature verification is only supported on macOS.".into());
     }
     let requirement = match env.get("requirement") {
         None | Some(Value::Null) => "",
@@ -103,26 +148,16 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
         if codesign_pinning {
             super::processor_output(1, "WARNING: Ignoring 'requirement'/'-R' on installer packages; 'expected_authority_names' is pinning the signer.");
         }
-        let output = Command::new("/usr/sbin/pkgutil")
-            .arg("--check-signature")
-            .arg(path)
-            .output()
-            .map_err(|e| e.to_string())?;
-        for line in String::from_utf8_lossy(&output.stderr)
-            .lines()
-            .chain(String::from_utf8_lossy(&output.stdout).lines())
-        {
-            super::processor_output(1, line);
-        }
-        if !output.status.success() {
-            return Err("Code signature verification failed. Note that all verification can be disabled by setting the variable DISABLE_CODE_SIGNATURE_VERIFICATION to a non-empty value.".into());
-        }
-        let text = String::from_utf8_lossy(&output.stdout);
-        let pattern = regex::Regex::new(r"\s+[1-9]+\. (?P<authority>.*)\n").unwrap();
-        let actual: Vec<_> = pattern
-            .captures_iter(&text)
-            .map(|c| c["authority"].to_owned())
-            .collect();
+        let actual = match crate::backend::select(crate::backend::Tool::Pkgutil) {
+            crate::backend::Backend::Apple => apple_package_chain(path)?,
+            #[cfg(unix)]
+            crate::backend::Backend::Native => native_package_chain(path)?,
+            _ => {
+                return Err(
+                    "Code signature verification is only supported on macOS and Linux.".into(),
+                )
+            }
+        };
         super::processor_output(1, "Signature is valid");
         if actual != authorities {
             super::processor_output(1, "Mismatch in authority names");
@@ -133,6 +168,10 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
         super::processor_output(1, "Authority name chain is valid");
         return Ok(());
     }
+    if !cfg!(target_os = "macos") {
+        return Err("Code signature verification of apps is only supported on macOS.".into());
+    }
+
     super::processor_output(1, "Verifying code signature...");
     if env.contains_key("requirements") {
         return Err("Use 'requirement' instead of 'requirements'.".into());
