@@ -27,8 +27,18 @@ format for native images, mounts them with the same tree, and that
 - macOS refuses to mount an HFS+ volume whose journal is only a stub, so the
   native writer always writes a non-journaled volume, even for
   `Journaled HFS+`. A read-only image doesn't need a journal.
-- The native writer stores one partition, named
-  `disk image (Apple_HFS : 0)`, with no partition map.
+- With `-layout NONE`, `hdiutil` writes one partition named
+  `whole disk (Apple_HFS : 0)` and no partition map. The UDIF trailer then
+  has image variant 2, and the partition's block map has block descriptor
+  −2 (`0xFFFFFFFE`). The native writer uses this layout. On macOS 27,
+  `hdiutil imageinfo` fails on such an image with variant 1, which means a
+  device image with a partition map; variant 0 works there but `hdiutil`
+  reports a corrupt image on macOS 15.
+- The trailer's reserved area before the master checksum is 120 bytes, so
+  the master checksum is at offset 0x160, the image variant at 0x1E8, and
+  the sector count at 0x1EC.
+- Every image has a 1032-byte `plst` resource, zero except bytes 517 and 519,
+  which are 1.
 - `fstool` 0.4.35's APFS writer produces a container that `fsck_apfs` rejects
   ("spaceman ip block count is bad") and macOS won't mount. The native
   `create` writes HFS+ when APFS is requested and reports the substitution.

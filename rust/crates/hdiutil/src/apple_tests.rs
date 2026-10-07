@@ -289,6 +289,7 @@ fn hdiutil_accepts_created_images() {
             info.contains(&format!("<string>{format}</string>")),
             "{format}: {info}"
         );
+        run("/usr/bin/hdiutil", &["verify", image.to_str().unwrap()]);
         let mounted = mounted(&image);
         // Extended attributes aren't copied, and owners are the mounting user.
         let strip = |entries: Vec<russet_fs::Entry>| -> Vec<_> {
@@ -306,25 +307,18 @@ fn hdiutil_accepts_created_images() {
             "/usr/bin/hdiutil",
             &["attach", "-nomount", image.to_str().unwrap()],
         );
-        let device = attached
+        // `attach` first prints the checksum it verified.
+        let devices: Vec<&str> = attached
             .lines()
             .filter_map(|l| l.split_whitespace().next())
-            .next_back()
-            .unwrap()
-            .to_owned();
+            .filter(|d| d.starts_with("/dev/"))
+            .collect();
+        let device = devices.last().unwrap().to_string();
         let fsck = Command::new("/sbin/fsck_hfs")
             .args(["-n", &device])
             .output()
             .unwrap();
-        let disk = attached
-            .lines()
-            .next()
-            .unwrap()
-            .split_whitespace()
-            .next()
-            .unwrap()
-            .to_owned();
-        run("/usr/bin/hdiutil", &["detach", "-quiet", &disk]);
+        run("/usr/bin/hdiutil", &["detach", "-quiet", devices[0]]);
         assert!(
             fsck.status.success(),
             "{format}: {}",

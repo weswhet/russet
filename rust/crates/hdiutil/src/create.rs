@@ -241,7 +241,7 @@ pub fn create(source: &Path, image: &Path, options: &CreateOptions) -> io::Resul
         .compression(method)
         .compression_level(options.zlib_level);
     writer
-        .add_partition("disk image (Apple_HFS : 0)", &data)
+        .add_partition("whole disk (Apple_HFS : 0)", &data)
         .map_err(|e| invalid(format!("Can't write the disk image: {e}")))?;
     writer
         .finish()
