@@ -15,5 +15,7 @@ cargo install cargo-fuzz --version 0.13.2 --locked
 cargo +nightly fuzz run xar_open -- -max_total_time=3600
 ```
 
-Crashing inputs are saved in `artifacts/<target>/`. Add a crash's input to the
-relevant crate's tests when you fix it.
+Crashing inputs are saved in `artifacts/<target>/`, and CI uploads them as
+the `fuzz-artifacts` artifact. When you fix a crash, add its input to the
+affected crate's tests, as `rust/crates/codesign/tests/fuzz-regressions/`
+does.

@@ -1,5 +1,8 @@
 //! Verifies a real Developer ID signed bundle, then tampered copies of it.
-//! These tests need no macOS tools, so they run on Linux too.
+//! These tests need no macOS tools, so they run on Linux too. Windows
+//! checks out the bundle's symlinks as plain files, and Russet doesn't
+//! verify code signatures there.
+#![cfg(unix)]
 
 use russet_codesign::bundle::{verify, Options};
 use russet_codesign::requirement::{Context, Requirement};
