@@ -46,4 +46,10 @@ compatibility version 3.0.0.
   and CMS signatures over the package's table-of-contents checksum, the
   trusted timestamp, and the certificate chain to Apple's root certificates,
   which are the only roots it trusts. It doesn't check notarization or
-  revocation. App signatures still need macOS.
+  revocation.
+- On Linux, CodeSignatureVerifier checks app signatures with a built-in
+  replacement for `codesign --verify --deep --strict -R`: every architecture's
+  code directories, the CMS signature and timestamp, the chain to Apple's
+  roots, the resource seal, nested code, and the requirement. It supports the
+  requirement clauses the core recipes use and rejects others, such as
+  `notarized`, rather than ignoring them.

@@ -21,6 +21,8 @@ pub struct VerifiedCms {
     pub certificates: Vec<Cert>,
     /// The time from a verified timestamp, if the signature has one.
     pub timestamp: Option<SystemTime>,
+    /// Signed attributes, as attribute type and DER values.
+    pub signed_attributes: Vec<(ObjectIdentifier, Vec<Vec<u8>>)>,
 }
 
 /// Decodes a CMS `ContentInfo`, ignoring the zero padding that xar and code
@@ -118,10 +120,20 @@ pub fn verify_detached(bytes: &[u8], content: &[u8]) -> Result<VerifiedCms, Stri
             timestamp = Some(verify_timestamp(&token, info.signature.as_bytes())?);
         }
     }
+    let signed_attributes = info
+        .signed_attrs
+        .iter()
+        .flat_map(|a| a.iter())
+        .map(|a| {
+            let values = a.values.iter().filter_map(|v| v.to_der().ok()).collect();
+            (a.oid, values)
+        })
+        .collect();
     Ok(VerifiedCms {
         signer,
         certificates,
         timestamp,
+        signed_attributes,
     })
 }
 
@@ -139,10 +151,12 @@ fn verify_timestamp(token: &[u8], signature: &[u8]) -> Result<SystemTime, String
         .ok_or("Timestamp token has no content")?
         .decode_as::<OctetStringRef>()
         .map_err(|e| e.to_string())?;
-    let tst = x509_tsp::TstInfo::from_der(content.as_bytes())
-        .map_err(|e| format!("Invalid TSTInfo: {e}"))?;
-    let imprint = digest(&tst.message_imprint.hash_algorithm.oid, signature)?;
-    if tst.message_imprint.hashed_message.as_bytes() != imprint.as_slice() {
+    // Only the message imprint and time are needed. TSTInfo is parsed by
+    // hand because some authorities use policy OIDs, such as 1.2.3, that the
+    // strict OID type rejects.
+    let (imprint_algorithm, imprint_hash, gen_time) = tst_info(content.as_bytes())?;
+    let imprint = digest(&imprint_algorithm, signature)?;
+    if imprint_hash != imprint {
         return Err("Timestamp doesn't cover this signature".into());
     }
     let certificates = certificates(&data)?;
@@ -153,11 +167,34 @@ fn verify_timestamp(token: &[u8], signature: &[u8]) -> Result<SystemTime, String
         .ok_or("Timestamp token has no signer")?;
     let signer = signer_certificate(info, &certificates)?;
     check_signer(info, &signer, content.as_bytes())?;
-    let time = UNIX_EPOCH + tst.gen_time.to_unix_duration();
+    let time = UNIX_EPOCH + gen_time.to_unix_duration();
     let others: Vec<Cert> = certificates
         .into_iter()
         .filter(|c| c.der != signer.der)
         .collect();
     trust::validate(&signer, &others, time, Purpose::TimeStamping)?;
     Ok(time)
+}
+
+/// Reads the message imprint and generation time from a TSTInfo.
+fn tst_info(
+    bytes: &[u8],
+) -> Result<(ObjectIdentifier, Vec<u8>, der::asn1::GeneralizedTime), String> {
+    use der::{Reader, Tagged};
+    let invalid = |e: der::Error| format!("Invalid TSTInfo: {e}");
+    let sequence = der::asn1::AnyRef::from_der(bytes).map_err(invalid)?;
+    if sequence.tag() != der::Tag::Sequence {
+        return Err("Invalid TSTInfo: not a sequence".into());
+    }
+    let mut reader = der::SliceReader::new(sequence.value()).map_err(invalid)?;
+    let _version: der::asn1::AnyRef = reader.decode().map_err(invalid)?;
+    let _policy: der::asn1::AnyRef = reader.decode().map_err(invalid)?;
+    let imprint: x509_tsp::MessageImprint = reader.decode().map_err(invalid)?;
+    let _serial: der::asn1::AnyRef = reader.decode().map_err(invalid)?;
+    let time: der::asn1::GeneralizedTime = reader.decode().map_err(invalid)?;
+    Ok((
+        imprint.hash_algorithm.oid,
+        imprint.hashed_message.as_bytes().to_vec(),
+        time,
+    ))
 }

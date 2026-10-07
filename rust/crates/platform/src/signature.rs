@@ -83,6 +83,108 @@ fn native_package_chain(path: &std::path::Path) -> Result<Vec<String>, String> {
     }
 }
 
+fn code_failure(reason: &str) -> String {
+    format!("Code signature verification failed: {reason} Note that all verifications can be disabled by setting the variable DISABLE_CODE_SIGNATURE_VERIFICATION to a non-empty value.")
+}
+
+/// Verifies an app or binary with Russet's replacement for
+/// `codesign --verify`, with the same options and failure messages.
+#[cfg(unix)]
+fn native_code_signature(
+    path: &std::path::Path,
+    requirement: &str,
+    extra: &[String],
+    deep: bool,
+    strict: Option<bool>,
+) -> Result<(), String> {
+    use russet_codesign::requirement::{Context, Requirement};
+    super::processor_output(
+        1,
+        if deep {
+            "Deep verification enabled..."
+        } else {
+            "Deep verification disabled..."
+        },
+    );
+    let mut strict = strict.unwrap_or(false);
+    let mut requirement = (!requirement.is_empty()).then(|| requirement.to_owned());
+    let mut arguments = extra.iter();
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--strict" => strict = true,
+            "--no-strict" => strict = false,
+            "--deep" | "-v" | "--verbose" => {}
+            "-R" | "--test-requirement" => requirement = arguments.next().cloned(),
+            other if other.starts_with("--verbose=") => {}
+            other if other.starts_with("-R") || other.starts_with("--test-requirement=") => {
+                requirement = Some(
+                    other
+                        .trim_start_matches("--test-requirement=")
+                        .trim_start_matches("-R")
+                        .to_owned(),
+                );
+            }
+            other => {
+                super::processor_output(
+                    1,
+                    format!("The native verifier doesn't support the codesign argument {other}"),
+                );
+                return Err(code_failure("codesign rejected its arguments (exit 2). Check the 'requirement' string and 'codesign_additional_arguments'."));
+            }
+        }
+    }
+    super::processor_output(
+        1,
+        if strict {
+            "Strict verification enabled..."
+        } else {
+            "Strict verification disabled..."
+        },
+    );
+    let requirement = match requirement.as_deref().map(Requirement::parse).transpose() {
+        Ok(requirement) => requirement,
+        Err(error) => {
+            super::processor_output(1, error);
+            return Err(code_failure("codesign rejected its arguments (exit 2). Check the 'requirement' string and 'codesign_additional_arguments'."));
+        }
+    };
+    let options = russet_codesign::bundle::Options { deep, strict };
+    let signature =
+        match russet_codesign::bundle::verify(path, options, std::time::SystemTime::now()) {
+            Ok(signature) => signature,
+            Err(error) => {
+                super::processor_output(1, error);
+                return Err(code_failure(
+                    "the code is unsigned or has an invalid signature.",
+                ));
+            }
+        };
+    super::processor_output(1, format!("{}: valid on disk", path.display()));
+    if let Some(requirement) = requirement {
+        let context = Context {
+            identifier: &signature.identifier,
+            chain: signature.chain.as_ref(),
+            cdhashes: &signature.cdhashes,
+        };
+        if !requirement.evaluate(&context) {
+            super::processor_output(
+                1,
+                format!(
+                    "{}: does not satisfy its designated Requirement",
+                    path.display()
+                ),
+            );
+            return Err(code_failure("signed by an unexpected identity."));
+        }
+        super::processor_output(
+            1,
+            format!("{}: explicit requirement satisfied", path.display()),
+        );
+    }
+    super::processor_output(1, "Signature is valid");
+    Ok(())
+}
+
 pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
     if enabled(env.get("DISABLE_CODE_SIGNATURE_VERIFICATION")) {
         eprintln!("WARNING: Code signature verification disabled for this recipe run.");
@@ -168,9 +270,6 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
         super::processor_output(1, "Authority name chain is valid");
         return Ok(());
     }
-    if !cfg!(target_os = "macos") {
-        return Err("Code signature verification of apps is only supported on macOS.".into());
-    }
 
     super::processor_output(1, "Verifying code signature...");
     if env.contains_key("requirements") {
@@ -185,6 +284,22 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
             super::processor_output(1, "See https://github.com/autopkg/autopkg/wiki/Using-CodeSignatureVerifier for more information.");
         }
         return Err(if !authorities.is_empty() { "Using 'expected_authority_names' to verify an application signature is not supported; use 'requirement' instead. Note that all verifications can be disabled by setting the variable DISABLE_CODE_SIGNATURE_VERIFICATION to a non-empty value." } else { "No 'requirement' set. Confirming only that the code is signed by some valid Developer ID does not verify the expected signer. Set 'requirement' to the app's designated requirement from 'codesign --display -r- <path>'. Note that verification can be disabled by setting the variable DISABLE_CODE_SIGNATURE_VERIFICATION to a non-empty value." }.into());
+    }
+    let deep = env.get("deep_verification").is_none() || enabled(env.get("deep_verification"));
+    let strict = match env.get("strict_verification") {
+        Some(Value::Null) => None,
+        value if value.is_none() || enabled(value) => Some(true),
+        _ => Some(false),
+    };
+    match crate::backend::select(crate::backend::Tool::Codesign) {
+        crate::backend::Backend::Apple => {}
+        #[cfg(unix)]
+        crate::backend::Backend::Native => {
+            return native_code_signature(path, requirement, &extra, deep, strict);
+        }
+        _ => {
+            return Err("Code signature verification is only supported on macOS and Linux.".into())
+        }
     }
     let mut command = Command::new("/usr/bin/codesign");
     command.args(["--verify", "--verbose=1"]);
@@ -247,7 +362,7 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
         Some(2) => "codesign rejected its arguments (exit 2). Check the 'requirement' string and 'codesign_additional_arguments'.",
         _ => "the code is unsigned or has an invalid signature.",
     };
-    Err(format!("Code signature verification failed: {reason} Note that all verifications can be disabled by setting the variable DISABLE_CODE_SIGNATURE_VERIFICATION to a non-empty value."))
+    Err(code_failure(reason))
 }
 
 pub fn signtool_default_path() -> Option<PathBuf> {

@@ -14,6 +14,10 @@ pub mod cms {
     pub use crate::cms_verify::{verify_detached, VerifiedCms};
 }
 mod ber;
+pub mod bundle;
 mod cms_verify;
+pub mod code;
+pub mod macho;
 pub mod package;
+pub mod requirement;
 pub mod trust;
