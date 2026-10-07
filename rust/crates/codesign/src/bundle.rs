@@ -352,6 +352,7 @@ impl Seal<'_> {
 
 /// Attributes `codesign --strict` calls detritus. On Linux, Russet's
 /// extractors store them in the `user.` namespace.
+#[cfg(unix)]
 const DETRITUS: [&str; 4] = [
     "com.apple.FinderInfo",
     "com.apple.ResourceFork",
