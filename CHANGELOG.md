@@ -26,3 +26,9 @@ compatibility version 3.0.0.
   bundles from zip archives stay intact. `USE_PYTHON_NATIVE_EXTRACTOR` now
   defaults to false on Linux. Setting `RUSSET_NATIVE=ditto` uses the same
   replacement on macOS.
+- On Linux, processors read paths inside disk images, and AppDmgVersioner
+  works, with a built-in reader for `.dmg` images in the `UDZO`, `UDBZ`,
+  `ULFO`, `ULMO`, `UDCO`, and `UDRO` formats containing HFS+, HFSX, or APFS
+  volumes. Each image is extracted once per recipe into `RUSSET_SCRATCH_DIR`
+  or the system temporary folder. `RUSSET_NATIVE=hdiutil` uses the same
+  reader on macOS.

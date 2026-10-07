@@ -1,0 +1,20 @@
+[package]
+name = "russet-hdiutil"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for the hdiutil operations Russet uses: reading and extracting disk images."
+
+[target.'cfg(unix)'.dependencies]
+russet-fs = { path = "../fs" }
+udif = { version = "0.4.2", path = "../../vendor/udif" }
+hfsplus = { version = "0.4.0", path = "../../vendor/hfsplus" }
+apfs = "0.4.1"
+tempfile = "3"
+
+[target.'cfg(unix)'.dev-dependencies]
+serde_json = "1"
+tempfile = "3"
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+xattr = "1"

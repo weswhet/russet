@@ -3,7 +3,7 @@ use rustix::fs::{self as rfs, AtFlags, FileType, Mode, OFlags, XattrFlags};
 use rustix::io::Errno;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::os::fd::OwnedFd;
 use std::path::{Path, PathBuf};
 
@@ -105,6 +105,36 @@ impl TreeWriter {
         self.written += copied;
         rfs::fchmod(&file, perm(mode & 0o1777))?;
         Ok(copied)
+    }
+
+    /// Writes a regular file whose contents a callback produces by writing to
+    /// the provided sink, for sources that write rather than read. The total
+    /// size limit applies as it does for [`TreeWriter::write_file`].
+    pub fn write_file_with(
+        &mut self,
+        path: &Path,
+        mode: u32,
+        produce: impl FnOnce(&mut dyn Write) -> io::Result<()>,
+    ) -> io::Result<u64> {
+        let rel = self.admit(path)?;
+        let (parent, name) = split(&rel)?;
+        let dir = self.open_dir(&parent, true)?;
+        remove_non_directory(&dir, &name, &rel)?;
+        let fd = rfs::openat(
+            &dir,
+            &name,
+            OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            perm(0o600),
+        )?;
+        let mut sink = Limited {
+            file: File::from(fd),
+            remaining: self.limits.max_total_bytes - self.written,
+            written: 0,
+        };
+        produce(&mut sink)?;
+        self.written += sink.written;
+        rfs::fchmod(&sink.file, perm(mode & 0o1777))?;
+        Ok(sink.written)
     }
 
     /// Queues a symlink. Links are created last and are never followed.
@@ -311,5 +341,27 @@ fn open_for_xattr(dir: &OwnedFd, name: &OsStr, mode: u32) -> io::Result<OwnedFd>
             Ok(fd)
         }
         other => Ok(other?),
+    }
+}
+
+/// A file writer that stops at the extraction's size limit.
+struct Limited {
+    file: File,
+    remaining: u64,
+    written: u64,
+}
+
+impl Write for Limited {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() as u64 > self.remaining - self.written {
+            return Err(invalid("Extraction exceeds the total size limit"));
+        }
+        let count = self.file.write(buf)?;
+        self.written += count as u64;
+        Ok(count)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.file.flush()
     }
 }

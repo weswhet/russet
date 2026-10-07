@@ -779,6 +779,9 @@ fn main() {
     let standalone = arguments
         .first()
         .is_some_and(|verb| verb == "processor-run");
+    // Releases native disk-image extractions before the process exits;
+    // std::process::exit doesn't run destructors.
+    let images = autopkg_platform::dmg::RecipeScope::new();
     let code = match autopkg_platform::backend::validate().and_then(|()| dispatch(&arguments)) {
         Ok(code) => code,
         Err(error) => {
@@ -794,6 +797,7 @@ fn main() {
             }
         }
     };
+    drop(images);
     #[cfg(windows)]
     let code = if code == 255 { -1 } else { code };
     std::process::exit(code);

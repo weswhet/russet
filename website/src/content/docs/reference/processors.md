@@ -30,17 +30,17 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 
 | Processor | Purpose | Platform | Notes |
 | --- | --- | --- | --- |
-| `AppDmgVersioner` | Reads the bundle identifier and version of the app in a disk image. | macOS | Mounts the disk image with `hdiutil`. |
+| `AppDmgVersioner` | Reads the bundle identifier and version of the app in a disk image. | macOS, Linux | Mounts the disk image with `hdiutil` on macOS and reads it with a built-in reader on Linux. |
 | `AppPkgCreator` | Builds a package from an app. | macOS | Uses the `russet-server` helper service. |
 | `ChocolateyPackager` | Builds a NuGet package with `choco.exe`. | Windows | Rejects `license` and `contentFiles` values that are dictionaries or arrays. |
 | `CodeSignatureVerifier` | Verifies the code signature of an app or installer package. | macOS | Uses `codesign` and `pkgutil`. The `DISABLE_CODE_SIGNATURE_VERIFICATION` variable skips it on every platform. |
-| `Copier` | Copies a file or folder. | All | Paths inside a disk image need macOS. |
+| `Copier` | Copies a file or folder. | All | Paths inside a disk image need macOS or Linux. |
 | `DeprecationWarning` | Prints a deprecation warning for a recipe. | All | None. |
 | `DmgCreator` | Creates a disk image from a folder. | macOS | Uses `hdiutil`. |
 | `DmgMounter` | Base class for processors that mount disk images. | None | Fails if a recipe runs it directly. |
 | `EndOfCheckPhase` | Marks where `russet run --check` stops. | All | Does nothing when it runs. |
 | `FileCreator` | Creates a file with the content that you supply. | All | On Windows, `file_mode` only sets or clears the read-only attribute. |
-| `FileFinder` | Finds a file that matches a pattern. | All | Supports only `find_method` `glob`. Paths inside a disk image need macOS. |
+| `FileFinder` | Finds a file that matches a pattern. | All | Supports only `find_method` `glob`. Paths inside a disk image need macOS or Linux. |
 | `FileMover` | Moves or renames a file. | All | None. |
 | `FindAndReplace` | Replaces text in a string variable. | All | None. |
 | `FlatPkgPacker` | Flattens an expanded package. | macOS | Uses `pkgutil`. |
@@ -57,14 +57,14 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `MunkiSetDefaultCatalog` | Sets a pkginfo's catalog to the `munkiimport` default catalog. | All | Reads the `munkiimport` preference only on macOS. |
 | `PackageRequired` | Fails the recipe if the `PKG` variable isn't set. | All | None. |
 | `PathDeleter` | Deletes files and folders. | All | None. |
-| `PkgCopier` | Copies a package. | All | Paths inside a disk image need macOS. |
+| `PkgCopier` | Copies a package. | All | Paths inside a disk image need macOS or Linux. |
 | `PkgCreator` | Builds a package from a package root. | macOS | Uses the `russet-server` helper service. |
 | `PkgExtractor` | Extracts the contents of a bundle-style package. | macOS | Uses `ditto`. |
 | `PkgInfoCreator` | Creates a `PackageInfo` file for a package. | All | None. |
 | `PkgPayloadUnpacker` | Unpacks a package payload. | macOS | Uses `ditto`, with `aa` as a fallback. |
 | `PkgRootCreator` | Creates a package root and its folder structure. | All | On Windows, only the read-only attribute of folder modes applies. |
 | `PlistEditor` | Merges data into a property list file. | All | None. |
-| `PlistReader` | Reads keys from a property list into variables. | All | Paths inside a disk image need macOS. |
+| `PlistReader` | Reads keys from a property list into variables. | All | Paths inside a disk image need macOS or Linux. |
 | `SignToolVerifier` | Verifies an Authenticode signature. | Windows | Needs `signtool.exe` from the Windows SDK. |
 | `SparkleUpdateInfoProvider` | Gets the download URL and version from a Sparkle feed. | All | Uses curl. |
 | `StopProcessingIf` | Stops a recipe when a predicate is true. | All | On Linux and Windows, supports a subset of the predicate syntax. |
@@ -75,7 +75,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `URLTextSearcher` | Downloads text and matches a regular expression against it. | All | Uses curl. Follows Python regular expression syntax. |
 | `Unarchiver` | Extracts zip and tar archives. | All | On macOS, uses `ditto` and `tar`. On Linux, uses a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On Windows, uses a built-in extractor that doesn't support `archive_format` `gzip`. |
 | `VariableSetter` | Sets variables for later steps. | All | None. |
-| `Versioner` | Reads a version from a property list. | All | Reads paths inside zip archives. Paths inside a disk image need macOS. |
+| `Versioner` | Reads a version from a property list. | All | Reads paths inside zip archives. Paths inside a disk image need macOS or Linux. |
 
 ## Processors from the AutoPkg recipes repository
 
