@@ -300,16 +300,16 @@ pub fn extract(package: &Path, info: &Dictionary) -> Result<Option<Vec<u8>>, Str
 
 /// Converts an icon file to PNG, choosing the image Munki prefers.
 pub fn convert_to_png(source: &Path, destination: &Path) -> Result<(), String> {
-    match select(Tool::Icons) {
-        #[cfg(target_os = "macos")]
-        Backend::Apple => imageio_convert_to_png(source, destination),
-        #[cfg(unix)]
-        Backend::Native => crate::icon_native::convert_to_png(source, destination),
-        _ => {
-            let _ = (source, destination);
-            Err("Icon conversion is only supported on macOS and Linux".into())
-        }
+    #[cfg(target_os = "macos")]
+    if select(Tool::Icons) == Backend::Apple {
+        return imageio_convert_to_png(source, destination);
     }
+    #[cfg(unix)]
+    if native() {
+        return crate::icon_native::convert_to_png(source, destination);
+    }
+    let _ = (source, destination);
+    Err("Icon conversion is only supported on macOS and Linux".into())
 }
 
 #[cfg(target_os = "macos")]
