@@ -1,0 +1,17 @@
+[package]
+name = "russet-xar"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for the xar operations Russet uses: reading and extracting xar archives such as flat packages."
+
+[target.'cfg(unix)'.dependencies]
+russet-fs = { path = "../fs" }
+roxmltree = "0.20"
+flate2 = "1"
+bzip2 = "0.5"
+xz2 = { version = "0.1", features = ["static"] }
+sha1 = "0.10"
+sha2 = "0.10"
+md-5 = "0.10"
+tempfile = "3"

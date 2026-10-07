@@ -262,6 +262,125 @@ impl Drop for Mount {
     }
 }
 
+/// Clears cached native extractions when dropped. The engine holds one for
+/// each recipe run, so an image opened by several steps of a recipe is
+/// extracted once, and the scratch space is released when the recipe ends.
+pub struct RecipeScope(());
+
+impl RecipeScope {
+    pub fn new() -> Self {
+        Self(())
+    }
+}
+
+impl Default for RecipeScope {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for RecipeScope {
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        native::clear_cache();
+    }
+}
+
+#[cfg(unix)]
+mod native {
+    use super::Result;
+    use std::path::{Path, PathBuf};
+    use std::sync::{Arc, Mutex};
+    use std::time::SystemTime;
+
+    /// Where extracted images go: `RUSSET_SCRATCH_DIR`, or the system
+    /// temporary folder.
+    pub(super) const SCRATCH_VARIABLE: &str = "RUSSET_SCRATCH_DIR";
+
+    /// An image extracted into a private scratch folder, removed on drop.
+    pub(crate) struct Extraction {
+        directory: PathBuf,
+        pub(super) volumes: Vec<PathBuf>,
+    }
+
+    impl Drop for Extraction {
+        fn drop(&mut self) {
+            remove_tree(&self.directory);
+        }
+    }
+
+    /// Removes a tree whose folders may be read-only, without following
+    /// symlinks.
+    fn remove_tree(path: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(entries) = std::fs::read_dir(path) {
+            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700));
+            for entry in entries.flatten() {
+                if entry.file_type().is_ok_and(|t| t.is_dir()) {
+                    remove_tree(&entry.path());
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    type Key = (PathBuf, u64, Option<SystemTime>);
+    static CACHE: Mutex<Vec<(Key, Arc<Extraction>)>> = Mutex::new(Vec::new());
+
+    pub(super) fn clear_cache() {
+        let drained: Vec<_> = CACHE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain(..)
+            .collect();
+        drop(drained);
+    }
+
+    pub(super) fn open(image: &str) -> Result<Arc<Extraction>> {
+        let path = Path::new(image)
+            .canonicalize()
+            .map_err(|e| format!("mounting {image} failed: {e}"))?;
+        let metadata =
+            std::fs::metadata(&path).map_err(|e| format!("mounting {image} failed: {e}"))?;
+        let key = (path.clone(), metadata.len(), metadata.modified().ok());
+        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((_, extraction)) = cache.iter().find(|(k, _)| *k == key) {
+            return Ok(extraction.clone());
+        }
+        let base = std::env::var_os(SCRATCH_VARIABLE)
+            .map(PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir);
+        std::fs::create_dir_all(&base).map_err(|e| e.to_string())?;
+        let directory = tempfile::Builder::new()
+            .prefix("russet-image-")
+            .tempdir_in(&base)
+            .map_err(|e| e.to_string())?
+            .keep();
+        let mut extraction = Extraction {
+            directory,
+            volumes: Vec::new(),
+        };
+        let result =
+            russet_hdiutil::extract(&path, &extraction.directory, russet_fs::Limits::default())
+                .map_err(|e| format!("mounting {image} failed: {e}"))?;
+        for skipped in &result.skipped_xattrs {
+            crate::processor_output(
+                2,
+                format!(
+                    "Couldn't keep extended attribute {} on {}: {}",
+                    skipped.name,
+                    skipped.path.display(),
+                    skipped.reason
+                ),
+            );
+        }
+        extraction.volumes = result.volumes;
+        let extraction = Arc::new(extraction);
+        cache.push((key, extraction.clone()));
+        Ok(extraction)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -381,124 +500,5 @@ mod tests {
         assert!(roots.iter().all(|p| !p.exists()));
         drop(mounted);
         assert!(!directory.exists());
-    }
-}
-
-/// Clears cached native extractions when dropped. The engine holds one for
-/// each recipe run, so an image opened by several steps of a recipe is
-/// extracted once, and the scratch space is released when the recipe ends.
-pub struct RecipeScope(());
-
-impl RecipeScope {
-    pub fn new() -> Self {
-        Self(())
-    }
-}
-
-impl Default for RecipeScope {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Drop for RecipeScope {
-    fn drop(&mut self) {
-        #[cfg(unix)]
-        native::clear_cache();
-    }
-}
-
-#[cfg(unix)]
-mod native {
-    use super::Result;
-    use std::path::{Path, PathBuf};
-    use std::sync::{Arc, Mutex};
-    use std::time::SystemTime;
-
-    /// Where extracted images go: `RUSSET_SCRATCH_DIR`, or the system
-    /// temporary folder.
-    pub(super) const SCRATCH_VARIABLE: &str = "RUSSET_SCRATCH_DIR";
-
-    /// An image extracted into a private scratch folder, removed on drop.
-    pub(crate) struct Extraction {
-        directory: PathBuf,
-        pub(super) volumes: Vec<PathBuf>,
-    }
-
-    impl Drop for Extraction {
-        fn drop(&mut self) {
-            remove_tree(&self.directory);
-        }
-    }
-
-    /// Removes a tree whose folders may be read-only, without following
-    /// symlinks.
-    fn remove_tree(path: &Path) {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(entries) = std::fs::read_dir(path) {
-            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700));
-            for entry in entries.flatten() {
-                if entry.file_type().is_ok_and(|t| t.is_dir()) {
-                    remove_tree(&entry.path());
-                }
-            }
-        }
-        let _ = std::fs::remove_dir_all(path);
-    }
-
-    type Key = (PathBuf, u64, Option<SystemTime>);
-    static CACHE: Mutex<Vec<(Key, Arc<Extraction>)>> = Mutex::new(Vec::new());
-
-    pub(super) fn clear_cache() {
-        let drained: Vec<_> = CACHE
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .drain(..)
-            .collect();
-        drop(drained);
-    }
-
-    pub(super) fn open(image: &str) -> Result<Arc<Extraction>> {
-        let path = Path::new(image)
-            .canonicalize()
-            .map_err(|e| format!("mounting {image} failed: {e}"))?;
-        let metadata =
-            std::fs::metadata(&path).map_err(|e| format!("mounting {image} failed: {e}"))?;
-        let key = (path.clone(), metadata.len(), metadata.modified().ok());
-        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((_, extraction)) = cache.iter().find(|(k, _)| *k == key) {
-            return Ok(extraction.clone());
-        }
-        let base = std::env::var_os(SCRATCH_VARIABLE)
-            .map(PathBuf::from)
-            .unwrap_or_else(std::env::temp_dir);
-        std::fs::create_dir_all(&base).map_err(|e| e.to_string())?;
-        let directory = tempfile::Builder::new()
-            .prefix("russet-image-")
-            .tempdir_in(&base)
-            .map_err(|e| e.to_string())?
-            .keep();
-        let mut extraction = Extraction {
-            directory,
-            volumes: Vec::new(),
-        };
-        let result =
-            russet_hdiutil::extract(&path, &extraction.directory, russet_fs::Limits::default())
-                .map_err(|e| format!("mounting {image} failed: {e}"))?;
-        for skipped in &result.skipped_xattrs {
-            crate::processor_output(
-                2,
-                format!(
-                    "Couldn't keep extended attribute {} on {}: {}",
-                    skipped.name,
-                    skipped.path.display(),
-                    skipped.reason
-                ),
-            );
-        }
-        extraction.volumes = result.volumes;
-        let extraction = Arc::new(extraction);
-        cache.push((key, extraction.clone()));
-        Ok(extraction)
     }
 }

@@ -4,7 +4,8 @@
 //!   symlinks, and merges AppleDouble members (in `__MACOSX/` or stored next
 //!   to the file as `._name`) back into extended attributes.
 //! - [`extract_cpio`] matches `ditto -x --noqtn` for cpio archives, plain or
-//!   gzip-compressed, as found in package payloads and `.cpgz` files.
+//!   gzip-compressed, as found in package payloads and `.cpgz` files. It
+//!   also reads pbzx payloads, which `ditto` can't but `aa extract` can.
 //!
 //! Both write through [`russet_fs::TreeWriter`], so archive content can't
 //! escape the destination.
@@ -14,11 +15,17 @@
 mod appledouble;
 #[cfg(unix)]
 mod cpio;
+#[cfg(unix)]
+mod cpio_write;
+#[cfg(unix)]
+mod pbzx;
 #[cfg(all(test, unix))]
 mod tests;
 #[cfg(unix)]
 mod zip;
 
+#[cfg(unix)]
+pub use cpio_write::{write_tree, CpioWriter, Header};
 #[cfg(unix)]
 pub use imp::*;
 
@@ -50,19 +57,40 @@ mod imp {
     /// `ditto -x --noqtn source destination`. `destination` is created when
     /// missing.
     pub fn extract_cpio(source: &Path, destination: &Path, limits: Limits) -> io::Result<Report> {
+        extract_cpio_with(source, destination, limits, true)
+    }
+
+    /// Like [`extract_cpio`], but with `apple_double` false, `._name` members
+    /// stay ordinary files, as `pkgutil --expand` leaves them in Scripts.
+    pub fn extract_cpio_with(
+        source: &Path,
+        destination: &Path,
+        limits: Limits,
+        apple_double: bool,
+    ) -> io::Result<Report> {
         fs::create_dir_all(destination)?;
         let mut file = File::open(source)?;
-        let mut magic = [0; 2];
-        let gzip = file.read(&mut magic)? == 2 && magic == [0x1f, 0x8b];
+        let mut magic = [0; 4];
+        let read = file.read(&mut magic)?;
         let file = BufReader::new(File::open(source)?);
-        let skipped = if gzip {
+        let skipped = if read >= 2 && magic[..2] == [0x1f, 0x8b] {
             crate::cpio::extract(
                 flate2::bufread::MultiGzDecoder::new(file),
                 destination,
                 limits,
+                apple_double,
+            )?
+        } else if crate::pbzx::is_pbzx(&magic[..read]) {
+            // macOS reads pbzx payloads with `aa extract`, which keeps
+            // `._name` members as ordinary files.
+            crate::cpio::extract(
+                BufReader::new(crate::pbzx::PbzxReader::new(file)?),
+                destination,
+                limits,
+                false,
             )?
         } else {
-            crate::cpio::extract(file, destination, limits)?
+            crate::cpio::extract(file, destination, limits, apple_double)?
         };
         Ok(Report {
             skipped_xattrs: skipped,

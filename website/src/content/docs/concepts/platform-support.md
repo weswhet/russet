@@ -17,7 +17,7 @@ step or substitute different behavior.
 
 Recipes that only download software and read metadata usually run on every
 platform. Recipes that read disk images run on macOS and Linux. Recipes that
-build packages or verify macOS code signatures need macOS.
+build new packages or verify macOS code signatures need macOS.
 
 ## Operations by platform
 
@@ -29,7 +29,7 @@ The following table shows how each kind of operation runs on each platform:
 | Zip and tar archives | `ditto` and `tar` | On Linux, a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On both, a built-in extractor for tar archives that use gzip, bzip2, or xz compression. On Windows, zip archives lose file modes and symbolic links. |
 | Disk images | `hdiutil` | Linux: a built-in reader for read-only `.dmg` images in the `UDZO`, `UDBZ`, `ULFO`, `ULMO`, `UDCO`, and `UDRO` formats with HFS+ or APFS volumes. Creating images, encrypted images, and ISO images aren't supported. Windows: not supported |
 | Building and installing packages | Helper services, `pkgbuild`, and `installer` | Not supported |
-| Expanding and flattening packages | `pkgutil`, `xar`, and `ditto` | Not supported |
+| Expanding and flattening packages | `pkgutil`, `xar`, and `ditto` | Linux: built-in replacements that expand and flatten flat packages and unpack gzip and pbzx payloads. Windows: not supported |
 | macOS code signatures | `codesign` and `pkgutil` | Not supported |
 | Authenticode signatures | Not supported | Windows: `SignToolVerifier` with `signtool.exe` |
 | Chocolatey packages | Not supported | Windows: `ChocolateyPackager` with `choco.exe` |

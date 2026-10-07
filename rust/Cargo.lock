@@ -148,6 +148,8 @@ dependencies = [
  "roxmltree",
  "russet-ditto",
  "russet-fs",
+ "russet-pkgutil",
+ "russet-xar",
  "rustls",
  "rustls-pemfile",
  "schannel",
@@ -1081,6 +1083,7 @@ dependencies = [
  "russet-fs",
  "tempfile",
  "xattr",
+ "xz2",
  "zip",
 ]
 
@@ -1105,6 +1108,32 @@ dependencies = [
  "tempfile",
  "udif",
  "xattr",
+]
+
+[[package]]
+name = "russet-pkgutil"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "russet-ditto",
+ "russet-fs",
+ "russet-xar",
+ "tempfile",
+]
+
+[[package]]
+name = "russet-xar"
+version = "0.1.0"
+dependencies = [
+ "bzip2 0.5.2",
+ "flate2",
+ "md-5",
+ "roxmltree",
+ "russet-fs",
+ "sha1",
+ "sha2 0.10.9",
+ "tempfile",
+ "xz2",
 ]
 
 [[package]]

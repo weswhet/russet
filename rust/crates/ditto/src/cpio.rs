@@ -103,6 +103,7 @@ pub(crate) fn extract(
     mut reader: impl Read,
     destination: &Path,
     limits: Limits,
+    apple_double: bool,
 ) -> io::Result<Vec<SkippedXattr>> {
     let mut writer = TreeWriter::open(destination, limits)?;
     // Hard links: the first member written for an inode, and names still
@@ -150,7 +151,7 @@ pub(crate) fn extract(
                 // described file's inode number. They're merged back only when
                 // they really are AppleDouble.
                 let mut buffered = None;
-                if let Some(target) = sibling(&path) {
+                if let Some(target) = sibling(&path).filter(|_| apple_double) {
                     let bytes = read_bounded(&mut data, MAX_METADATA_BYTES)?;
                     if appledouble::is_apple_double(&bytes) {
                         metadata.push((target, bytes));

@@ -1,0 +1,13 @@
+[package]
+name = "russet-pkgutil"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for the pkgutil operations Russet uses: expanding and flattening flat packages."
+
+[target.'cfg(unix)'.dependencies]
+russet-fs = { path = "../fs" }
+russet-xar = { path = "../xar" }
+russet-ditto = { path = "../ditto" }
+flate2 = "1"
+tempfile = "3"

@@ -43,8 +43,8 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `FileFinder` | Finds a file that matches a pattern. | All | Supports only `find_method` `glob`. Paths inside a disk image need macOS or Linux. |
 | `FileMover` | Moves or renames a file. | All | None. |
 | `FindAndReplace` | Replaces text in a string variable. | All | None. |
-| `FlatPkgPacker` | Flattens an expanded package. | macOS | Uses `pkgutil`. |
-| `FlatPkgUnpacker` | Expands a flat package. | macOS | Uses `pkgutil`, or `xar` with `skip_payload`. A pattern inside a disk image must match exactly one file. |
+| `FlatPkgPacker` | Flattens an expanded package. | macOS, Linux | Uses `pkgutil` on macOS and a built-in replacement on Linux. |
+| `FlatPkgUnpacker` | Expands a flat package. | macOS, Linux | Uses `pkgutil`, or `xar` with `skip_payload`, on macOS and built-in replacements on Linux. A pattern inside a disk image must match exactly one file. |
 | `GitHubReleasesInfoProvider` | Gets the most recent release of a GitHub project. | All | Uses curl and your GitHub token, if you set one. |
 | `InstallFromDMG` | Copies items from a disk image to the startup volume. | macOS | Uses the `russet-installd` helper service. |
 | `Installer` | Installs a package. | macOS | Uses the `russet-installd` helper service. The package must be in the recipe's cache or on a mounted disk image. |
@@ -59,9 +59,9 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `PathDeleter` | Deletes files and folders. | All | None. |
 | `PkgCopier` | Copies a package. | All | Paths inside a disk image need macOS or Linux. |
 | `PkgCreator` | Builds a package from a package root. | macOS | Uses the `russet-server` helper service. |
-| `PkgExtractor` | Extracts the contents of a bundle-style package. | macOS | Uses `ditto`. |
+| `PkgExtractor` | Extracts the contents of a bundle-style package. | macOS, Linux | Uses `ditto` on macOS and a built-in replacement on Linux. |
 | `PkgInfoCreator` | Creates a `PackageInfo` file for a package. | All | None. |
-| `PkgPayloadUnpacker` | Unpacks a package payload. | macOS | Uses `ditto`, with `aa` as a fallback. |
+| `PkgPayloadUnpacker` | Unpacks a package payload. | macOS, Linux | Uses `ditto`, with `aa` as a fallback, on macOS. On Linux, a built-in replacement reads gzip and pbzx payloads. |
 | `PkgRootCreator` | Creates a package root and its folder structure. | All | On Windows, only the read-only attribute of folder modes applies. |
 | `PlistEditor` | Merges data into a property list file. | All | None. |
 | `PlistReader` | Reads keys from a property list into variables. | All | Paths inside a disk image need macOS or Linux. |

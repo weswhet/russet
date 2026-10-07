@@ -1,4 +1,5 @@
 use super::{io, portable_path, read_dict, remove, string, truth, Result};
+use autopkg_platform::backend::{select, Backend, Tool};
 use autopkg_platform::processor_output as output;
 use plist::Dictionary;
 use std::{
@@ -170,20 +171,19 @@ pub(super) fn execute(name: &str, env: &mut Dictionary) -> Result<()> {
     if name == "PkgInfoCreator" {
         return create_info(env);
     }
-    if !cfg!(target_os = "macos") {
-        return Err(format!(
-            "{name} is only supported on macOS; pkgutil and xar are unavailable on this platform"
-        ));
-    }
+    let unsupported = || {
+        format!("{name} is only supported on macOS and Linux; pkgutil and xar are unavailable on this platform")
+    };
     if name == "FlatPkgPacker" {
-        run(
-            "/usr/sbin/pkgutil",
-            &[
-                "--flatten",
-                string(env, "source_flatpkg_dir")?,
-                string(env, "destination_pkg")?,
-            ],
-        )?;
+        let (source, destination) = (
+            string(env, "source_flatpkg_dir")?,
+            string(env, "destination_pkg")?,
+        );
+        match select(Tool::Pkgutil) {
+            Backend::Apple => run("/usr/sbin/pkgutil", &["--flatten", source, destination])?,
+            Backend::Native => native::flatten(source, destination)?,
+            Backend::Unsupported => return Err(unsupported()),
+        }
         output(
             1,
             format!(
@@ -206,23 +206,31 @@ pub(super) fn execute(name: &str, env: &mut Dictionary) -> Result<()> {
         }
     }
     if truth(env.get("skip_payload")) {
-        run(
-            "/usr/bin/xar",
-            &[
-                "-x",
-                "-C",
-                destination,
-                "-f",
-                source,
-                "--exclude",
-                "Payload",
-            ],
-        )
+        match select(Tool::Xar) {
+            Backend::Apple => run(
+                "/usr/bin/xar",
+                &[
+                    "-x",
+                    "-C",
+                    destination,
+                    "-f",
+                    source,
+                    "--exclude",
+                    "Payload",
+                ],
+            ),
+            Backend::Native => native::extract_without_payload(source, destination),
+            Backend::Unsupported => Err(unsupported()),
+        }
     } else {
         if path.exists() {
             io(fs::remove_dir_all(path))?;
         }
-        run("/usr/sbin/pkgutil", &["--expand", source, destination])
+        match select(Tool::Pkgutil) {
+            Backend::Apple => run("/usr/sbin/pkgutil", &["--expand", source, destination]),
+            Backend::Native => native::expand(source, destination),
+            Backend::Unsupported => Err(unsupported()),
+        }
     }?;
     output(1, format!("Unpacked {source} to {destination}"));
     Ok(())
@@ -295,30 +303,37 @@ fn prepare_destination(env: &Dictionary) -> Result<()> {
     Ok(())
 }
 pub(super) fn unpack_payload(env: &Dictionary) -> Result<()> {
-    if !cfg!(target_os = "macos") {
+    let backend = select(Tool::Ditto);
+    if backend == Backend::Unsupported {
         return Err(
-            "Package payload extraction is only supported on macOS; ditto and aa are unavailable"
+            "Package payload extraction is only supported on macOS and Linux; ditto and aa are unavailable"
                 .into(),
         );
     }
     prepare_destination(env)?;
     let source = string(env, "pkg_payload_path")?;
     let destination = string(env, "destination_path")?;
-    match run("/usr/bin/ditto", &["-x", "-z", source, destination]) {
-        Ok(()) => Ok(()),
-        Err(ditto_error) if Path::new("/usr/bin/aa").exists() => {
-            run("/usr/bin/aa", &["extract", "-i", source, "-d", destination])
-                .map_err(|error| format!("{ditto_error}; {error}"))
-        }
-        Err(error) => Err(error),
-    }?;
+    if backend == Backend::Native {
+        native::extract_payload(source, destination)?;
+    } else {
+        match run("/usr/bin/ditto", &["-x", "-z", source, destination]) {
+            Ok(()) => Ok(()),
+            Err(ditto_error) if Path::new("/usr/bin/aa").exists() => {
+                run("/usr/bin/aa", &["extract", "-i", source, "-d", destination])
+                    .map_err(|error| format!("{ditto_error}; {error}"))
+            }
+            Err(error) => Err(error),
+        }?;
+    }
     output(1, format!("Unpacked {source} to {destination}"));
     Ok(())
 }
 pub(super) fn extract_bundle(env: &Dictionary) -> Result<()> {
-    if !cfg!(target_os = "macos") {
+    let backend = select(Tool::Ditto);
+    if backend == Backend::Unsupported {
         return Err(
-            "Bundle package extraction is only supported on macOS; ditto is unavailable".into(),
+            "Bundle package extraction is only supported on macOS and Linux; ditto is unavailable"
+                .into(),
         );
     }
     let package = Path::new(string(env, "pkg_path")?);
@@ -371,15 +386,72 @@ pub(super) fn extract_bundle(env: &Dictionary) -> Result<()> {
     }
     io(fs::create_dir_all(&destination))?;
     super::mode(&destination, "755")?;
-    run(
-        "/usr/bin/ditto",
-        &[
-            "-x",
-            "-z",
-            archive.to_str().ok_or("Invalid package path")?,
-            destination.to_str().ok_or("Invalid extraction path")?,
-        ],
-    )
+    let archive = archive.to_str().ok_or("Invalid package path")?;
+    let destination = destination.to_str().ok_or("Invalid extraction path")?;
+    if backend == Backend::Native {
+        return native::extract_payload(archive, destination);
+    }
+    run("/usr/bin/ditto", &["-x", "-z", archive, destination])
+}
+
+/// Russet's replacements for `pkgutil`, `xar`, `ditto`, and `aa` on
+/// packages, used on Linux and with `RUSSET_NATIVE`.
+#[cfg(unix)]
+mod native {
+    use super::Result;
+    use russet_fs::Limits;
+    use std::path::Path;
+
+    pub(super) fn flatten(source: &str, destination: &str) -> Result<()> {
+        russet_pkgutil::flatten(Path::new(source), Path::new(destination))
+            .map_err(|e| format!("pkgutil --flatten failed: {e}"))
+    }
+
+    pub(super) fn expand(source: &str, destination: &str) -> Result<()> {
+        russet_pkgutil::expand(Path::new(source), Path::new(destination), Limits::default())
+            .map_err(|e| format!("pkgutil --expand failed: {e}"))
+    }
+
+    /// `xar -x --exclude Payload`: the pattern is a regular expression
+    /// matched against each path, so any path containing `Payload` is
+    /// skipped.
+    pub(super) fn extract_without_payload(source: &str, destination: &str) -> Result<()> {
+        let mut archive =
+            russet_xar::Archive::open(Path::new(source)).map_err(|e| format!("xar failed: {e}"))?;
+        archive
+            .extract(Path::new(destination), Limits::default(), |entry| {
+                entry.path.to_string_lossy().contains("Payload")
+            })
+            .map(|_| ())
+            .map_err(|e| format!("xar failed: {e}"))
+    }
+
+    /// `ditto -x -z`, or `aa extract` for pbzx payloads.
+    pub(super) fn extract_payload(source: &str, destination: &str) -> Result<()> {
+        russet_ditto::extract_cpio(Path::new(source), Path::new(destination), Limits::default())
+            .map(|_| ())
+            .map_err(|e| format!("Unpacking {source} failed: {e}"))
+    }
+}
+
+#[cfg(not(unix))]
+mod native {
+    use super::Result;
+    fn unavailable() -> Result<()> {
+        Err("Native package tools require macOS or Linux".into())
+    }
+    pub(super) fn flatten(_: &str, _: &str) -> Result<()> {
+        unavailable()
+    }
+    pub(super) fn expand(_: &str, _: &str) -> Result<()> {
+        unavailable()
+    }
+    pub(super) fn extract_without_payload(_: &str, _: &str) -> Result<()> {
+        unavailable()
+    }
+    pub(super) fn extract_payload(_: &str, _: &str) -> Result<()> {
+        unavailable()
+    }
 }
 pub(super) fn log_glob(key: &str, pattern: &str, paths: &[PathBuf]) {
     if paths.len() > 1 {
@@ -408,6 +480,91 @@ pub(super) fn log_glob(key: &str, pattern: &str, paths: &[PathBuf]) {
 mod tests {
     use super::*;
     use crate::tests::{env, Temp};
+    /// Builds a component package the way `pkgbuild` lays it out, then runs
+    /// the native package processors over it. This is the Linux path; on
+    /// macOS, comparisons with Apple's tools live in the native crates.
+    #[cfg(unix)]
+    #[test]
+    fn native_package_processors() {
+        use russet_xar::{Builder, Content, Encoding};
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        let t = Temp::new();
+        let root = Path::new(&t.path("root")).join("Applications/Tool.app/Contents/MacOS");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("Tool"), "binary").unwrap();
+        fs::set_permissions(root.join("Tool"), fs::Permissions::from_mode(0o755)).unwrap();
+        let archive = |source: &str, out: &str| {
+            let encoder = flate2::write::GzEncoder::new(
+                fs::File::create(t.path(out)).unwrap(),
+                flate2::Compression::default(),
+            );
+            russet_ditto::write_tree(Path::new(&t.path(source)), encoder, |_, m| {
+                russet_ditto::Header {
+                    mode: m.mode(),
+                    uid: 0,
+                    gid: 0,
+                    mtime: 0,
+                    ino: 0,
+                    nlink: m.nlink() as u32,
+                }
+            })
+            .unwrap()
+            .finish()
+            .unwrap();
+        };
+        archive("root", "payload.cpgz");
+        fs::create_dir(t.path("scripts")).unwrap();
+        fs::write(t.path("scripts/postinstall"), "#!/bin/sh\n").unwrap();
+        archive("scripts", "scripts.cpgz");
+        let mut builder = Builder::new();
+        let file = |name: &str| Content::Path(t.path(name).into());
+        builder
+            .add_file(
+                Path::new("PackageInfo"),
+                0o644,
+                Content::Bytes(b"<pkg-info/>".to_vec()),
+                Encoding::Bzip2,
+            )
+            .unwrap();
+        builder
+            .add_file(
+                Path::new("Payload"),
+                0o644,
+                file("payload.cpgz"),
+                Encoding::None,
+            )
+            .unwrap();
+        builder
+            .add_file(
+                Path::new("Scripts"),
+                0o644,
+                file("scripts.cpgz"),
+                Encoding::None,
+            )
+            .unwrap();
+        let package = t.path("Tool.pkg");
+        builder.write(Path::new(&package)).unwrap();
+
+        native::expand(&package, &t.path("expanded")).unwrap();
+        assert!(Path::new(&t.path("expanded/Scripts/postinstall")).is_file());
+        assert!(Path::new(&t.path("expanded/Payload")).is_file());
+        native::extract_payload(&t.path("expanded/Payload"), &t.path("payload")).unwrap();
+        let tool = Path::new(&t.path("payload")).join("Applications/Tool.app/Contents/MacOS/Tool");
+        assert_eq!(
+            fs::metadata(&tool).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+        fs::create_dir(t.path("skip")).unwrap();
+        native::extract_without_payload(&package, &t.path("skip")).unwrap();
+        assert!(!Path::new(&t.path("skip/Payload")).exists());
+        assert!(Path::new(&t.path("skip/Scripts")).is_file());
+        native::flatten(&t.path("expanded"), &t.path("again.pkg")).unwrap();
+        native::expand(&t.path("again.pkg"), &t.path("again")).unwrap();
+        assert_eq!(
+            fs::read(t.path("again/Scripts/postinstall")).unwrap(),
+            b"#!/bin/sh\n"
+        );
+    }
     #[test]
     fn metadata_preserves_template_and_reference_block_count() {
         let t = Temp::new();
