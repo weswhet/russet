@@ -41,3 +41,9 @@ compatibility version 3.0.0.
   `RestartAction` comes from a built-in replacement for
   `installer -query RestartAction`, and the image format from one for
   `hdiutil imageinfo`. `extract_icon` and `installerChoices` still need macOS.
+- On Linux, CodeSignatureVerifier checks installer package signatures with a
+  built-in replacement for `pkgutil --check-signature`. It verifies the RSA
+  and CMS signatures over the package's table-of-contents checksum, the
+  trusted timestamp, and the certificate chain to Apple's root certificates,
+  which are the only roots it trusts. It doesn't check notarization or
+  revocation. App signatures still need macOS.
