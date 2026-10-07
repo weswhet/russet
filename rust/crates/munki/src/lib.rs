@@ -2,6 +2,8 @@
 pub const REFERENCE_VERSION: &str = "7.2.0.5787";
 mod bundle;
 pub mod catalog;
+#[cfg(unix)]
+mod icon_native;
 pub mod icons;
 pub mod importer;
 pub mod installs;

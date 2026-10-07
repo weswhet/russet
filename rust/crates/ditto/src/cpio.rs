@@ -99,6 +99,55 @@ fn continue_after<R: Read>(
     align(data.into_inner(), format, size)
 }
 
+/// Reads the regular file at `target` (a cleaned relative path) without
+/// extracting anything. Returns `None` when the archive has no such file.
+pub(crate) fn read_member(
+    mut reader: impl Read,
+    target: &Path,
+    max_bytes: u64,
+) -> io::Result<Option<Vec<u8>>> {
+    loop {
+        let header = header(&mut reader)?;
+        if header.name_size == 0 || header.name_size > MAX_NAME_BYTES {
+            return Err(invalid("Invalid cpio member name length"));
+        }
+        let mut name = Vec::new();
+        (&mut reader)
+            .take(header.name_size)
+            .read_to_end(&mut name)?;
+        if name.len() as u64 != header.name_size {
+            return Err(invalid("Truncated cpio archive"));
+        }
+        let fixed = if header.format == Format::Odc {
+            76
+        } else {
+            110
+        };
+        align(&mut reader, header.format, fixed + header.name_size)?;
+        let name = name.strip_suffix(&[0]).unwrap_or(&name).to_vec();
+        if name == TRAILER {
+            return Ok(None);
+        }
+        let path = clean_relative(Path::new(&OsString::from_vec(name)))?;
+        let mut data = (&mut reader).take(header.file_size);
+        if path == target && header.mode & S_IFMT == S_IFREG && header.file_size > 0 {
+            if header.file_size > max_bytes {
+                return Err(invalid(format!(
+                    "{} is larger than {max_bytes} bytes",
+                    target.display()
+                )));
+            }
+            let mut bytes = Vec::with_capacity(header.file_size as usize);
+            data.read_to_end(&mut bytes)?;
+            if bytes.len() as u64 != header.file_size {
+                return Err(invalid("Truncated cpio archive"));
+            }
+            return Ok(Some(bytes));
+        }
+        continue_after(data, header.format, header.file_size)?;
+    }
+}
+
 pub(crate) fn extract(
     mut reader: impl Read,
     destination: &Path,

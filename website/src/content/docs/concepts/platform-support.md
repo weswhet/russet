@@ -35,7 +35,7 @@ The following table shows how each kind of operation runs on each platform:
 | Authenticode signatures | Not supported | Windows: `SignToolVerifier` with `signtool.exe` |
 | Chocolatey packages | Not supported | Windows: `ChocolateyPackager` with `choco.exe` |
 | `StopProcessingIf` predicates | Foundation predicates | A documented subset of predicate syntax |
-| Munki metadata for packages and disk images | Supported | Linux: supported, except icons and installer choices. Windows: not supported |
+| Munki metadata for packages and disk images | Supported | Linux: supported, except installer choices. Windows: not supported |
 | Munki catalogs and pkginfo edits | Supported | Supported |
 | Preferences | `com.github.autopkg` domain | `config.plist` or `config.json` file |
 
@@ -71,8 +71,9 @@ syntax and rejects predicates outside that subset instead of guessing.
 Russet generates Munki metadata natively. On Linux, it reads packages and disk
 images with its built-in readers, including `RestartAction`, which it derives
 from the package's `PackageInfo` or `Distribution` the way `installer` does.
-Two things need macOS: the `installerChoices` option, because `Distribution`
-files can choose packages with JavaScript, and icon extraction. On Windows,
+The `installerChoices` option needs macOS, because `Distribution` files can
+choose packages with JavaScript. Icon extraction works on Linux, except for
+packages with Apple Archive payloads. On Windows,
 importing a package or disk image needs macOS. Processors that only edit
 metadata, such as `MunkiPkginfoMerger`, and the `MakeCatalogsProcessor`
 catalog builder work on every platform.

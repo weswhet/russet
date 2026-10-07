@@ -1,6 +1,12 @@
 //! Native ImageIO icon selection matching Munki's 512px/72dpi preference.
+use autopkg_platform::backend::{select, Backend, Tool};
 use plist::{Dictionary, Value};
 use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+fn native() -> bool {
+    select(Tool::Icons) == Backend::Native
+}
 
 fn app_icon(app: &Path) -> Option<PathBuf> {
     let info = Value::from_file(app.join("Contents/Info.plist"))
@@ -47,6 +53,10 @@ fn bundle_icons(package: &Path, temporary: &Path) -> Result<Vec<PathBuf>, String
 }
 
 fn archive_file(archive: &Path, entry: &Path) -> Result<Vec<u8>, String> {
+    #[cfg(unix)]
+    if native() {
+        return crate::icon_native::payload_member(archive, entry);
+    }
     if let Ok(bytes) = crate::metadata::command(
         "/usr/bin/tar",
         &["-xOf".as_ref(), archive.as_os_str(), entry.as_os_str()],
@@ -95,10 +105,10 @@ fn archive_icons(bom: &Path, archive: &Path, temporary: &Path) -> Result<Vec<Pat
     if !bom.is_file() || !archive.is_file() {
         return Ok(Vec::new());
     }
-    let listing = crate::metadata::command("/usr/bin/lsbom", &["-s".as_ref(), bom.as_os_str()])?;
+    let listing = bom_listing(bom)?;
     let mut icons = Vec::new();
-    for (index, entry) in String::from_utf8_lossy(&listing)
-        .lines()
+    for (index, entry) in listing
+        .iter()
         .filter(|s| s.ends_with(".app/Contents/Info.plist"))
         .enumerate()
     {
@@ -160,9 +170,25 @@ fn archive_icons(bom: &Path, archive: &Path, temporary: &Path) -> Result<Vec<Pat
     Ok(icons)
 }
 
-fn flat_icons(package: &Path, temporary: &Path) -> Result<Vec<PathBuf>, String> {
-    let expanded = temporary.join("expanded");
-    if crate::metadata::command(
+/// The paths in a BOM, like `lsbom -s`.
+fn bom_listing(bom: &Path) -> Result<Vec<String>, String> {
+    #[cfg(unix)]
+    if native() {
+        return crate::icon_native::bom_paths(bom);
+    }
+    let listing = crate::metadata::command("/usr/bin/lsbom", &["-s".as_ref(), bom.as_os_str()])?;
+    Ok(String::from_utf8_lossy(&listing)
+        .lines()
+        .map(str::to_owned)
+        .collect())
+}
+
+fn expand(package: &Path, expanded: &Path) -> bool {
+    #[cfg(unix)]
+    if native() {
+        return crate::icon_native::expand(package, expanded).is_ok();
+    }
+    crate::metadata::command(
         "/usr/sbin/pkgutil",
         &[
             "--expand".as_ref(),
@@ -170,8 +196,12 @@ fn flat_icons(package: &Path, temporary: &Path) -> Result<Vec<PathBuf>, String> 
             expanded.as_os_str(),
         ],
     )
-    .is_err()
-    {
+    .is_ok()
+}
+
+fn flat_icons(package: &Path, temporary: &Path) -> Result<Vec<PathBuf>, String> {
+    let expanded = temporary.join("expanded");
+    if !expand(package, &expanded) {
         return Ok(Vec::new());
     }
     fn collect(root: &Path, temporary: &Path, icons: &mut Vec<PathBuf>) -> Result<(), String> {
@@ -197,8 +227,8 @@ fn flat_icons(package: &Path, temporary: &Path) -> Result<Vec<PathBuf>, String> 
 }
 /// Extract one application's icon; no icon is a successful empty result.
 pub fn extract(package: &Path, info: &Dictionary) -> Result<Option<Vec<u8>>, String> {
-    if !cfg!(target_os = "macos") {
-        return Err("Icon extraction is only supported on macOS".into());
+    if select(Tool::Icons) == Backend::Unsupported {
+        return Err("Icon extraction is only supported on macOS and Linux".into());
     }
     let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
     let png = temp.path().join("icon.png");
@@ -268,13 +298,22 @@ pub fn extract(package: &Path, info: &Dictionary) -> Result<Option<Vec<u8>>, Str
     Ok(result)
 }
 
-#[cfg(not(target_os = "macos"))]
-pub fn convert_to_png(_source: &Path, _destination: &Path) -> Result<(), String> {
-    Err("ImageIO icon conversion is only supported on macOS".into())
+/// Converts an icon file to PNG, choosing the image Munki prefers.
+pub fn convert_to_png(source: &Path, destination: &Path) -> Result<(), String> {
+    match select(Tool::Icons) {
+        #[cfg(target_os = "macos")]
+        Backend::Apple => imageio_convert_to_png(source, destination),
+        #[cfg(unix)]
+        Backend::Native => crate::icon_native::convert_to_png(source, destination),
+        _ => {
+            let _ = (source, destination);
+            Err("Icon conversion is only supported on macOS and Linux".into())
+        }
+    }
 }
 
 #[cfg(target_os = "macos")]
-pub fn convert_to_png(source: &Path, destination: &Path) -> Result<(), String> {
+pub(crate) fn imageio_convert_to_png(source: &Path, destination: &Path) -> Result<(), String> {
     use core_foundation_sys::{
         base::{CFRelease, CFTypeRef},
         dictionary::CFDictionaryGetValue,
