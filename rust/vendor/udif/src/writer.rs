@@ -300,11 +300,13 @@ impl<W: Write + Seek> DmgWriter<W> {
             data_checksum: data_fork_checksum,
             plist_offset,
             plist_length,
-            reserved: [0u8; 64],
+            reserved: [0u8; 120],
             master_checksum_type: checksum_type,
             master_checksum_size: 32,
             master_checksum,
-            image_variant: 1,
+            // Russet patch: 2 for a single volume with no partition map, as
+            // hdiutil writes with `-layout NONE`; 1 is a device image.
+            image_variant: if self.partitions.len() == 1 { 2 } else { 1 },
             sector_count: total_sectors,
         };
 
@@ -350,6 +352,20 @@ impl<W: Write + Seek> DmgWriter<W> {
 
         let mut resource_fork = plist::Dictionary::new();
         resource_fork.insert("blkx".to_string(), plist::Value::Array(blkx));
+        // Russet patch: hdiutil always writes this 1032-byte `plst`
+        // resource, zero except for bytes 517 and 519.
+        let mut plst_data = vec![0u8; 1032];
+        plst_data[517] = 1;
+        plst_data[519] = 1;
+        let mut plst = plist::Dictionary::new();
+        plst.insert("Attributes".to_string(), "0x0050".into());
+        plst.insert("Data".to_string(), plist::Value::Data(plst_data));
+        plst.insert("ID".to_string(), "0".into());
+        plst.insert("Name".to_string(), "".into());
+        resource_fork.insert(
+            "plst".to_string(),
+            plist::Value::Array(vec![plist::Value::Dictionary(plst)]),
+        );
 
         let mut root = plist::Dictionary::new();
         root.insert(
@@ -375,8 +391,20 @@ impl<W: Write + Seek> DmgWriter<W> {
         data.write_u64::<BigEndian>(partition.first_sector)?;
         data.write_u64::<BigEndian>(partition.sector_count)?;
         data.write_u64::<BigEndian>(0)?; // data offset
-        data.write_u32::<BigEndian>(0)?; // buffers needed
-        data.write_u32::<BigEndian>(partition.block_runs.len() as u32)?;
+        // Russet patch: hdiutil records the largest chunk's sectors plus 8 as
+        // the buffers needed, and the partition's index as its block
+        // descriptor; udif wrote 0 and the run count.
+        data.write_u32::<BigEndian>((self.chunk_size / 512) as u32 + 8)?; // buffers needed
+        let descriptor = if self.partitions.len() == 1 {
+            // An image of one volume with no partition map.
+            0xFFFF_FFFE
+        } else {
+            self.partitions
+                .iter()
+                .position(|p| std::ptr::eq(p, partition))
+                .unwrap_or(0) as u32
+        };
+        data.write_u32::<BigEndian>(descriptor)?; // block descriptor
 
         // Reserved (24 bytes)
         data.extend_from_slice(&[0u8; 24]);

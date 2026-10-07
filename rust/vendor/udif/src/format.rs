@@ -102,8 +102,9 @@ pub struct KolyHeader {
     pub plist_offset: u64,
     /// XML plist length
     pub plist_length: u64,
-    /// Reserved (64 bytes)
-    pub reserved: [u8; 64],
+    /// Reserved (120 bytes). Russet patch: was 64, which shifted the master
+    /// checksum, image variant, and sector count.
+    pub reserved: [u8; 120],
     /// Master checksum type
     pub master_checksum_type: u32,
     /// Master checksum size
@@ -151,7 +152,7 @@ impl KolyHeader {
         let plist_offset = reader.read_u64::<BigEndian>()?;
         let plist_length = reader.read_u64::<BigEndian>()?;
 
-        let mut reserved = [0u8; 64];
+        let mut reserved = [0u8; 120];
         reader.read_exact(&mut reserved)?;
 
         let master_checksum_type = reader.read_u32::<BigEndian>()?;
@@ -220,9 +221,9 @@ impl KolyHeader {
         writer.write_u32::<BigEndian>(self.image_variant)?;
         writer.write_u64::<BigEndian>(self.sector_count)?;
         // Write final padding to reach 512 bytes total
-        // Header so far: 4+4+4+4+8+8+8+8+8+4+4+16+4+4+128+8+8+64+4+4+128+4+8 = 444 bytes
-        // Need 512 - 444 = 68 bytes of padding
-        writer.write_all(&[0u8; 68])?;
+        // Russet patch: the header so far is 500 bytes; 12 reserved bytes
+        // complete the 512.
+        writer.write_all(&[0u8; 12])?;
 
         Ok(())
     }
