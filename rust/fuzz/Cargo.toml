@@ -1,0 +1,90 @@
+[package]
+name = "russet-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tempfile = "3"
+russet-fs = { path = "../crates/fs" }
+russet-aa = { path = "../crates/aa" }
+russet-ditto = { path = "../crates/ditto" }
+russet-xar = { path = "../crates/xar" }
+russet-mkbom = { path = "../crates/mkbom" }
+russet-hdiutil = { path = "../crates/hdiutil" }
+russet-codesign = { path = "../crates/codesign" }
+
+# Separate from the Russet workspace, like vendor/.
+[workspace]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "aa_extract"
+path = "fuzz_targets/aa_extract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cpio_extract"
+path = "fuzz_targets/cpio_extract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "zip_extract"
+path = "fuzz_targets/zip_extract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xar_open"
+path = "fuzz_targets/xar_open.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mkbom_read"
+path = "fuzz_targets/mkbom_read.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "hdiutil_extract"
+path = "fuzz_targets/hdiutil_extract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "codesign_macho"
+path = "fuzz_targets/codesign_macho.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "codesign_requirement"
+path = "fuzz_targets/codesign_requirement.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "codesign_cms"
+path = "fuzz_targets/codesign_cms.rs"
+test = false
+doc = false
+bench = false
+
