@@ -66,6 +66,9 @@ jobs:
         run: cargo xtask licenses --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --exclude xtask --locked --no-fail-fast --target ${{ matrix.target }}
+      - name: Install a natively built package with Apple's installer
+        if: runner.os == 'macOS'
+        run: cargo test -p russet-pkgbuild --locked --target ${{ matrix.target }} -- --ignored installs_with_apple_installer
       - name: Verify archive install, upgrade, rollback, and failure recovery
         run: cargo test --package xtask --locked --no-fail-fast --target ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }} -p russet
