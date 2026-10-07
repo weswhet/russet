@@ -252,3 +252,83 @@ fn write_expected(fixtures: &Path, name: &str, image: &Path) {
     )
     .unwrap();
 }
+
+/// Apple's tools accept natively created images: `hdiutil` reports the
+/// format and mounts the same files, and `fsck_hfs` finds no problems.
+#[test]
+fn hdiutil_accepts_created_images() {
+    use crate::{create, CreateOptions};
+    let temp = tempfile::tempdir().unwrap();
+    let src = temp.path().join("Source");
+    source_tree(&src);
+    for (format, filesystem) in [
+        ("UDZO", "HFS+"),
+        ("ULFO", "Journaled HFS+"),
+        ("UDRO", "HFS+"),
+        ("ULFO", "APFS"),
+    ] {
+        let image = temp
+            .path()
+            .join(format!("{format}-{}.dmg", filesystem.len()));
+        create(
+            &src,
+            &image,
+            &CreateOptions {
+                filesystem,
+                format,
+                zlib_level: 5,
+                megabytes: None,
+            },
+        )
+        .unwrap();
+        let info = run(
+            "/usr/bin/hdiutil",
+            &["imageinfo", "-plist", image.to_str().unwrap()],
+        );
+        assert!(
+            info.contains(&format!("<string>{format}</string>")),
+            "{format}: {info}"
+        );
+        let mounted = mounted(&image);
+        // Extended attributes aren't copied, and owners are the mounting user.
+        let strip = |entries: Vec<russet_fs::Entry>| -> Vec<_> {
+            entries
+                .into_iter()
+                .map(|e| (e.path, e.kind, e.mode, e.sha256, e.target))
+                .collect()
+        };
+        assert_eq!(
+            strip(mounted[0].clone()),
+            strip(manifest(&src).unwrap()),
+            "{format}"
+        );
+        let attached = run(
+            "/usr/bin/hdiutil",
+            &["attach", "-nomount", image.to_str().unwrap()],
+        );
+        let device = attached
+            .lines()
+            .filter_map(|l| l.split_whitespace().next())
+            .next_back()
+            .unwrap()
+            .to_owned();
+        let fsck = Command::new("/sbin/fsck_hfs")
+            .args(["-n", &device])
+            .output()
+            .unwrap();
+        let disk = attached
+            .lines()
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .to_owned();
+        run("/usr/bin/hdiutil", &["detach", "-quiet", &disk]);
+        assert!(
+            fsck.status.success(),
+            "{format}: {}",
+            String::from_utf8_lossy(&fsck.stdout)
+        );
+    }
+}

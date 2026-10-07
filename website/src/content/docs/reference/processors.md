@@ -36,7 +36,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `CodeSignatureVerifier` | Verifies the code signature of an app or installer package. | macOS, Linux | Uses `codesign` and `pkgutil` on macOS and built-in replacements on Linux, which trust only Apple's root certificates and reject requirement clauses they don't support, such as `notarized`. The `DISABLE_CODE_SIGNATURE_VERIFICATION` variable skips it on every platform. |
 | `Copier` | Copies a file or folder. | All | Paths inside a disk image need macOS or Linux. |
 | `DeprecationWarning` | Prints a deprecation warning for a recipe. | All | None. |
-| `DmgCreator` | Creates a disk image from a folder. | macOS | Uses `hdiutil`. |
+| `DmgCreator` | Creates a disk image from a folder. | macOS, Linux | Uses `hdiutil` on macOS. On Linux, a built-in replacement writes `UDZO`, `UDBZ`, `ULFO`, or `UDRO` images with an HFS+ volume, including when `dmg_filesystem` is APFS, and doesn't copy extended attributes. |
 | `DmgMounter` | Base class for processors that mount disk images. | None | Fails if a recipe runs it directly. |
 | `EndOfCheckPhase` | Marks where `russet run --check` stops. | All | Does nothing when it runs. |
 | `FileCreator` | Creates a file with the content that you supply. | All | On Windows, `file_mode` only sets or clears the read-only attribute. |

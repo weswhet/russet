@@ -155,7 +155,11 @@ fn number(value: &Value) -> Result<String> {
     }
 }
 pub(super) fn create(env: &Dictionary) -> Result<()> {
-    mac()?;
+    use autopkg_platform::backend::{select, Backend, Tool};
+    let backend = select(Tool::Hdiutil);
+    if backend == Backend::Unsupported {
+        mac()?;
+    }
     let path = string(env, "dmg_path")?;
     if Path::new(path).exists() {
         io(std::fs::remove_file(path))?;
@@ -195,6 +199,38 @@ pub(super) fn create(env: &Dictionary) -> Result<()> {
     {
         return Err(format!("dmg filesystem '{filesystem}' is invalid"));
     }
+    if backend == Backend::Native {
+        let megabytes = if truth(env.get("dmg_megabytes")) {
+            Some(
+                number(&env["dmg_megabytes"])?
+                    .parse::<u64>()
+                    .map_err(|e| e.to_string())?,
+            )
+        } else {
+            None
+        };
+        let written = native_create(
+            string(env, "dmg_root")?,
+            path,
+            filesystem,
+            format,
+            level as u32,
+            megabytes,
+        )?;
+        if written != filesystem {
+            autopkg_platform::processor_output(
+                0,
+                format!(
+                    "WARNING: {filesystem} disk images can't be created natively; created {written} instead"
+                ),
+            );
+        }
+        autopkg_platform::processor_output(
+            1,
+            format!("Created dmg from {} at {path}", string(env, "dmg_root")?),
+        );
+        return Ok(());
+    }
     let mut command = Command::new("/usr/bin/hdiutil");
     command.args(["create", "-plist", "-fs", filesystem, "-format", format]);
     if format == "UDZO" {
@@ -220,6 +256,40 @@ pub(super) fn create(env: &Dictionary) -> Result<()> {
         ))
     }
 }
+#[cfg(unix)]
+fn native_create(
+    root: &str,
+    path: &str,
+    filesystem: &str,
+    format: &str,
+    zlib_level: u32,
+    megabytes: Option<u64>,
+) -> Result<&'static str> {
+    russet_hdiutil::create(
+        Path::new(root),
+        Path::new(path),
+        &russet_hdiutil::CreateOptions {
+            filesystem,
+            format,
+            zlib_level,
+            megabytes,
+        },
+    )
+    .map_err(|e| format!("creation of {path} failed: {e}"))
+}
+
+#[cfg(not(unix))]
+fn native_create(
+    _: &str,
+    _: &str,
+    _: &str,
+    _: &str,
+    _: u32,
+    _: Option<u64>,
+) -> Result<&'static str> {
+    Err("Native disk image creation requires macOS or Linux".into())
+}
+
 pub(super) fn app_version(env: &mut Dictionary) -> Result<()> {
     let mut mount = Mount::new(string(env, "dmg_path")?)?;
     let result = (|| {

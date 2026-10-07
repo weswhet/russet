@@ -57,3 +57,8 @@ compatibility version 3.0.0.
   built-in replacements for `pkgbuild` and `mkbom`. The packages record the
   same owners and modes as the macOS helper without running as root;
   `RUSSET_PKG_OWNER` sets the owner for files the running user owns.
+- On Linux, DmgCreator creates disk images with a built-in replacement for
+  `hdiutil create`, in the `UDZO`, `UDBZ`, `ULFO`, and `UDRO` formats. It
+  writes HFS+ volumes; when a recipe asks for APFS, the default, it writes
+  HFS+ and logs a warning, because there's no APFS writer that macOS accepts.
+  Extended attributes aren't copied into the image.

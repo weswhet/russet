@@ -156,6 +156,7 @@ dependencies = [
  "roxmltree",
  "russet-ditto",
  "russet-fs",
+ "russet-hdiutil",
  "russet-pkgutil",
  "russet-xar",
  "rustls",
@@ -611,6 +612,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fstool"
+version = "0.4.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe638c071ff338605e48623ebb7025f4d2e3f85683aed6aefd3a0d7c8ff0a7e2"
+dependencies = [
+ "uuid",
 ]
 
 [[package]]
@@ -1234,11 +1244,13 @@ name = "russet-hdiutil"
 version = "0.1.0"
 dependencies = [
  "apfs",
+ "fstool",
  "hfsplus",
  "russet-fs",
  "serde_json",
  "tempfile",
  "udif",
+ "unicode-normalization",
  "xattr",
 ]
 
@@ -1732,6 +1744,17 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "uuid"
+version = "1.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97277d36b9c3ace13e58fa6e753f8b0bbbf302a18dd193240d70f9e29681059a"
+dependencies = [
+ "getrandom 0.4.3",
+ "js-sys",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "version_check"
