@@ -8,6 +8,28 @@ on:
 permissions:
   contents: read
 jobs:
+  fuzz:
+    # Short runs of every parser fuzz target; see rust/fuzz/README.md.
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: rust/fuzz
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo install cargo-fuzz --version 0.13.2 --locked
+      - name: Run each target for 60 seconds
+        run: |
+          for target in $(cargo fuzz list); do
+            cargo fuzz run "$target" -- -max_total_time=60 -rss_limit_mb=2048
+          done
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: rust/fuzz/artifacts
   test:
     strategy:
       fail-fast: false
