@@ -20,6 +20,10 @@ on Linux. These changes were made:
   map, as `hdiutil create -layout NONE` does. It also records the buffers
   needed (the chunk's sectors plus 8) and adds the `plst` resource `hdiutil`
   always writes.
+- **Streaming partitions.** `DmgWriter::add_partition_from_reader` reads a
+  partition one chunk at a time and checksums it as it goes;
+  `add_partition` calls it. Before, `add_partition` needed the whole
+  partition in memory and copied it again to checksum it.
 
 Validation: `russet-hdiutil` extracts a `UDCO` image converted by
 `hdiutil convert` and compares the result with the same image mounted by

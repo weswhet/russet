@@ -233,15 +233,17 @@ pub fn create(source: &Path, image: &Path, options: &CreateOptions) -> io::Resul
         }
         volume.flush(&mut device).map_err(fs_error)?;
     }
-    let mut data = Vec::with_capacity(size as usize);
-    fs::File::open(&partition)?.read_to_end(&mut data)?;
     let staged = scratch.path().join("image.dmg");
     let mut writer = udif::DmgWriter::create(&staged)
         .map_err(|e| invalid(format!("Can't write the disk image: {e}")))?
         .compression(method)
         .compression_level(options.zlib_level);
     writer
-        .add_partition("whole disk (Apple_HFS : 0)", &data)
+        .add_partition_from_reader(
+            "whole disk (Apple_HFS : 0)",
+            io::BufReader::new(fs::File::open(&partition)?),
+            size,
+        )
         .map_err(|e| invalid(format!("Can't write the disk image: {e}")))?;
     writer
         .finish()

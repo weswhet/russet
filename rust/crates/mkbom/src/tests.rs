@@ -119,3 +119,38 @@ fn matches_apple_mkbom_and_lsbom() {
     };
     assert_eq!(detail(&native_bom), detail(&apple_bom));
 }
+
+/// Streaming matches checksumming each slice in memory, for slices that
+/// cross read boundaries, and drops a slice that runs past the file.
+#[test]
+fn scan_streams_universal_slices() {
+    let mut file = vec![0u8; 200_000];
+    file[..8].copy_from_slice(&[0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 3]);
+    let slices: [(u32, u32, u32, u32); 3] = [
+        (0x0100_0007, 3, 4096, 70_000),
+        (0x0100_000c, 0, 90_000, 100_000),
+        (7, 3, 150_000, 100_000),
+    ];
+    for (i, (cpu, sub, offset, size)) in slices.iter().enumerate() {
+        let at = 8 + i * 20;
+        for (j, value) in [cpu, sub, offset, size].into_iter().enumerate() {
+            file[at + j * 4..at + j * 4 + 4].copy_from_slice(&value.to_be_bytes());
+        }
+    }
+    for (i, byte) in file.iter_mut().enumerate().skip(100) {
+        *byte = (i * 7 % 251) as u8;
+    }
+    let mut copy = Vec::new();
+    let summary = crate::scan(file.as_slice(), &mut copy).unwrap();
+    assert_eq!(copy, file);
+    assert_eq!(summary.size, 200_000);
+    assert_eq!(summary.checksum, cksum(&file));
+    assert_eq!(summary.archs.len(), 2);
+    for (arch, (cpu, _, offset, size)) in summary.archs.iter().zip(slices) {
+        assert_eq!(arch.cpu_type, cpu);
+        assert_eq!(
+            arch.checksum,
+            cksum(&file[offset as usize..(offset + size) as usize])
+        );
+    }
+}
