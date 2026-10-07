@@ -8,8 +8,8 @@ repository, run Munki recipes, and rebuild Munki's catalogs after an import.
 
 ## Before you begin
 
-- Use macOS. Russet reads packages and disk images with macOS tools, so
-  importing them into Munki needs macOS.
+- Use macOS or Linux. Russet reads packages and disk images with macOS tools
+  on macOS and with built-in readers on Linux.
 - Make sure that you have a file-based Munki repository with `pkgs`,
   `pkgsinfo`, and `catalogs` folders. If the repository is on a file share,
   mount the share first.
@@ -97,9 +97,12 @@ To rebuild the catalogs even when no recipe imported anything, add
 
 ## Use Munki recipes on Linux and Windows
 
-On Linux and Windows, Russet can't read packages or disk images, so recipes
-that import them into Munki fail. Processors that only edit pkginfo data, such
-as `MunkiPkginfoMerger`, and `MakeCatalogsProcessor` work on every platform.
+On Linux, Russet reads packages and disk images itself, so recipes that import
+them into Munki work, with two exceptions: the `installerChoices` option needs
+macOS, and so does `extract_icon`. On Windows, Russet can't read packages or
+disk images, so those recipes fail. On every platform, processors that only
+edit pkginfo data, such as `MunkiPkginfoMerger`, and `MakeCatalogsProcessor`
+work.
 
 ## What's next
 

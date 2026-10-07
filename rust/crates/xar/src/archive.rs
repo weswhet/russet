@@ -144,7 +144,17 @@ fn files(
     entries: &mut Vec<Entry>,
     ids: &mut HashSet<String>,
 ) -> io::Result<()> {
-    for node in parent.children().filter(|c| c.has_tag_name("file")) {
+    // Apple's xar lists siblings in ID order, which needn't be document
+    // order: productbuild writes later components first.
+    let mut nodes: Vec<_> = parent
+        .children()
+        .filter(|c| c.has_tag_name("file"))
+        .collect();
+    nodes.sort_by_key(|n| {
+        let id = n.attribute("id").unwrap_or_default();
+        (id.parse::<u64>().unwrap_or(u64::MAX), id.to_owned())
+    });
+    for node in nodes {
         let id = node
             .attribute("id")
             .ok_or_else(|| invalid("xar <file> has no id"))?

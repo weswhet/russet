@@ -49,8 +49,8 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `InstallFromDMG` | Copies items from a disk image to the startup volume. | macOS | Uses the `russet-installd` helper service. |
 | `Installer` | Installs a package. | macOS | Uses the `russet-installd` helper service. The package must be in the recipe's cache or on a mounted disk image. |
 | `MunkiCatalogBuilder` | Deprecated. | All | Prints a warning and does nothing. Use `MakeCatalogsProcessor` to rebuild catalogs. |
-| `MunkiImporter` | Imports a package or disk image into a Munki repository. | macOS | Supports only `FileRepo` Munki repositories. Generates metadata natively and doesn't run `makepkginfo`. |
-| `MunkiInfoCreator` | Creates a pkginfo file for a package or disk image. | macOS | Reading packages and disk images needs macOS. |
+| `MunkiImporter` | Imports a package or disk image into a Munki repository. | macOS, Linux | Supports only `FileRepo` Munki repositories. Generates metadata natively and doesn't run `makepkginfo`. On Linux, `extract_icon` and the `installerChoices` option aren't supported. |
+| `MunkiInfoCreator` | Creates a pkginfo file for a package or disk image. | macOS, Linux | Reads packages and disk images with macOS tools on macOS and built-in readers on Linux. |
 | `MunkiInstallsItemsCreator` | Creates an `installs` array for a pkginfo file. | All | Some operations need macOS. |
 | `MunkiOptionalReceiptEditor` | Edits the receipts in a pkginfo file. | All | None. |
 | `MunkiPkginfoMerger` | Merges two pkginfo dictionaries. | All | None. |

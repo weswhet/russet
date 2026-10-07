@@ -6,7 +6,6 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
-    process::Command,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -452,7 +451,8 @@ pub fn generate(installer: Option<&Path>, options: &Options) -> Result<Dictionar
 /// A mounted image root is accepted by makepkginfo as an alias for its image.
 /// Nested directories and ordinary package bundles retain their original path.
 pub fn resolve_installer_input(path: &Path) -> Result<PathBuf, String> {
-    if !cfg!(target_os = "macos")
+    use autopkg_platform::backend::{select, Backend, Tool};
+    if select(Tool::Hdiutil) != Backend::Apple
         || !path.is_dir()
         || path
             .extension()
@@ -604,20 +604,11 @@ pub fn disk_image(path: &Path, options: &Options) -> Result<Dictionary, String> 
         "installer_item_size".into(),
         Value::Integer((std::fs::metadata(path).map_err(|e| e.to_string())?.len() / 1024).into()),
     );
-    if !options.flag("noPrintWarnings") {
-        let output = command(
-            "/usr/bin/hdiutil",
-            &["imageinfo".as_ref(), path.as_os_str(), "-plist".as_ref()],
-        )?;
-        let image = autopkg_platform::dmg::parse_hdiutil_plist(&output)?;
-        if image
-            .as_dictionary()
-            .and_then(|d| d.get("Format"))
-            .and_then(Value::as_string)
-            .is_some_and(|s| ["UDSB", "UDSP", "UDRW", "RdWr"].contains(&s))
-        {
-            info.insert("installer_item_hash".into(), "N/A".into());
-        }
+    if !options.flag("noPrintWarnings")
+        && crate::tools::image_format(path)?
+            .is_some_and(|s| ["UDSB", "UDSP", "UDRW", "RdWr"].contains(&s.as_str()))
+    {
+        info.insert("installer_item_hash".into(), "N/A".into());
     }
     mount.detach()?;
     Ok(info)
@@ -644,51 +635,15 @@ fn receipt(node: roxmltree::Node<'_, '_>) -> Option<Dictionary> {
     Some(receipt)
 }
 pub fn package(path: &Path, options: &Options) -> Result<Dictionary, String> {
-    if !cfg!(target_os = "macos") {
-        return Err("Apple package inspection is only supported on macOS".into());
-    }
     if path.is_dir() {
         return crate::bundle::package(path, options);
     }
     let path = path.canonicalize().map_err(|e| e.to_string())?;
-    let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
-    let toc = command("/usr/bin/xar", &["-tf".as_ref(), path.as_os_str()])?;
-    let toc = String::from_utf8(toc).map_err(|e| e.to_string())?;
     let mut receipts = Vec::new();
     let mut version = String::new();
     let mut minimum = String::new();
     let mut distribution = None;
-    for entry in toc
-        .lines()
-        .filter(|s| s.ends_with("PackageInfo") || s.ends_with("Distribution"))
-    {
-        if Path::new(entry).components().any(|c| {
-            !matches!(
-                c,
-                std::path::Component::Normal(_) | std::path::Component::CurDir
-            )
-        }) {
-            return Err("Package metadata archive path escapes temporary directory".into());
-        }
-        let output = Command::new("/usr/bin/xar")
-            .arg("-xf")
-            .arg(&path)
-            .arg(entry)
-            .current_dir(temp.path())
-            .output()
-            .map_err(|e| e.to_string())?;
-        if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).into_owned());
-        }
-        let extracted = temp.path().join(entry);
-        if !extracted
-            .canonicalize()
-            .map_err(|e| e.to_string())?
-            .starts_with(temp.path().canonicalize().map_err(|e| e.to_string())?)
-        {
-            return Err("Package metadata symlink escapes temporary directory".into());
-        }
-        let xml = std::fs::read_to_string(extracted).map_err(|e| e.to_string())?;
+    for (entry, xml) in crate::tools::metadata_documents(&path)? {
         if entry.ends_with("Distribution") {
             if distribution.is_none() {
                 distribution = Some(xml);
@@ -816,45 +771,12 @@ pub fn package(path: &Path, options: &Options) -> Result<Dictionary, String> {
     if !minimum.is_empty() {
         info.insert("minimum_os_version".into(), Value::String(minimum));
     }
-    let restart = command(
-        "/usr/sbin/installer",
-        &[
-            "-query".as_ref(),
-            "RestartAction".as_ref(),
-            "-pkg".as_ref(),
-            path.as_os_str(),
-            "-plist".as_ref(),
-        ],
-    )?;
-    if let Ok(Value::Dictionary(restart)) = Value::from_reader(std::io::Cursor::new(restart)) {
-        if let Some(action) = text(&restart, "RestartAction").filter(|v| v != "None") {
-            info.insert("RestartAction".into(), Value::String(action));
-        }
+    if let Some(action) = crate::tools::restart_action(&path, None)? {
+        info.insert("RestartAction".into(), Value::String(action));
     }
     if options.flag("installerChoices") {
-        let choices = command(
-            "/usr/sbin/installer",
-            &[
-                "-showChoiceChangesXML".as_ref(),
-                "-pkg".as_ref(),
-                path.as_os_str(),
-            ],
-        )?;
-        if let Ok(Value::Array(choices)) = Value::from_reader(std::io::Cursor::new(choices)) {
-            info.insert(
-                "installer_choices_xml".into(),
-                Value::Array(
-                    choices
-                        .into_iter()
-                        .filter(|v| {
-                            v.as_dictionary()
-                                .and_then(|d| d.get("choiceAttribute"))
-                                .and_then(Value::as_string)
-                                == Some("selected")
-                        })
-                        .collect(),
-                ),
-            );
+        if let Some(choices) = crate::tools::installer_choices(&path)? {
+            info.insert("installer_choices_xml".into(), Value::Array(choices));
         }
     }
     Ok(info)
@@ -863,6 +785,7 @@ pub fn package(path: &Path, options: &Options) -> Result<Dictionary, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
     #[test]
     fn pinned_option_validation_rejects_unknown_and_invalid_values() {
         let parse =

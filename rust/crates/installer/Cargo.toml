@@ -1,0 +1,13 @@
+[package]
+name = "russet-installer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for the read-only installer queries Russet uses, such as installer -query RestartAction."
+
+[target.'cfg(unix)'.dependencies]
+russet-xar = { path = "../xar" }
+roxmltree = "0.20"
+
+[target.'cfg(unix)'.dev-dependencies]
+tempfile = "3"
