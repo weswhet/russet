@@ -83,6 +83,9 @@ pub fn entries(root: &Path, target: &str, bin_dir: &Path) -> Result<Entries, Str
             (read(&fancy_regex.join(notice))?, 0o644),
         );
     }
+    for (name, bytes) in crate::licenses::shipped(root)? {
+        entries.insert(name, (bytes, 0o644));
+    }
     let distribution = root.join("rust/distribution");
     entries.insert(
         "README.md".into(),
@@ -215,6 +218,7 @@ pub(crate) mod tests {
             );
             assert!(entries.contains_key("INSTALL.md"));
             assert!(entries.keys().any(|name| name.starts_with("licenses/tls/")));
+            assert!(entries.contains_key("licenses/third-party/README.md"));
             if is_apple(target) {
                 for name in [
                     "launchd/russet-server.plist",
