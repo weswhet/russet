@@ -171,12 +171,14 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, 
                 }
             }
             NodeKind::File(source) => {
-                let bytes = fs::read(source)?;
-                writer.append(&name, header, bytes.as_slice(), bytes.len() as u64)?;
+                // Summarize the file first, then copy it, so neither step
+                // holds it in memory.
+                let summary = russet_mkbom::scan(fs::File::open(source)?, io::sink())?;
+                writer.append(&name, header, fs::File::open(source)?, summary.size)?;
                 russet_mkbom::Kind::File {
-                    size: bytes.len() as u64,
-                    checksum: russet_mkbom::cksum(&bytes),
-                    archs: russet_mkbom::macho_archs(&bytes),
+                    size: summary.size,
+                    checksum: summary.checksum,
+                    archs: summary.archs,
                 }
             }
         };

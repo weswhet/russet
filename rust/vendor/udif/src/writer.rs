@@ -2,7 +2,6 @@
 //!
 //! Provides creation of DMG disk images with various compression options.
 
-use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufWriter, Seek, Write};
 use std::path::Path;
@@ -111,7 +110,19 @@ impl<W: Write + Seek> DmgWriter<W> {
 
     /// Add raw disk data as a partition
     pub fn add_partition(&mut self, name: &str, data: &[u8]) -> Result<()> {
-        let sector_count = (data.len() as u64).div_ceil(SECTOR_SIZE);
+        self.add_partition_from_reader(name, data, data.len() as u64)
+    }
+
+    /// Add a partition of `length` bytes read from `reader`, one chunk at a
+    /// time. Russet patch: `add_partition` held the whole partition, plus a
+    /// padded copy for its checksum, in memory.
+    pub fn add_partition_from_reader(
+        &mut self,
+        name: &str,
+        mut reader: impl std::io::Read,
+        length: u64,
+    ) -> Result<()> {
+        let sector_count = length.div_ceil(SECTOR_SIZE);
         let first_sector = self
             .partitions
             .iter()
@@ -120,39 +131,27 @@ impl<W: Write + Seek> DmgWriter<W> {
             .unwrap_or(0);
 
         let mut block_runs = Vec::new();
-        let mut data_offset = 0usize;
+        let mut remaining = length;
         let mut sector_number = 0u64;
+        // CRC32 of the uncompressed data, padded to whole sectors.
+        let mut partition_hasher = crc32fast::Hasher::new();
+        let mut chunk = vec![0u8; self.chunk_size];
 
-        // Calculate partition checksum (CRC32 of padded uncompressed data), unless skipping
-        let partition_checksum = if self.skip_checksums {
-            [0u8; 128]
-        } else {
-            let padded_size = (sector_count * SECTOR_SIZE) as usize;
-            let mut padded_data = data.to_vec();
-            padded_data.resize(padded_size, 0);
-            create_checksum_array(crc32(&padded_data))
-        };
-
-        // Process data in chunks
-        while data_offset < data.len() {
-            let chunk_end = (data_offset + self.chunk_size).min(data.len());
-            let chunk = &data[data_offset..chunk_end];
-            let chunk_sectors = (chunk.len() as u64).div_ceil(SECTOR_SIZE).max(1);
+        while remaining > 0 {
+            let size = remaining.min(self.chunk_size as u64) as usize;
+            chunk.resize(size, 0);
+            reader.read_exact(&mut chunk)?;
+            remaining -= size as u64;
+            let chunk_sectors = (size as u64).div_ceil(SECTOR_SIZE).max(1);
 
             // Pad the trailing chunk out to the sector count its block run
             // declares. A reader decompresses each run expecting exactly
             // sector_count * SECTOR_SIZE bytes, and the partition checksum
-            // above is taken over padded data, so storing the short tail
-            // produces a run no conformant reader can decode to its declared
-            // length.
-            let padded_len = (chunk_sectors * SECTOR_SIZE) as usize;
-            let chunk: Cow<'_, [u8]> = if chunk.len() == padded_len {
-                Cow::Borrowed(chunk)
-            } else {
-                let mut padded = chunk.to_vec();
-                padded.resize(padded_len, 0);
-                Cow::Owned(padded)
-            };
+            // is taken over padded data.
+            chunk.resize((chunk_sectors * SECTOR_SIZE) as usize, 0);
+            if !self.skip_checksums {
+                partition_hasher.update(&chunk);
+            }
 
             // Check if chunk is all zeros
             if chunk.iter().all(|&b| b == 0) {
@@ -186,8 +185,13 @@ impl<W: Write + Seek> DmgWriter<W> {
             }
 
             sector_number += chunk_sectors;
-            data_offset = chunk_end;
         }
+
+        let partition_checksum = if self.skip_checksums {
+            [0u8; 128]
+        } else {
+            create_checksum_array(partition_hasher.finalize())
+        };
 
         // Add end marker
         block_runs.push(BlockRun {
