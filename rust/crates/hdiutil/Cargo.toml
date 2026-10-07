@@ -11,10 +11,14 @@ udif = { version = "0.4.2", path = "../../vendor/udif" }
 hfsplus = { version = "0.4.0", path = "../../vendor/hfsplus" }
 apfs = "0.4.1"
 tempfile = "3"
+# Pinned exactly: its API is unstable before 0.5. Only the HFS+ writer is used.
+fstool = { version = "=0.4.35", default-features = false, features = ["hfs-plus", "std"] }
+unicode-normalization = "0.1"
 
 [target.'cfg(unix)'.dev-dependencies]
 serde_json = "1"
 tempfile = "3"
+unicode-normalization = "0.1"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 xattr = "1"

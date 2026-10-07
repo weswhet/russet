@@ -53,6 +53,12 @@ By default it's in the system temporary folder; set `RUSSET_SCRATCH_DIR` to
 use another location. Because Linux can't hard-link folders, folder hard
 links become copies.
 
+DmgCreator builds disk images on Linux too, but always with an HFS+ volume.
+APFS is DmgCreator's default file system, and Russet has no APFS writer that
+macOS accepts, so an APFS request logs a warning and writes HFS+ instead. macOS
+opens these images the same way, and Munki only copies items out of them.
+Extended attributes in the source folder aren't copied into the image.
+
 ## Predicates on Linux and Windows
 
 `StopProcessingIf` evaluates a predicate to decide whether to stop a recipe.

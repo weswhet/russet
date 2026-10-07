@@ -14,10 +14,14 @@
 #[cfg(unix)]
 mod apfs_volume;
 #[cfg(unix)]
+mod create;
+#[cfg(unix)]
 mod hfs_volume;
 #[cfg(unix)]
 mod image;
 
+#[cfg(unix)]
+pub use create::{create, CreateOptions};
 #[cfg(unix)]
 pub use image::{extract, image_info, Extraction, ImageInfo};
 

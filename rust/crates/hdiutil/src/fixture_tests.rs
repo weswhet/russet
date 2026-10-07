@@ -62,3 +62,74 @@ fn rejects_non_images_and_limits_size() {
     let error = extract(&image, out.path(), limits).unwrap_err();
     assert!(error.to_string().contains("size limit"), "{error}");
 }
+
+/// Creates images in each supported format and reads them back.
+#[test]
+fn created_images_round_trip() {
+    use crate::{create, CreateOptions};
+    use std::os::unix::fs::PermissionsExt;
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("Fixture");
+    std::fs::create_dir_all(source.join("App.app/Contents/MacOS")).unwrap();
+    std::fs::write(source.join("App.app/Contents/MacOS/App"), "binary").unwrap();
+    std::fs::set_permissions(
+        source.join("App.app/Contents/MacOS/App"),
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .unwrap();
+    std::fs::write(source.join("Español.txt"), "accent").unwrap();
+    std::os::unix::fs::symlink("App.app", source.join("Link")).unwrap();
+    std::fs::write(source.join("big.bin"), vec![7u8; 300_000]).unwrap();
+    let strip =
+        |entries: Vec<russet_fs::Entry>| -> Vec<(String, u32, Option<String>, Option<String>)> {
+            use unicode_normalization::UnicodeNormalization;
+            entries
+                .into_iter()
+                .map(|e| (e.path.nfc().collect(), e.mode, e.sha256, e.target))
+                .collect()
+        };
+    let expected = strip(manifest(&source).unwrap());
+    for (format, filesystem) in [
+        ("UDZO", "HFS+"),
+        ("UDBZ", "Journaled HFS+"),
+        ("ULFO", "APFS"),
+        ("UDRO", "Case-insensitive APFS"),
+    ] {
+        let image = temp.path().join(format!("{format}.dmg"));
+        let written = create(
+            &source,
+            &image,
+            &CreateOptions {
+                filesystem,
+                format,
+                zlib_level: 5,
+                megabytes: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(written, "HFS+");
+        assert_eq!(image_info(&image).unwrap().format, format);
+        let out = tempfile::tempdir().unwrap();
+        let extraction = extract(&image, out.path(), Limits::default()).unwrap();
+        assert_eq!(
+            strip(manifest(&extraction.volumes[0]).unwrap()),
+            expected,
+            "{format}"
+        );
+    }
+    let error = create(
+        &source,
+        &temp.path().join("x.dmg"),
+        &CreateOptions {
+            filesystem: "Case-sensitive APFS",
+            format: "UDZO",
+            zlib_level: 5,
+            megabytes: None,
+        },
+    )
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("isn't supported natively"),
+        "{error}"
+    );
+}
