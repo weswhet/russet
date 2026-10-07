@@ -139,7 +139,7 @@ a default but does not prove all branches controlled by that value.
 | URLDownloader | `CHECK_FILESIZE_ONLY`, `COMPUTE_HASHES`, `DOWNLOAD_MISSING_FILE`, `HEADERS_TO_TEST`, `prefetch_filename` | All five omitted in initial download and conditional cache cases. |
 | URLDownloaderPython | `CHECK_FILESIZE_ONLY`, `COMPUTE_HASHES`, `DOWNLOAD_MISSING_FILE`, `HEADERS_TO_TEST`, `prefetch_filename` | All five omitted in initial download and conditional cache cases. |
 | URLTextSearcher | `result_output_var_name` | Omitted in named-capture HTTP cases. |
-| Unarchiver | `USE_PYTHON_NATIVE_EXTRACTOR` | Platform-selected default exercised by the default ZIP extraction case. |
+| Unarchiver | `USE_PYTHON_NATIVE_EXTRACTOR` | Platform-selected default exercised by the default ZIP extraction case. Russet defaults to false on Linux, where AutoPkg defaults to true, because its Linux extractor matches `ditto`. |
 | Versioner | `plist_version_key`, `skip_single_root_dir` | Both omitted in plist and ZIP cases; explicit single-root case also covered. |
 
 URLTextSearcher supports global ASCII flags and mixed nested ASCII/Unicode scopes,

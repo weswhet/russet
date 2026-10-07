@@ -27,7 +27,8 @@ whether the processor requires each one, its default and description, and its
 Some defaults depend on the platform:
 
 - `Unarchiver` shows `USE_PYTHON_NATIVE_EXTRACTOR` as `False` on macOS and
-  `True` on Linux and Windows.
+  Linux, and `True` on Windows. AutoPkg shows `True` on Linux; Russet
+  differs because its Linux extractor keeps what app bundles need.
 - `SignToolVerifier` shows the `signtool_path` that Russet finds on the
   current computer, or `None`.
 

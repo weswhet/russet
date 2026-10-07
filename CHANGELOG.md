@@ -20,3 +20,9 @@ compatibility version 3.0.0.
 - The repository contains no Python. Packaging, installer tests, and release
   promotion run as `cargo xtask` commands, and the comparisons with Python
   AutoPkg run in [russet-compat](https://github.com/weswhet/russet-compat).
+- On Linux, Unarchiver extracts zip archives and gzip-compressed cpio archives
+  with a built-in replacement for `ditto`. It keeps file modes, symbolic links,
+  and the extended attributes that macOS stores in AppleDouble members, so app
+  bundles from zip archives stay intact. `USE_PYTHON_NATIVE_EXTRACTOR` now
+  defaults to false on Linux. Setting `RUSSET_NATIVE=ditto` uses the same
+  replacement on macOS.

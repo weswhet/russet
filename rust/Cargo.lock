@@ -124,6 +124,8 @@ dependencies = [
  "md-5",
  "regex",
  "roxmltree",
+ "russet-ditto",
+ "russet-fs",
  "rustls",
  "rustls-pemfile",
  "schannel",
@@ -931,6 +933,27 @@ dependencies = [
  "serde_yaml",
  "sha2",
  "tempfile",
+]
+
+[[package]]
+name = "russet-ditto"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "russet-fs",
+ "tempfile",
+ "xattr",
+ "zip",
+]
+
+[[package]]
+name = "russet-fs"
+version = "0.1.0"
+dependencies = [
+ "rustix",
+ "serde",
+ "sha2",
+ "xattr",
 ]
 
 [[package]]

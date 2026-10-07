@@ -26,7 +26,7 @@ The following table shows how each kind of operation runs on each platform:
 | Operation | macOS | Linux and Windows |
 | --- | --- | --- |
 | Downloads and web requests | curl | curl |
-| Zip and tar archives | `ditto` and `tar` | Built-in extractor for zip archives and for tar archives that use gzip, bzip2, or xz compression |
+| Zip and tar archives | `ditto` and `tar` | On Linux, a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On both, a built-in extractor for tar archives that use gzip, bzip2, or xz compression. On Windows, zip archives lose file modes and symbolic links. |
 | Disk images | `hdiutil` | Not supported |
 | Building and installing packages | Helper services, `pkgbuild`, and `installer` | Not supported |
 | Expanding and flattening packages | `pkgutil`, `xar`, and `ditto` | Not supported |

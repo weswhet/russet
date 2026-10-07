@@ -35,5 +35,7 @@ base64 = "0.22"
 schannel = "0.1"
 
 [target.'cfg(unix)'.dependencies]
+russet-ditto = { path = "../ditto" }
+russet-fs = { path = "../fs" }
 xattr = "1"
 libc = "0.2"

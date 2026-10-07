@@ -109,7 +109,10 @@ pub fn prepare(name: &str, env: &mut Dictionary) -> Result<()> {
             if !env.contains_key(key) {
                 if let Some(default) = spec.get("default") {
                     if name == "Unarchiver" && key == "USE_PYTHON_NATIVE_EXTRACTOR" {
-                        env.insert(key.to_owned(), (!cfg!(target_os = "macos")).into());
+                        // Russet extracts with ditto-compatible code on macOS and
+                        // Linux, so Python's zipfile behavior is used only on
+                        // Windows. AutoPkg itself defaults to Python off macOS.
+                        env.insert(key.to_owned(), cfg!(windows).into());
                     } else if name == "ChocolateyPackager" && key == "installer_path" {
                         // Preserve the opaque sentinel diagnostic without exposing it as a value.
                         static INSTALLER_PATH_SENTINEL: u8 = 0;
@@ -1295,7 +1298,7 @@ fn frozen_defaults_and_required_inputs() {
     prepare("Unarchiver", &mut env).unwrap();
     assert_eq!(
         env["USE_PYTHON_NATIVE_EXTRACTOR"].as_boolean(),
-        Some(!cfg!(target_os = "macos"))
+        Some(cfg!(windows))
     );
 }
 

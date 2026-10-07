@@ -28,6 +28,7 @@ The following variables change Russet's own behavior:
 | --- | --- |
 | `AUTOPKG_RECIPE_MAP_PATH` | Location of the recipe map file. Russet ignores this variable when it runs as root and prints a security warning. |
 | `AUTOPKG_DISABLE_RECIPE_MAP` | If set to any non-empty value, Russet doesn't create or refresh the recipe map. |
+| `RUSSET_NATIVE` | On macOS, uses Russet's built-in replacements instead of Apple's tools, for comparing the two. Set it to `all` or to a comma-separated list of tool names. Today the only replacement is `ditto`. Russet stops with an error if the value names an unknown tool or one without a replacement. Linux always uses the replacements, and recipes and preferences can't set this variable. |
 
 ## System variables
 
