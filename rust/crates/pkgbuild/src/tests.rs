@@ -208,3 +208,121 @@ fn matches_apple_pkgbuild() {
     };
     assert_eq!(unpack("native"), unpack("apple"));
 }
+
+/// Installs a natively built package with Apple's `installer` and checks the
+/// receipt and the installed tree. Needs passwordless `sudo`, so it's
+/// ignored locally; macOS CI runs it with
+/// `cargo test -p russet-pkgbuild -- --ignored installs_with_apple_installer`.
+#[cfg(target_os = "macos")]
+#[test]
+#[ignore]
+fn installs_with_apple_installer() {
+    use std::os::unix::fs::MetadataExt;
+    use std::process::Command;
+    let sudo = |args: &[&str]| {
+        let out = Command::new("/usr/bin/sudo")
+            .arg("-n")
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "sudo {args:?}: {}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("root");
+    sample_root(&root);
+    let data = root.join("Library/Russet");
+    fs::create_dir_all(&data).unwrap();
+    fs::write(data.join("big.bin"), vec![7u8; 300_000]).unwrap();
+    fs::write(data.join("private"), "secret").unwrap();
+    fs::set_permissions(data.join("private"), fs::Permissions::from_mode(0o600)).unwrap();
+    let mut nodes = nodes_as_root(&root);
+    for node in &mut nodes {
+        if node.path == "Library/Russet/private" {
+            (node.uid, node.gid) = (501, 20);
+        }
+    }
+
+    let identifier = format!("com.example.russet-install-test.{}", std::process::id());
+    let destination = format!("/private/tmp/russet-install-test-{}", std::process::id());
+    let package = temp.path().join("Test.pkg");
+    build(
+        &nodes,
+        &Options {
+            identifier: &identifier,
+            version: "1.0",
+            install_location: Some(&destination),
+            min_os_version: None,
+            scripts: None,
+            info_template: None,
+            components: &[],
+        },
+        &package,
+    )
+    .unwrap();
+
+    let result = std::panic::catch_unwind(|| {
+        sudo(&[
+            "/usr/sbin/installer",
+            "-pkg",
+            package.to_str().unwrap(),
+            "-target",
+            "/",
+        ]);
+        // The receipt lists every path in the payload.
+        let mut receipt: Vec<String> = Command::new("/usr/sbin/pkgutil")
+            .args(["--files", &identifier])
+            .output()
+            .unwrap()
+            .stdout
+            .split(|&b| b == b'\n')
+            .filter(|l| !l.is_empty())
+            .map(|l| String::from_utf8(l.to_vec()).unwrap())
+            .collect();
+        receipt.sort();
+        let mut expected: Vec<String> = nodes
+            .iter()
+            .filter(|n| !n.path.is_empty())
+            .map(|n| n.path.clone())
+            .collect();
+        expected.sort();
+        assert_eq!(receipt, expected);
+        // Each installed item has the recorded owner, mode, and contents.
+        for node in nodes.iter().filter(|n| !n.path.is_empty()) {
+            let installed = Path::new(&destination).join(&node.path);
+            let metadata = fs::symlink_metadata(&installed).unwrap();
+            assert_eq!(
+                (metadata.uid(), metadata.gid()),
+                (node.uid, node.gid),
+                "{}",
+                node.path
+            );
+            if !metadata.file_type().is_symlink() {
+                assert_eq!(
+                    metadata.mode() & 0o7777,
+                    u32::from(node.mode),
+                    "{}",
+                    node.path
+                );
+            }
+            if let NodeKind::File(source) = &node.kind {
+                assert_eq!(
+                    fs::read(&installed).unwrap(),
+                    fs::read(source).unwrap(),
+                    "{}",
+                    node.path
+                );
+            }
+        }
+    });
+    sudo(&["/usr/sbin/pkgutil", "--forget", &identifier]);
+    sudo(&["/bin/rm", "-rf", &destination]);
+    if let Err(panic) = result {
+        std::panic::resume_unwind(panic);
+    }
+}
