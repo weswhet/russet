@@ -8,6 +8,7 @@ use std::path::Path;
 
 const UNSUPPORTED: &str = "Apple package inspection is only supported on macOS and Linux";
 
+#[cfg(unix)]
 fn native<T>(result: std::io::Result<T>) -> Result<T, String> {
     result.map_err(|e| e.to_string())
 }
@@ -88,6 +89,8 @@ pub(crate) fn restart_action(
     path: &Path,
     bundle_flag: Option<&str>,
 ) -> Result<Option<String>, String> {
+    #[cfg(not(unix))]
+    let _ = bundle_flag;
     let action = match select(Tool::Installer) {
         Backend::Apple => {
             let output = command(

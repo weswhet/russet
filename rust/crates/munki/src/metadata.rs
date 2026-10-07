@@ -785,6 +785,7 @@ pub fn package(path: &Path, options: &Options) -> Result<Dictionary, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "macos")]
     use std::process::Command;
     #[test]
     fn pinned_option_validation_rejects_unknown_and_invalid_values() {
