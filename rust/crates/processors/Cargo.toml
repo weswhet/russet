@@ -37,5 +37,7 @@ schannel = "0.1"
 [target.'cfg(unix)'.dependencies]
 russet-ditto = { path = "../ditto" }
 russet-fs = { path = "../fs" }
+russet-pkgutil = { path = "../pkgutil" }
+russet-xar = { path = "../xar" }
 xattr = "1"
 libc = "0.2"

@@ -59,7 +59,10 @@ impl Tool {
 
     /// Whether Russet has a native replacement yet.
     pub fn implemented(self) -> bool {
-        matches!(self, Tool::Ditto | Tool::Hdiutil)
+        matches!(
+            self,
+            Tool::Ditto | Tool::Hdiutil | Tool::Xar | Tool::Pkgutil
+        )
     }
 }
 
@@ -166,7 +169,10 @@ mod tests {
     fn parses_names_and_rejects_unknown_or_unimplemented() {
         assert_eq!(parse("").unwrap(), vec![]);
         assert_eq!(parse(" ditto ,").unwrap(), vec![Tool::Ditto]);
-        assert_eq!(parse("all").unwrap(), vec![Tool::Hdiutil, Tool::Ditto]);
+        assert_eq!(
+            parse("all").unwrap(),
+            vec![Tool::Hdiutil, Tool::Ditto, Tool::Xar, Tool::Pkgutil]
+        );
         assert!(parse("dito").unwrap_err().contains("unknown tool 'dito'"));
         assert!(parse("codesign")
             .unwrap_err()

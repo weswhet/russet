@@ -297,3 +297,100 @@ mod apple {
         }
     }
 }
+
+#[test]
+fn cpio_writer_round_trips() {
+    use std::os::unix::fs::MetadataExt;
+    let temp = tempfile::tempdir().unwrap();
+    let src = temp.path().join("src");
+    fs::create_dir_all(src.join("bin")).unwrap();
+    fs::write(src.join("bin/tool"), "tool").unwrap();
+    fs::set_permissions(src.join("bin/tool"), fs::Permissions::from_mode(0o755)).unwrap();
+    fs::hard_link(src.join("bin/tool"), src.join("bin/alias")).unwrap();
+    std::os::unix::fs::symlink("tool", src.join("bin/link")).unwrap();
+    let archive = temp.path().join("tree.cpio.gz");
+    let encoder = flate2::write::GzEncoder::new(
+        fs::File::create(&archive).unwrap(),
+        flate2::Compression::default(),
+    );
+    crate::write_tree(&src, encoder, |_, m| crate::Header {
+        mode: m.mode(),
+        uid: 0,
+        gid: 80,
+        mtime: m.mtime() as u64,
+        ino: 0,
+        nlink: m.nlink() as u32,
+    })
+    .unwrap()
+    .finish()
+    .unwrap();
+    let out = temp.path().join("out");
+    extract_cpio(&archive, &out, Limits::default()).unwrap();
+    assert_eq!(manifest(&out).unwrap(), manifest(&src).unwrap());
+    #[cfg(target_os = "macos")]
+    {
+        let apple = temp.path().join("apple");
+        let status = std::process::Command::new("/usr/bin/ditto")
+            .args(["-x"])
+            .arg(&archive)
+            .arg(&apple)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        assert_eq!(manifest(&apple).unwrap(), manifest(&src).unwrap());
+    }
+}
+
+/// Packages built with `pkgbuild --compression latest` have pbzx payloads,
+/// which `ditto` can't read; compare with `aa extract`, which can.
+#[cfg(target_os = "macos")]
+#[test]
+fn pbzx_payload_matches_aa() {
+    use std::process::Command;
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("root/App.app/Contents/MacOS");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("App"), "binary".repeat(1000)).unwrap();
+    fs::set_permissions(root.join("App"), fs::Permissions::from_mode(0o755)).unwrap();
+    std::os::unix::fs::symlink("MacOS", temp.path().join("root/App.app/Contents/Link")).unwrap();
+    let t = |p: &str| temp.path().join(p);
+    let ok = |c: &mut Command| assert!(c.status().unwrap().success(), "{c:?}");
+    ok(Command::new("/usr/bin/pkgbuild")
+        .args(["--quiet", "--root"])
+        .arg(t("root"))
+        .args([
+            "--identifier",
+            "com.example.p",
+            "--version",
+            "1",
+            "--min-os-version",
+            "12.0",
+            "--compression",
+            "latest",
+        ])
+        .arg(t("p.pkg")));
+    fs::create_dir(t("x")).unwrap();
+    ok(Command::new("/usr/bin/xar")
+        .arg("-xf")
+        .arg(t("p.pkg"))
+        .arg("-C")
+        .arg(t("x")));
+    fs::create_dir(t("apple")).unwrap();
+    ok(Command::new("/usr/bin/aa")
+        .args(["extract", "-i"])
+        .arg(t("x/Payload"))
+        .arg("-d")
+        .arg(t("apple")));
+    extract_cpio(&t("x/Payload"), &t("native"), Limits::default()).unwrap();
+    let strip = |p: &Path| -> Vec<_> {
+        manifest(p)
+            .unwrap()
+            .into_iter()
+            .map(|mut e| {
+                e.xattrs.clear();
+                e
+            })
+            .collect()
+    };
+    assert_eq!(strip(&t("native")), strip(&t("apple")));
+}

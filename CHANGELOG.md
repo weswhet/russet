@@ -32,3 +32,8 @@ compatibility version 3.0.0.
   volumes. Each image is extracted once per recipe into `RUSSET_SCRATCH_DIR`
   or the system temporary folder. `RUSSET_NATIVE=hdiutil` uses the same
   reader on macOS.
+- On Linux, FlatPkgUnpacker, FlatPkgPacker, PkgPayloadUnpacker, and
+  PkgExtractor use built-in replacements for `pkgutil --expand`,
+  `pkgutil --flatten`, `xar`, `ditto`, and `aa`. They read gzip and pbzx
+  payloads. The xar reader rejects packages whose table of contents fails its
+  checksum, has more than one checksum element, or points outside the file.
