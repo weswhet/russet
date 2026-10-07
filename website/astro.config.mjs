@@ -40,6 +40,7 @@ export default defineConfig({
 						'concepts/how-russet-works',
 						'concepts/compatibility',
 						'concepts/platform-support',
+						'concepts/native-apple-formats',
 						'concepts/recipe-trust',
 					],
 				},
