@@ -93,6 +93,9 @@ dependencies = [
  "autopkg-value",
  "libc",
  "regex",
+ "russet-mkbom",
+ "russet-pkgbuild",
+ "russet-xar",
  "tempfile",
 ]
 
@@ -1244,6 +1247,28 @@ name = "russet-installer"
 version = "0.1.0"
 dependencies = [
  "roxmltree",
+ "russet-xar",
+ "tempfile",
+]
+
+[[package]]
+name = "russet-mkbom"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
+name = "russet-pkgbuild"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "plist",
+ "regex",
+ "roxmltree",
+ "russet-ditto",
+ "russet-fs",
+ "russet-mkbom",
  "russet-xar",
  "tempfile",
 ]

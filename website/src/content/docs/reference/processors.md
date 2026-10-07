@@ -31,7 +31,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | Processor | Purpose | Platform | Notes |
 | --- | --- | --- | --- |
 | `AppDmgVersioner` | Reads the bundle identifier and version of the app in a disk image. | macOS, Linux | Mounts the disk image with `hdiutil` on macOS and reads it with a built-in reader on Linux. |
-| `AppPkgCreator` | Builds a package from an app. | macOS | Uses the `russet-server` helper service. |
+| `AppPkgCreator` | Builds a package from an app. | macOS, Linux | Uses the `russet-server` helper service on macOS and a built-in package builder on Linux. |
 | `ChocolateyPackager` | Builds a NuGet package with `choco.exe`. | Windows | Rejects `license` and `contentFiles` values that are dictionaries or arrays. |
 | `CodeSignatureVerifier` | Verifies the code signature of an app or installer package. | macOS, Linux | Uses `codesign` and `pkgutil` on macOS and built-in replacements on Linux, which trust only Apple's root certificates and reject requirement clauses they don't support, such as `notarized`. The `DISABLE_CODE_SIGNATURE_VERIFICATION` variable skips it on every platform. |
 | `Copier` | Copies a file or folder. | All | Paths inside a disk image need macOS or Linux. |
@@ -58,7 +58,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `PackageRequired` | Fails the recipe if the `PKG` variable isn't set. | All | None. |
 | `PathDeleter` | Deletes files and folders. | All | None. |
 | `PkgCopier` | Copies a package. | All | Paths inside a disk image need macOS or Linux. |
-| `PkgCreator` | Builds a package from a package root. | macOS | Uses the `russet-server` helper service. |
+| `PkgCreator` | Builds a package from a package root. | macOS, Linux | Uses the `russet-server` helper service on macOS. On Linux, a built-in package builder records the same owners and modes without running as root; it supports the `pkgbuild_args` `--install-location`, `--min-os-version`, `--compression legacy`, and `--filter`. |
 | `PkgExtractor` | Extracts the contents of a bundle-style package. | macOS, Linux | Uses `ditto` on macOS and a built-in replacement on Linux. |
 | `PkgInfoCreator` | Creates a `PackageInfo` file for a package. | All | None. |
 | `PkgPayloadUnpacker` | Unpacks a package payload. | macOS, Linux | Uses `ditto`, with `aa` as a fallback, on macOS. On Linux, a built-in replacement reads gzip and pbzx payloads. |

@@ -53,3 +53,7 @@ compatibility version 3.0.0.
   roots, the resource seal, nested code, and the requirement. It supports the
   requirement clauses the core recipes use and rejects others, such as
   `notarized`, rather than ignoring them.
+- On Linux, PkgCreator and AppPkgCreator build packages in-process, with
+  built-in replacements for `pkgbuild` and `mkbom`. The packages record the
+  same owners and modes as the macOS helper without running as root;
+  `RUSSET_PKG_OWNER` sets the owner for files the running user owns.
