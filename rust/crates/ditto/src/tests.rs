@@ -394,3 +394,28 @@ fn pbzx_payload_matches_aa() {
     };
     assert_eq!(strip(&t("native")), strip(&t("apple")));
 }
+
+/// Payloads that are Apple Archives, plain or inside pbzx (as `aa` writes
+/// LZMA archives), extract and read like `aa extract`.
+#[test]
+fn apple_archive_payloads() {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../aa/tests/fixtures");
+    let expected: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixtures.join("expected.json")).unwrap()).unwrap();
+    for name in ["lzfse.aar", "lzma.aar", "raw.aar"] {
+        let out = tempfile::tempdir().unwrap();
+        extract_cpio(&fixtures.join(name), out.path(), Limits::default()).unwrap();
+        assert_eq!(
+            serde_json::to_value(manifest(out.path()).unwrap()).unwrap(),
+            expected,
+            "{name}"
+        );
+        let member = crate::read_cpio_member(
+            &fixtures.join(name),
+            Path::new("./App.app/Contents/Info.plist"),
+            1 << 20,
+        )
+        .unwrap();
+        assert_eq!(member.as_deref(), Some(&b"<plist/>\n"[..]), "{name}");
+    }
+}

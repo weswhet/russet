@@ -26,8 +26,8 @@ pub(crate) fn bom_paths(bom: &Path) -> Result<Vec<String>, String> {
         .collect())
 }
 
-/// One regular file from a package payload. Apple Archive payloads aren't
-/// supported, so they read as missing, as a failed `aa extract` does.
+/// One regular file from a package payload: cpio (plain, gzip, or pbzx) or
+/// an Apple Archive.
 pub(crate) fn payload_member(archive: &Path, entry: &Path) -> Result<Vec<u8>, String> {
     russet_ditto::read_cpio_member(archive, entry, MAX_MEMBER_BYTES)
         .map_err(|e| e.to_string())?

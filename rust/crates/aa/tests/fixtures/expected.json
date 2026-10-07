@@ -1,0 +1,68 @@
+[
+  {
+    "kind": "directory",
+    "mode": 493,
+    "path": "App.app"
+  },
+  {
+    "kind": "symlink",
+    "mode": 0,
+    "path": "App.app/App",
+    "target": "Contents/MacOS/App"
+  },
+  {
+    "kind": "directory",
+    "mode": 493,
+    "path": "App.app/Contents"
+  },
+  {
+    "kind": "file",
+    "mode": 420,
+    "path": "App.app/Contents/Info.plist",
+    "sha256": "b62f9714ac7f08b49bdf44178409779fd47c9884ce5212cd2ce83cbb5bb566ec",
+    "size": 9,
+    "xattrs": {
+      "com.example.test": "cd42404d52ad55ccfa9aca4adc828aa5800ad9d385a0671fbcbf724118320619"
+    }
+  },
+  {
+    "kind": "directory",
+    "mode": 493,
+    "path": "App.app/Contents/MacOS"
+  },
+  {
+    "kind": "file",
+    "link_group": 0,
+    "mode": 493,
+    "path": "App.app/Contents/MacOS/App",
+    "sha256": "2062547dc0d565fece04145a0abc0c4c9b744cad3ae5fbdf902d6146e588e1f5",
+    "size": 100000
+  },
+  {
+    "kind": "file",
+    "link_group": 0,
+    "mode": 493,
+    "path": "App.app/Contents/MacOS/link",
+    "sha256": "2062547dc0d565fece04145a0abc0c4c9b744cad3ae5fbdf902d6146e588e1f5",
+    "size": 100000
+  },
+  {
+    "kind": "file",
+    "mode": 420,
+    "path": "App.app/Contents/empty",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  {
+    "kind": "file",
+    "mode": 420,
+    "path": "Résumé.txt",
+    "sha256": "f80b1fa820d95a87cf48f78eb6c298b427fda46207f7b52eaff6fb8ab1590c64",
+    "size": 5
+  },
+  {
+    "kind": "directory",
+    "mode": 365,
+    "path": "locked"
+  }
+]

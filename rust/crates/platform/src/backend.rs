@@ -70,6 +70,7 @@ impl Tool {
                 | Tool::Pkgbuild
                 | Tool::Mkbom
                 | Tool::Icons
+                | Tool::Aa
         )
     }
 }
@@ -174,7 +175,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_names_and_rejects_unknown_or_unimplemented() {
+    fn parses_names_and_rejects_unknown() {
         assert_eq!(parse("").unwrap(), vec![]);
         assert_eq!(parse(" ditto ,").unwrap(), vec![Tool::Ditto]);
         assert_eq!(
@@ -182,6 +183,7 @@ mod tests {
             vec![
                 Tool::Hdiutil,
                 Tool::Ditto,
+                Tool::Aa,
                 Tool::Xar,
                 Tool::Mkbom,
                 Tool::Codesign,
@@ -192,21 +194,16 @@ mod tests {
             ]
         );
         assert!(parse("dito").unwrap_err().contains("unknown tool 'dito'"));
-        assert!(parse("aa")
-            .unwrap_err()
-            .contains("no native replacement yet"));
+        assert_eq!(parse("aa,icons").unwrap(), vec![Tool::Aa, Tool::Icons]);
     }
 
     #[test]
     fn platform_defaults() {
         assert_eq!(decide(Platform::Mac, false, Tool::Ditto), Backend::Apple);
         assert_eq!(decide(Platform::Mac, true, Tool::Ditto), Backend::Native);
-        assert_eq!(decide(Platform::Mac, true, Tool::Aa), Backend::Apple);
+        assert_eq!(decide(Platform::Mac, true, Tool::Aa), Backend::Native);
         assert_eq!(decide(Platform::Linux, false, Tool::Ditto), Backend::Native);
-        assert_eq!(
-            decide(Platform::Linux, false, Tool::Aa),
-            Backend::Unsupported
-        );
+        assert_eq!(decide(Platform::Linux, false, Tool::Aa), Backend::Native);
         assert_eq!(
             decide(Platform::Other, true, Tool::Ditto),
             Backend::Unsupported

@@ -43,8 +43,11 @@ compatibility version 3.0.0.
   `hdiutil imageinfo`. `installerChoices` still needs macOS.
 - On Linux, MunkiImporter's `extract_icon` reads app icons from packages and
   disk images and converts them to PNG, choosing the same image as macOS.
-  Packages with Apple Archive payloads aren't supported yet.
   `RUSSET_NATIVE=icons` uses the same code on macOS.
+- On Linux, PkgPayloadUnpacker and `extract_icon` read Apple Archive payloads
+  with a built-in replacement for `aa extract`. It reads archives compressed
+  with LZFSE, zlib, LZMA, or LZ4, or stored uncompressed, and rejects
+  LZBITMAP, which isn't documented. `RUSSET_NATIVE=aa` uses it on macOS.
 - On Linux, CodeSignatureVerifier checks installer package signatures with a
   built-in replacement for `pkgutil --check-signature`. It verifies the RSA
   and CMS signatures over the package's table-of-contents checksum, the

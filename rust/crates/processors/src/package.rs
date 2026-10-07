@@ -318,6 +318,10 @@ pub(super) fn unpack_payload(env: &Dictionary) -> Result<()> {
     } else {
         match run("/usr/bin/ditto", &["-x", "-z", source, destination]) {
             Ok(()) => Ok(()),
+            Err(ditto_error) if select(Tool::Aa) == Backend::Native => {
+                native::extract_apple_archive(source, destination)
+                    .map_err(|error| format!("{ditto_error}; {error}"))
+            }
             Err(ditto_error) if Path::new("/usr/bin/aa").exists() => {
                 run("/usr/bin/aa", &["extract", "-i", source, "-d", destination])
                     .map_err(|error| format!("{ditto_error}; {error}"))
@@ -427,6 +431,11 @@ mod native {
     }
 
     /// `ditto -x -z`, or `aa extract` for pbzx payloads.
+    pub(super) fn extract_apple_archive(source: &str, destination: &str) -> Result<()> {
+        russet_aa::extract(Path::new(source), Path::new(destination), Limits::default())
+            .map(|_| ())
+            .map_err(|e| format!("Unpacking {source} failed: {e}"))
+    }
     pub(super) fn extract_payload(source: &str, destination: &str) -> Result<()> {
         russet_ditto::extract_cpio(Path::new(source), Path::new(destination), Limits::default())
             .map(|_| ())
@@ -450,6 +459,9 @@ mod native {
         unavailable()
     }
     pub(super) fn extract_payload(_: &str, _: &str) -> Result<()> {
+        unavailable()
+    }
+    pub(super) fn extract_apple_archive(_: &str, _: &str) -> Result<()> {
         unavailable()
     }
 }

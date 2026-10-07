@@ -38,6 +38,7 @@ schannel = "0.1"
 russet-ditto = { path = "../ditto" }
 russet-fs = { path = "../fs" }
 russet-hdiutil = { path = "../hdiutil" }
+russet-aa = { path = "../aa" }
 russet-pkgutil = { path = "../pkgutil" }
 russet-xar = { path = "../xar" }
 xattr = "1"
