@@ -118,17 +118,18 @@ fn request_at(
 /// Russet's in-process builder on Linux and when `RUSSET_NATIVE` names
 /// `pkgbuild`.
 pub fn packaging_request(request: &plist::Dictionary) -> Result<String, String> {
-    use autopkg_platform::backend::{select, Backend, Tool};
-    match select(Tool::Pkgbuild) {
-        #[cfg(target_os = "macos")]
-        Backend::Apple => request_at(&Service::Packaging.socket_path(), request, false),
-        #[cfg(unix)]
-        Backend::Native => native::package(request),
-        _ => {
-            let _ = request;
-            Err("Package creation is only supported on macOS and Linux".into())
+    #[cfg(unix)]
+    {
+        use autopkg_platform::backend::{select, Backend, Tool};
+        match select(Tool::Pkgbuild) {
+            #[cfg(target_os = "macos")]
+            Backend::Apple => return request_at(&Service::Packaging.socket_path(), request, false),
+            Backend::Native => return native::package(request),
+            _ => {}
         }
     }
+    let _ = request;
+    Err("Package creation is only supported on macOS and Linux".into())
 }
 pub fn installation_request(request: &plist::Dictionary) -> Result<String, String> {
     #[cfg(target_os = "macos")]
