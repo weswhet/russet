@@ -61,7 +61,12 @@ impl Tool {
     pub fn implemented(self) -> bool {
         matches!(
             self,
-            Tool::Ditto | Tool::Hdiutil | Tool::Xar | Tool::Pkgutil
+            Tool::Ditto
+                | Tool::Hdiutil
+                | Tool::Xar
+                | Tool::Pkgutil
+                | Tool::Installer
+                | Tool::Codesign
         )
     }
 }
@@ -171,10 +176,17 @@ mod tests {
         assert_eq!(parse(" ditto ,").unwrap(), vec![Tool::Ditto]);
         assert_eq!(
             parse("all").unwrap(),
-            vec![Tool::Hdiutil, Tool::Ditto, Tool::Xar, Tool::Pkgutil]
+            vec![
+                Tool::Hdiutil,
+                Tool::Ditto,
+                Tool::Xar,
+                Tool::Codesign,
+                Tool::Pkgutil,
+                Tool::Installer
+            ]
         );
         assert!(parse("dito").unwrap_err().contains("unknown tool 'dito'"));
-        assert!(parse("codesign")
+        assert!(parse("pkgbuild")
             .unwrap_err()
             .contains("no native replacement yet"));
     }
@@ -183,10 +195,10 @@ mod tests {
     fn platform_defaults() {
         assert_eq!(decide(Platform::Mac, false, Tool::Ditto), Backend::Apple);
         assert_eq!(decide(Platform::Mac, true, Tool::Ditto), Backend::Native);
-        assert_eq!(decide(Platform::Mac, true, Tool::Codesign), Backend::Apple);
+        assert_eq!(decide(Platform::Mac, true, Tool::Pkgbuild), Backend::Apple);
         assert_eq!(decide(Platform::Linux, false, Tool::Ditto), Backend::Native);
         assert_eq!(
-            decide(Platform::Linux, false, Tool::Codesign),
+            decide(Platform::Linux, false, Tool::Pkgbuild),
             Backend::Unsupported
         );
         assert_eq!(

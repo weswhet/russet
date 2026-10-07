@@ -19,6 +19,7 @@ tempfile = "3"
 russet-fs = { path = "../fs" }
 russet-hdiutil = { path = "../hdiutil" }
 russet-pkgutil = { path = "../pkgutil" }
+russet-codesign = { path = "../codesign" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation-sys = "0.8"

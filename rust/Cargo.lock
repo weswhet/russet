@@ -125,6 +125,7 @@ dependencies = [
  "glob",
  "objc2",
  "regex",
+ "russet-codesign",
  "russet-fs",
  "russet-hdiutil",
  "russet-pkgutil",
@@ -1192,11 +1193,15 @@ dependencies = [
  "cms",
  "der",
  "num-bigint",
+ "plist",
+ "regex",
  "ring",
  "sha1",
  "sha2 0.10.9",
+ "tempfile",
  "x509-cert",
  "x509-tsp",
+ "xattr",
 ]
 
 [[package]]

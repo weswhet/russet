@@ -76,6 +76,18 @@ impl Cert {
         name_cn(&self.parsed.tbs_certificate.subject).unwrap_or_default()
     }
 
+    /// Every value of subject attribute `id`, such as the organizational
+    /// unit, which holds the team ID.
+    pub fn subject_values(&self, id: &ObjectIdentifier) -> Vec<String> {
+        let mut values = Vec::new();
+        for rdn in self.parsed.tbs_certificate.subject.0.iter() {
+            for attribute in rdn.0.iter().filter(|a| a.oid == *id) {
+                values.push(any_string(&attribute.value));
+            }
+        }
+        values
+    }
+
     pub fn sha256(&self) -> [u8; 32] {
         sha2::Sha256::digest(&self.der).into()
     }
@@ -171,25 +183,25 @@ impl Cert {
     }
 }
 
-fn name_cn(name: &x509_cert::name::Name) -> Option<String> {
-    for rdn in name.0.iter() {
-        for attribute in rdn.0.iter() {
-            if attribute.oid == oid::COMMON_NAME {
-                let value = &attribute.value;
-                if let Ok(s) = value.decode_as::<der::asn1::Utf8StringRef>() {
-                    return Some(s.to_string());
-                }
-                if let Ok(s) = value.decode_as::<der::asn1::PrintableStringRef>() {
-                    return Some(s.to_string());
-                }
-                if let Ok(s) = value.decode_as::<der::asn1::Ia5StringRef>() {
-                    return Some(s.to_string());
-                }
-                return Some(String::from_utf8_lossy(value.value()).into_owned());
-            }
-        }
+fn any_string(value: &der::Any) -> String {
+    if let Ok(s) = value.decode_as::<der::asn1::Utf8StringRef>() {
+        return s.to_string();
     }
-    None
+    if let Ok(s) = value.decode_as::<der::asn1::PrintableStringRef>() {
+        return s.to_string();
+    }
+    if let Ok(s) = value.decode_as::<der::asn1::Ia5StringRef>() {
+        return s.to_string();
+    }
+    String::from_utf8_lossy(value.value()).into_owned()
+}
+
+fn name_cn(name: &x509_cert::name::Name) -> Option<String> {
+    name.0
+        .iter()
+        .flat_map(|rdn| rdn.0.iter())
+        .find(|a| a.oid == oid::COMMON_NAME)
+        .map(|a| any_string(&a.value))
 }
 
 /// Verifies `signature` over `message` with `signer`'s public key.

@@ -16,8 +16,8 @@ have, the processor fails with an error that names the limitation, such as
 step or substitute different behavior.
 
 Recipes that only download software and read metadata usually run on every
-platform. Recipes that read disk images run on macOS and Linux. Recipes that
-build new packages or verify macOS code signatures need macOS.
+platform. Recipes that read disk images or verify macOS code signatures run on
+macOS and Linux. Recipes that build new packages need macOS.
 
 ## Operations by platform
 
@@ -30,7 +30,7 @@ The following table shows how each kind of operation runs on each platform:
 | Disk images | `hdiutil` | Linux: a built-in reader for read-only `.dmg` images in the `UDZO`, `UDBZ`, `ULFO`, `ULMO`, `UDCO`, and `UDRO` formats with HFS+ or APFS volumes. Creating images, encrypted images, and ISO images aren't supported. Windows: not supported |
 | Building and installing packages | Helper services, `pkgbuild`, and `installer` | Not supported |
 | Expanding and flattening packages | `pkgutil`, `xar`, and `ditto` | Linux: built-in replacements that expand and flatten flat packages and unpack gzip and pbzx payloads. Windows: not supported |
-| macOS code signatures | `codesign` and `pkgutil` | Linux: installer package signatures, checked against Apple's root certificates with a trusted timestamp; app signatures aren't supported yet. Windows: not supported |
+| macOS code signatures | `codesign` and `pkgutil` | Linux: built-in replacements that check app and installer package signatures against Apple's root certificates, without notarization or revocation checks. Windows: not supported |
 | Authenticode signatures | Not supported | Windows: `SignToolVerifier` with `signtool.exe` |
 | Chocolatey packages | Not supported | Windows: `ChocolateyPackager` with `choco.exe` |
 | `StopProcessingIf` predicates | Foundation predicates | A documented subset of predicate syntax |
