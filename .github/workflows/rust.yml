@@ -22,9 +22,14 @@ jobs:
       - run: cargo install cargo-fuzz --version 0.13.2 --locked
       - name: Run each target for 60 seconds
         run: |
+          failed=""
           for target in $(cargo fuzz list); do
-            cargo fuzz run "$target" -- -max_total_time=60 -rss_limit_mb=2048
+            cargo fuzz run "$target" -- -max_total_time=60 -rss_limit_mb=2048 || failed="$failed $target"
           done
+          if [ -n "$failed" ]; then
+            echo "::error::Fuzz targets failed:$failed"
+            exit 1
+          fi
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

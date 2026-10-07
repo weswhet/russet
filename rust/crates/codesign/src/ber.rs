@@ -115,7 +115,7 @@ fn value(input: &[u8], depth: usize, out: &mut Vec<u8>) -> Result<usize, String>
         let mut joined = Vec::new();
         let mut rest = children.as_slice();
         while !rest.is_empty() {
-            let (chunk, used) = primitive_content(rest)?;
+            let (chunk, used) = primitive_content(rest, first & !0x20)?;
             joined.extend_from_slice(chunk);
             rest = &rest[used..];
         }
@@ -130,11 +130,18 @@ fn value(input: &[u8], depth: usize, out: &mut Vec<u8>) -> Result<usize, String>
     Ok(end)
 }
 
-/// Reads a DER value's content (the chunks are already DER).
-fn primitive_content(der: &[u8]) -> Result<(&[u8], usize), String> {
+/// Reads the content of one chunk of a constructed string. The chunks are
+/// already DER, and each must be a primitive string of the same type.
+fn primitive_content(der: &[u8], tag: u8) -> Result<(&[u8], usize), String> {
+    if der.first() != Some(&tag) {
+        return Err(error("string chunk of a different type"));
+    }
     let length_byte = *der.get(1).ok_or_else(|| error("truncated chunk"))?;
     let (length, header) = if length_byte & 0x80 != 0 {
         let count = (length_byte & 0x7f) as usize;
+        if count > 4 {
+            return Err(error("length too long"));
+        }
         let mut length = 0usize;
         for i in 0..count {
             length =
@@ -144,8 +151,11 @@ fn primitive_content(der: &[u8]) -> Result<(&[u8], usize), String> {
     } else {
         (length_byte as usize, 2)
     };
+    let end = header
+        .checked_add(length)
+        .ok_or_else(|| error("truncated chunk"))?;
     let content = der
-        .get(header..header + length)
+        .get(header..end)
         .ok_or_else(|| error("truncated chunk"))?;
     Ok((content, header + length))
 }
@@ -168,5 +178,26 @@ mod tests {
         );
         assert_eq!(used, ber.len() - 1);
         assert!(to_der(&[0x30, 0x80, 0x04, 0x01]).is_err());
+    }
+
+    #[test]
+    fn rejects_chunks_of_another_type() {
+        // OCTET STRING (constructed, indefinite) whose chunk has a high tag
+        // number, so its second byte is part of the tag, not a length.
+        let ber = [0x24, 0x80, 0x1f, 0x88, 0x01, 0x00, 0x00, 0x00];
+        assert!(to_der(&ber).is_err());
+        // A chunk that is a different string type.
+        let ber = [0x24, 0x80, 0x0c, 0x01, b'a', 0x00, 0x00];
+        assert!(to_der(&ber).is_err());
+    }
+
+    /// The input the `codesign_cms` fuzz target found, which overflowed a
+    /// length; it must fail cleanly.
+    #[test]
+    fn fuzz_regression_inputs() {
+        let data = include_bytes!("../tests/fuzz-regressions/cms-ber-chunk-tag.bin");
+        let (&split, rest) = data.split_first().unwrap();
+        let at = (split as usize).min(rest.len());
+        assert!(crate::cms::verify_detached(&rest[at..], &rest[..at]).is_err());
     }
 }
