@@ -154,3 +154,67 @@ fn scan_streams_universal_slices() {
         );
     }
 }
+
+/// Files of 4 GiB or more keep their full size through the Size64 tree.
+#[test]
+fn round_trips_large_files() {
+    let large = |path: &str, size: u64| {
+        entry(
+            path,
+            Kind::File {
+                size,
+                checksum: 1,
+                archs: Vec::new(),
+            },
+            0o644,
+        )
+    };
+    let entries = vec![
+        entry("", Kind::Directory, 0o755),
+        large("a", 5 << 30),
+        large("b", 3),
+        large("c", (1 << 32) + 7),
+    ];
+    assert_eq!(read(&write(&entries).unwrap()).unwrap(), entries);
+}
+
+/// `lsbom` lists a native BOM with a 5 GiB file as it lists `mkbom`'s.
+#[cfg(target_os = "macos")]
+#[test]
+fn large_files_match_apple_mkbom() {
+    use std::fs;
+    use std::process::Command;
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("root");
+    fs::create_dir_all(&root).unwrap();
+    // Sparse, so it takes no disk space.
+    fs::File::create(root.join("big"))
+        .unwrap()
+        .set_len(5 << 30)
+        .unwrap();
+    fs::write(root.join("small"), "hi\n").unwrap();
+    let apple_bom = temp.path().join("apple.bom");
+    assert!(Command::new("/usr/bin/mkbom")
+        .arg(&root)
+        .arg(&apple_bom)
+        .status()
+        .unwrap()
+        .success());
+    let entries = read(&fs::read(&apple_bom).unwrap()).unwrap();
+    assert!(entries
+        .iter()
+        .any(|e| matches!(e.kind, Kind::File { size, .. } if size == 5 << 30)));
+    let native_bom = temp.path().join("native.bom");
+    fs::write(&native_bom, write(&entries).unwrap()).unwrap();
+    let listing = |path: &std::path::Path| {
+        let out = Command::new("/usr/bin/lsbom")
+            .args(["-p", "fMUGsc"])
+            .arg(path)
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+        String::from_utf8(out.stdout).unwrap()
+    };
+    assert_eq!(listing(&native_bom), listing(&apple_bom));
+    assert!(listing(&native_bom).contains("5368709120"));
+}

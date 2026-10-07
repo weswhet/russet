@@ -24,3 +24,8 @@ BOMs the same way.
 - `mkbom` also writes a small tree per path and empty `HLIndex`, `VIndex`,
   and `Size64` trees; Russet writes them for parity. Files of 4 GiB or more,
   which need `Size64`, aren't supported yet.
+- Files of 4 GiB or more: the path record's 32-bit size holds the low 32
+  bits, and the `Size64` tree has a leaf entry whose key block holds the
+  record's block number and whose value block holds the full size as a
+  big-endian 64-bit number. The `BomInfo` totals keep only their low 32
+  bits.

@@ -70,11 +70,9 @@ fn record(entry: &Entry) -> Result<Vec<u8>, String> {
         Kind::File { size, checksum, .. } => (*size, *checksum),
         Kind::Symlink { target, checksum } => (target.len() as u64, *checksum),
     };
-    be32(
-        &mut out,
-        u32::try_from(size)
-            .map_err(|_| format!("{} is larger than 4 GiB, which isn't supported", entry.path))?,
-    );
+    // Sizes of 4 GiB or more keep their low 32 bits here; the Size64 tree
+    // holds the whole size.
+    be32(&mut out, size as u32);
     out.push(1);
     be32(&mut out, checksum);
     match &entry.kind {
@@ -119,6 +117,7 @@ pub fn write(entries: &[Entry]) -> Result<Vec<u8>, String> {
     let mut leaf_entries = Vec::with_capacity(entries.len());
     let mut records = Vec::with_capacity(entries.len());
     let mut totals: BTreeMap<u32, u64> = BTreeMap::from([(0, 0)]);
+    let mut large: Vec<(u32, u32)> = Vec::new();
     for (index, entry) in entries.iter().enumerate() {
         let id = index as u32 + 1;
         let (parent, name) = if entry.path.is_empty() {
@@ -150,6 +149,15 @@ pub fn write(entries: &[Entry]) -> Result<Vec<u8>, String> {
         let record_block = blocks.len() as u32;
         blocks.push(record(entry)?);
         records.push(record_block);
+        if let Kind::File { size, .. } = &entry.kind {
+            if *size > u64::from(u32::MAX) {
+                // A Size64 entry: the record's block number, then the size.
+                let key = blocks.len() as u32;
+                blocks.push(record_block.to_be_bytes().to_vec());
+                blocks.push(size.to_be_bytes().to_vec());
+                large.push((key + 1, key));
+            }
+        }
         let name_block = blocks.len() as u32;
         let mut name_bytes = Vec::with_capacity(name.len() + 5);
         be32(&mut name_bytes, parent);
@@ -172,7 +180,8 @@ pub fn write(entries: &[Entry]) -> Result<Vec<u8>, String> {
     for (cpu, total) in &totals {
         be32(&mut info, *cpu);
         be32(&mut info, 0);
-        be32(&mut info, u32::try_from(*total).unwrap_or(u32::MAX));
+        // `mkbom` keeps only the low 32 bits of each total.
+        be32(&mut info, *total as u32);
         be32(&mut info, 0);
     }
     blocks[1] = info;
@@ -229,7 +238,19 @@ pub fn write(entries: &[Entry]) -> Result<Vec<u8>, String> {
     be32(&mut vindex_block, 0);
     vindex_block.push(0);
     blocks[vindex as usize] = vindex_block;
-    let size64 = empty_tree(&mut blocks, TREE_BLOCK_SIZE);
+    let size64 = if large.is_empty() {
+        empty_tree(&mut blocks, TREE_BLOCK_SIZE)
+    } else {
+        if large.len() > ENTRIES_PER_LEAF {
+            return Err(format!(
+                "More than {ENTRIES_PER_LEAF} files are 4 GiB or larger, which isn't supported"
+            ));
+        }
+        let at = blocks.len() as u32;
+        blocks.push(tree(at + 1, TREE_BLOCK_SIZE, large.len() as u32));
+        blocks.push(paths_node(true, &large, 0, 0, TREE_BLOCK_SIZE));
+        at
+    };
 
     let mut vars = Vec::new();
     be32(&mut vars, 5);

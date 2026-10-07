@@ -120,6 +120,43 @@ fn record(bytes: &[u8]) -> Result<(Kind, u16, u32, u32, u32), String> {
     Ok((kind, mode, uid, gid, mtime))
 }
 
+/// The sizes of files of 4 GiB or more, by record block, from the Size64
+/// tree. Each leaf entry's key block holds a record's block number and its
+/// value block the 64-bit size.
+fn sizes_64(bom: &Bom) -> Result<HashMap<u32, u64>, String> {
+    let mut out = HashMap::new();
+    let Ok(var) = bom.var("Size64") else {
+        return Ok(out);
+    };
+    let tree = bom.block(var)?;
+    if tree.get(..4) != Some(b"tree") {
+        return Err(invalid("Size64 isn't a tree"));
+    }
+    let mut node = be32(tree, 8)?;
+    let mut visited = 0;
+    while node != 0 {
+        visited += 1;
+        if visited > bom.count {
+            return Err(invalid("Size64 links form a cycle"));
+        }
+        let block = bom.block(node)?;
+        if be16(block, 0)? != 1 {
+            return Err(invalid("Size64 has more than one level"));
+        }
+        for i in 0..be16(block, 2)? as usize {
+            let value = bom.block(be32(block, 12 + i * 8)?)?;
+            let key = bom.block(be32(block, 16 + i * 8)?)?;
+            let size = value
+                .get(..8)
+                .map(|b| u64::from_be_bytes(b.try_into().unwrap()))
+                .ok_or_else(|| invalid("truncated Size64 value"))?;
+            out.insert(be32(key, 0)?, size);
+        }
+        node = be32(block, 4)?;
+    }
+    Ok(out)
+}
+
 /// Reads every path in a BOM, in the order `lsbom` lists them.
 pub fn read(bytes: &[u8]) -> Result<Vec<Entry>, String> {
     if bytes.get(..8) != Some(b"BOMStore") {
@@ -144,6 +181,7 @@ pub fn read(bytes: &[u8]) -> Result<Vec<Entry>, String> {
         }
         node = be32(block, 12)?;
     }
+    let large = sizes_64(&bom)?;
     let mut paths: HashMap<u32, String> = HashMap::new();
     let mut entries = Vec::new();
     let mut visited = 0;
@@ -173,7 +211,11 @@ pub fn read(bytes: &[u8]) -> Result<Vec<Entry>, String> {
                         .ok_or_else(|| invalid("a path's parent comes after it"))?
                 ),
             };
-            let (kind, mode, uid, gid, mtime) = record(bom.block(be32(info, 4)?)?)?;
+            let record_block = be32(info, 4)?;
+            let (mut kind, mode, uid, gid, mtime) = record(bom.block(record_block)?)?;
+            if let (Kind::File { size, .. }, Some(full)) = (&mut kind, large.get(&record_block)) {
+                *size = *full;
+            }
             paths.insert(id, path.clone());
             entries.push(Entry {
                 path,
