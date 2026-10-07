@@ -21,7 +21,7 @@ This repository defines these workflows:
 
 | Workflow | Purpose |
 | --- | --- |
-| [Rust development](.github/workflows/rust.yml) | Formatting, strict Clippy checks, workspace tests, installer tests, builds, packaging, and installed-archive checks on all four targets. |
+| [Rust development](.github/workflows/rust.yml) | Formatting, strict Clippy checks, workspace tests, installer tests, builds, packaging, and installed-archive checks on all four targets; a license check on Linux; and a short run of every fuzz target. |
 | [Docs](.github/workflows/docs.yml) | Builds the documentation site for pull requests and publishes it to GitHub Pages from `main`. |
 | [Rust verified draft release](.github/workflows/rust-release.yml) | Verifies release evidence and prepares distribution archives and a draft release. |
 
@@ -29,6 +29,17 @@ Relevant pushes and pull requests trigger validation automatically. Each workflo
 also supports manual dispatch from the repository's **Actions** tab. If a change
 falls outside a workflow's path filters, dispatch that workflow explicitly.
 Inspect every required platform job and attach the run links to your pull request.
+
+## Add or update dependencies
+
+After adding, removing, or updating a crate the shipped binaries use, run
+`cargo xtask licenses` from `rust/` and commit the changes to `rust/licenses/`.
+CI fails when that folder is out of date, and release archives ship it.
+
+To patch a crate, vendor it under `rust/vendor/`, exclude it from the
+workspace, and add a `RUSSET-PATCH.md` that names the upstream version and
+describes every change. Name new crates `russet-<tool>` after the macOS tool
+they replace.
 
 ## Compare with Python AutoPkg
 

@@ -56,6 +56,9 @@ jobs:
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
       - run: cargo fmt --all -- --check
+      - name: Check third-party license files
+        if: runner.os == 'Linux'
+        run: cargo xtask licenses --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --exclude xtask --locked --no-fail-fast --target ${{ matrix.target }}
       - name: Verify archive install, upgrade, rollback, and failure recovery

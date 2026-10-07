@@ -3,9 +3,11 @@
 //! ```text
 //! cargo xtask package --target TARGET --bin-dir DIR [--output DIR]
 //! cargo xtask promote --commit SHA --version VERSION --development-run ID --output DIR
+//! cargo xtask licenses [--check]
 //! ```
 
 mod archive;
+mod licenses;
 mod package;
 mod promote;
 
@@ -14,12 +16,16 @@ use std::{collections::BTreeMap, path::PathBuf, process::ExitCode};
 const USAGE: &str = "usage:
   cargo xtask package --target TARGET --bin-dir DIR [--output DIR]
   cargo xtask promote --commit SHA --version VERSION --development-run ID --output DIR
+  cargo xtask licenses [--check]
 
 package  Archive native development binaries for one target. The archive is
          written to rust/dist unless --output is given; its path is printed.
 promote  Check one successful four-target development run at COMMIT and turn
          its archives into release archives in --output. Writes local files
-         only; GitHub metadata comes from the authenticated gh CLI.";
+         only; GitHub metadata comes from the authenticated gh CLI.
+licenses Collect the license files of every third-party crate the shipped
+         binaries link into rust/licenses. With --check, fail if that folder
+         is out of date instead of writing it.";
 
 /// Parse `--name value` and `--name=value` options, allowing only `allowed`.
 fn options(arguments: &[String], allowed: &[&str]) -> Result<BTreeMap<String, String>, String> {
@@ -104,16 +110,32 @@ fn promote(arguments: &[String]) -> Result<ExitCode, String> {
     }
 }
 
+fn licenses(arguments: &[String]) -> Result<ExitCode, String> {
+    let check = match arguments {
+        [] => false,
+        [option] if option == "--check" => true,
+        _ => return Err("licenses takes only --check".to_owned()),
+    };
+    match licenses::licenses(&package::repository_root(), check) {
+        Ok(()) => Ok(ExitCode::SUCCESS),
+        Err(error) => {
+            eprintln!("{error}");
+            Ok(ExitCode::FAILURE)
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     let result = match arguments.first().map(String::as_str) {
         Some("package") => package(&arguments[1..]),
         Some("promote") => promote(&arguments[1..]),
+        Some("licenses") => licenses(&arguments[1..]),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        _ => Err("expected a task: package or promote".to_owned()),
+        _ => Err("expected a task: package, promote, or licenses".to_owned()),
     };
     result.unwrap_or_else(|error| {
         eprintln!("error: {error}\n\n{USAGE}");
