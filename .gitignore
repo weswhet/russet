@@ -1,0 +1,9 @@
+# .DS_Store files!
+.DS_Store
+
+# IDE-specific files
+.vscode
+autopkg.code-workspace
+
+# Repository-local scratch files
+.scratch/

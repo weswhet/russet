@@ -1,0 +1,3618 @@
+[
+  {
+    "name": "catalog-builder-deprecated-noop",
+    "processor": "MunkiCatalogBuilder",
+    "environment": {
+      "marker": "preserved",
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    }
+  },
+  {
+    "name": "default-catalog-empty-input",
+    "processor": "MunkiSetDefaultCatalog",
+    "environment": {}
+  },
+  {
+    "name": "default-catalog-existing-metadata",
+    "processor": "MunkiSetDefaultCatalog",
+    "environment": {
+      "pkginfo": {
+        "name": "Fixture",
+        "catalogs": [
+          "existing"
+        ]
+      }
+    }
+  },
+  {
+    "name": "pkginfo-merge-default",
+    "processor": "MunkiPkginfoMerger",
+    "environment": {
+      "additional_pkginfo": {
+        "catalogs": [
+          "testing"
+        ],
+        "name": "Fixture"
+      }
+    }
+  },
+  {
+    "name": "pkginfo-merge-shallow",
+    "processor": "MunkiPkginfoMerger",
+    "environment": {
+      "pkginfo": {
+        "name": "old",
+        "metadata": {
+          "old": "value"
+        }
+      },
+      "additional_pkginfo": {
+        "name": "new",
+        "metadata": {
+          "new": "value"
+        }
+      }
+    }
+  },
+  {
+    "name": "pkginfo-merge-required-input",
+    "processor": "MunkiPkginfoMerger",
+    "environment": {},
+    "status": 10
+  },
+  {
+    "name": "optional-receipt-edit",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkginfo_repo_path": "$ROOT/repo/pkgsinfo/fixture.plist",
+      "pkg_ids_set_optional_true": [
+        "org.test.one"
+      ]
+    },
+    "files": {
+      "repo/pkgsinfo/fixture.plist": {
+        "name": "Fixture",
+        "receipts": [
+          {
+            "packageid": "org.test.one",
+            "version": "1"
+          },
+          {
+            "packageid": "org.test.two",
+            "version": "2"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "optional-receipt-no-match",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkginfo_repo_path": "$ROOT/repo/pkgsinfo/fixture.plist",
+      "pkg_ids_set_optional_true": [
+        "org.absent"
+      ]
+    },
+    "files": {
+      "repo/pkgsinfo/fixture.plist": {
+        "name": "Fixture",
+        "receipts": [
+          {
+            "packageid": "org.test.one",
+            "version": "1"
+          },
+          {
+            "packageid": "org.test.two",
+            "version": "2"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "optional-receipt-empty-path",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkginfo_repo_path": "",
+      "pkg_ids_set_optional_true": [
+        "org.test.one"
+      ]
+    }
+  },
+  {
+    "name": "optional-receipt-missing-receipts",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkginfo_repo_path": "$ROOT/repo/pkgsinfo/fixture.plist",
+      "pkg_ids_set_optional_true": [
+        "org.test.one"
+      ]
+    },
+    "files": {
+      "repo/pkgsinfo/fixture.plist": {
+        "name": "Fixture"
+      }
+    },
+    "status": 10
+  },
+  {
+    "name": "optional-receipt-required-input",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {},
+    "status": 10
+  },
+  {
+    "name": "installs-file-default",
+    "processor": "MunkiInstallsItemsCreator",
+    "environment": {
+      "installs_item_paths": [
+        "$ROOT/plain.txt"
+      ]
+    },
+    "files": {
+      "plain.txt": "native fixture"
+    }
+  },
+  {
+    "name": "installs-app-derived-version",
+    "processor": "MunkiInstallsItemsCreator",
+    "environment": {
+      "installs_item_paths": [
+        "/Applications/Fixture.app"
+      ],
+      "faux_root": "$ROOT",
+      "derive_minimum_os_version": true,
+      "version_comparison_key": "CFBundleVersion"
+    },
+    "files": {
+      "Applications/Fixture.app/Contents/Info.plist": {
+        "CFBundleName": "Fixture",
+        "CFBundleIdentifier": "org.autopkg.fixture",
+        "CFBundleShortVersionString": "1.2",
+        "CFBundleVersion": "42",
+        "LSMinimumSystemVersion": "12.0"
+      }
+    }
+  },
+  {
+    "name": "installs-invalid-version-key",
+    "processor": "MunkiInstallsItemsCreator",
+    "environment": {
+      "installs_item_paths": [
+        "$ROOT/plain.txt"
+      ],
+      "version_comparison_key": "missing"
+    },
+    "files": {
+      "plain.txt": "native fixture"
+    },
+    "status": 10
+  },
+  {
+    "name": "installs-required-input",
+    "processor": "MunkiInstallsItemsCreator",
+    "environment": {},
+    "status": 10
+  },
+  {
+    "name": "info-creator-default",
+    "processor": "MunkiInfoCreator",
+    "environment": {
+      "pkg_path": "$ROOT/fixture.pkg"
+    },
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    }
+  },
+  {
+    "name": "info-creator-overrides",
+    "processor": "MunkiInfoCreator",
+    "environment": {
+      "pkg_path": "$ROOT/fixture.pkg",
+      "name": "Override",
+      "version": "9.1",
+      "displayname": "Display & Name",
+      "description": "Fixture description",
+      "catalog": "testing",
+      "info_path": "$ROOT/fixture.plist"
+    },
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    }
+  },
+  {
+    "name": "info-creator-missing-image",
+    "processor": "MunkiInfoCreator",
+    "environment": {
+      "pkg_path": "$ROOT/missing.dmg"
+    },
+    "status": 10
+  },
+  {
+    "name": "info-creator-required-input",
+    "processor": "MunkiInfoCreator",
+    "environment": {},
+    "status": 10
+  },
+  {
+    "name": "importer-default",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": ""
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    }
+  },
+  {
+    "name": "importer-overrides",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "apps/testing",
+      "pkginfo": {
+        "name": "Override",
+        "catalogs": [
+          "testing"
+        ],
+        "force_install_after_date": "2026-01-02T03:04:05Z"
+      },
+      "metadata_additions": {
+        "fixture": "recorded"
+      },
+      "additional_makepkginfo_options": [
+        "--unattended-install",
+        "--minimum-os-version=12.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    }
+  },
+  {
+    "name": "importer-extract-icon",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "extract_icon": true,
+      "repo_subdirectory": ""
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    }
+  },
+  {
+    "name": "importer-missing-image",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/missing.dmg"
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "status": 10
+  },
+  {
+    "name": "importer-required-input",
+    "processor": "MunkiImporter",
+    "environment": {},
+    "status": 10
+  },
+  {
+    "name": "importer-repeat-catalog-deduplication",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": ""
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "repeat": true
+  },
+  {
+    "name": "importer-repeat-forced-collision",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "force_munkiimport": true,
+      "repo_subdirectory": ""
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "repeat": true
+  },
+  {
+    "name": "importer-omitted-subdirectory-reference-error",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg"
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "status": 1
+  },
+  {
+    "name": "importer-unknown-metadata-option",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--unknown-autopkg-fixture-option"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "status": 10
+  },
+  {
+    "name": "importer-reuses-existing-icon",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "extract_icon": true
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG",
+      "repo/icons/fixture.png": "$ICON"
+    }
+  },
+  {
+    "name": "option-name-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--name",
+        "OptionName"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "name",
+    "option_alias": "--name",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-displayname-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--displayname",
+        "Option Display"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "displayname",
+    "option_alias": "--displayname",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-description-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--description",
+        "Description & text"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "description",
+    "option_alias": "--description",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-pkgvers-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--pkgvers",
+        "2.5"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "pkgvers",
+    "option_alias": "--pkgvers",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-restartAction-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--RestartAction",
+        "RequireRestart"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "restartAction",
+    "option_alias": "--RestartAction",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstallMethod-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstall-method",
+        "remove_app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "uninstallMethod",
+    "option_alias": "--uninstall-method",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstallMethod-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstall_method",
+        "remove_app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "uninstallMethod",
+    "option_alias": "--uninstall_method",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installcheckScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installcheck-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installcheckScript",
+    "option_alias": "--installcheck-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installcheckScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installcheck_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installcheckScript",
+    "option_alias": "--installcheck_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstallcheckScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstallcheck-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "uninstallcheckScript",
+    "option_alias": "--uninstallcheck-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstallcheckScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstallcheck_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "uninstallcheckScript",
+    "option_alias": "--uninstallcheck_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-preinstallScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--preinstall-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "preinstallScript",
+    "option_alias": "--preinstall-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-preinstallScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--preinstall_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "preinstallScript",
+    "option_alias": "--preinstall_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-postinstallScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--postinstall-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "postinstallScript",
+    "option_alias": "--postinstall-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-postinstallScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--postinstall_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "postinstallScript",
+    "option_alias": "--postinstall_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-preuninstallScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--preuninstall-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "preuninstallScript",
+    "option_alias": "--preuninstall-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-preuninstallScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--preuninstall_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "preuninstallScript",
+    "option_alias": "--preuninstall_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-postuninstallScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--postuninstall-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "postuninstallScript",
+    "option_alias": "--postuninstall-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-postuninstallScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--postuninstall_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "postuninstallScript",
+    "option_alias": "--postuninstall_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstallScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstall-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "uninstallScript",
+    "option_alias": "--uninstall-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstallScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstall_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "uninstallScript",
+    "option_alias": "--uninstall_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-versionScript-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--version-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "versionScript",
+    "option_alias": "--version-script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-versionScript-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--version_script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "versionScript",
+    "option_alias": "--version_script",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-item-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-i",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "item",
+    "option_alias": "-i",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-item-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "item",
+    "option_alias": "--itemname",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-item-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--appname",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "item",
+    "option_alias": "--appname",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-item-alias-3",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-a",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "item",
+    "option_alias": "-a",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-destinationpath-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--destinationpath",
+        "/Applications/Utilities"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "destinationpath",
+    "option_alias": "--destinationpath",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-destinationpath-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "-d",
+        "/Applications/Utilities"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "destinationpath",
+    "option_alias": "-d",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-destitemname-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--destinationitemname",
+        "Renamed.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "destitemname",
+    "option_alias": "--destinationitemname",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-destitemname-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--destinationitem",
+        "Renamed.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "destitemname",
+    "option_alias": "--destinationitem",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-user-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--owner",
+        "root"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "user",
+    "option_alias": "--owner",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-user-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--user",
+        "root"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "user",
+    "option_alias": "--user",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-user-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "-o",
+        "root"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "user",
+    "option_alias": "-o",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-group-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--group",
+        "wheel"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "group",
+    "option_alias": "--group",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-group-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "-g",
+        "wheel"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "group",
+    "option_alias": "-g",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-mode-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--mode",
+        "u+rw"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "mode",
+    "option_alias": "--mode",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-mode-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "-m",
+        "u+rw"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "mode",
+    "option_alias": "-m",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-pkgname-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--pkgname",
+        "fixture.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "pkgname",
+    "option_alias": "--pkgname",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-pkgname-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-p",
+        "fixture.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "pkgname",
+    "option_alias": "-p",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstalleritem-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstalleritem",
+        "$ROOT/uninstaller.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG",
+      "uninstaller.pkg": "$PKG"
+    },
+    "option_property": "uninstalleritem",
+    "option_alias": "--uninstalleritem",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstalleritem-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstallerdmg",
+        "$ROOT/uninstaller.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG",
+      "uninstaller.pkg": "$PKG"
+    },
+    "option_property": "uninstalleritem",
+    "option_alias": "--uninstallerdmg",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstalleritem-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstallerpkg",
+        "$ROOT/uninstaller.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG",
+      "uninstaller.pkg": "$PKG"
+    },
+    "option_property": "uninstalleritem",
+    "option_alias": "--uninstallerpkg",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstalleritem-alias-3",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--uninstallpkg",
+        "$ROOT/uninstaller.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG",
+      "uninstaller.pkg": "$PKG"
+    },
+    "option_property": "uninstalleritem",
+    "option_alias": "--uninstallpkg",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-uninstalleritem-alias-4",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-U",
+        "$ROOT/uninstaller.pkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG",
+      "uninstaller.pkg": "$PKG"
+    },
+    "option_property": "uninstalleritem",
+    "option_alias": "-U",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerChoices-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer-choices"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installerChoices",
+    "option_alias": "--installer-choices",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerChoices-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer-choices-xml"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installerChoices",
+    "option_alias": "--installer-choices-xml",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerChoices-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer_choices_xml"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installerChoices",
+    "option_alias": "--installer_choices_xml",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerEnvironment-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer-environment",
+        "FIXTURE=value=extra"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installerEnvironment",
+    "option_alias": "--installer-environment",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerEnvironment-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer_environment",
+        "FIXTURE=value=extra"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installerEnvironment",
+    "option_alias": "--installer_environment",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerEnvironment-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-E",
+        "FIXTURE=value=extra"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "installerEnvironment",
+    "option_alias": "-E",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-unattendedInstall-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--unattended-install"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "unattendedInstall",
+    "option_alias": "--unattended-install",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-unattendedInstall-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--unattended_install"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "unattendedInstall",
+    "option_alias": "--unattended_install",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-unattendedUninstall-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--unattended-uninstall"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "unattendedUninstall",
+    "option_alias": "--unattended-uninstall",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-unattendedUninstall-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--unattended_uninstall"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "unattendedUninstall",
+    "option_alias": "--unattended_uninstall",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-forceInstallAfterDate-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--force-install-after-date",
+        "2026-01-02T03:04:05Z"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "forceInstallAfterDate",
+    "option_alias": "--force-install-after-date",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-forceInstallAfterDate-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--force_install_after_date",
+        "2026-01-02T03:04:05Z"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "forceInstallAfterDate",
+    "option_alias": "--force_install_after_date",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-file-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--file",
+        "$ROOT/installed.txt"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "file",
+    "option_alias": "--file",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-file-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-f",
+        "$ROOT/installed.txt"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "file",
+    "option_alias": "-f",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerType-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--installer-type",
+        "copy_from_dmg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "installerType",
+    "option_alias": "--installer-type",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-installerType-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--installer_type",
+        "copy_from_dmg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.dmg": "$DMG"
+    },
+    "option_property": "installerType",
+    "option_alias": "--installer_type",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-nopkg-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--nopkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "nopkg",
+    "option_alias": "--nopkg",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-autoremove-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--autoremove"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "autoremove",
+    "option_alias": "--autoremove",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-onDemand-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--OnDemand"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "onDemand",
+    "option_alias": "--OnDemand",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-minimumMunkiVersion-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--minimum-munki-version",
+        "6.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "minimumMunkiVersion",
+    "option_alias": "--minimum-munki-version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-minimumMunkiVersion-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--minimum_munki_version",
+        "6.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "minimumMunkiVersion",
+    "option_alias": "--minimum_munki_version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-minimumOSVersion-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--minimum-os-version",
+        "12.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "minimumOSVersion",
+    "option_alias": "--minimum-os-version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-minimumOSVersion-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--minimum_os_version",
+        "12.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "minimumOSVersion",
+    "option_alias": "--minimum_os_version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-maximumOSVersion-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--maximum-os-version",
+        "99.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "maximumOSVersion",
+    "option_alias": "--maximum-os-version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-maximumOSVersion-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--maximum_os_version",
+        "99.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "maximumOSVersion",
+    "option_alias": "--maximum_os_version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-supportedArchitectures-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--arch",
+        "arm64"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "supportedArchitectures",
+    "option_alias": "--arch",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-supportedArchitectures-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--supported_architecture",
+        "arm64"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "supportedArchitectures",
+    "option_alias": "--supported_architecture",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-supportedArchitectures-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--supported-architecture",
+        "arm64"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "supportedArchitectures",
+    "option_alias": "--supported-architecture",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-updateFor-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--update-for",
+        "Other"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "updateFor",
+    "option_alias": "--update-for",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-updateFor-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-u",
+        "Other"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "updateFor",
+    "option_alias": "-u",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-updateFor-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--update_for",
+        "Other"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "updateFor",
+    "option_alias": "--update_for",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-requires-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--requires",
+        "Dependency"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "requires",
+    "option_alias": "--requires",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-requires-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-r",
+        "Dependency"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "requires",
+    "option_alias": "-r",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-blockingApplication-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--blocking-application",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "blockingApplication",
+    "option_alias": "--blocking-application",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-blockingApplication-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-b",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "blockingApplication",
+    "option_alias": "-b",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-blockingApplication-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--blocking_application",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "blockingApplication",
+    "option_alias": "--blocking_application",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-catalog-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--catalog",
+        "production"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "catalog",
+    "option_alias": "--catalog",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-catalog-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-c",
+        "production"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "catalog",
+    "option_alias": "-c",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-category-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--category",
+        "Testing"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "category",
+    "option_alias": "--category",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-developer-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--developer",
+        "AutoPkg"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "developer",
+    "option_alias": "--developer",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-iconName-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--icon",
+        "Fixture.png"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "iconName",
+    "option_alias": "--icon",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-iconName-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--iconname",
+        "Fixture.png"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "iconName",
+    "option_alias": "--iconname",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-iconName-alias-2",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--icon-name",
+        "Fixture.png"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "iconName",
+    "option_alias": "--icon-name",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-iconName-alias-3",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--icon_name",
+        "Fixture.png"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "iconName",
+    "option_alias": "--icon_name",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-notes-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--notes",
+        "Fixture notes"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "notes",
+    "option_alias": "--notes",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-printWarnings-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--print-warnings"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "printWarnings",
+    "option_alias": "--print-warnings",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-printWarnings-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--no-print-warnings"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "printWarnings",
+    "option_alias": "--no-print-warnings",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    }
+  },
+  {
+    "name": "option-version-alias-0",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--version"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "version",
+    "option_alias": "--version",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    },
+    "status": 1
+  },
+  {
+    "name": "option-version-alias-1",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-V"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "option_property": "version",
+    "option_alias": "-V",
+    "files": {
+      "script.sh": "#!/bin/sh\nexit 0\n",
+      "installed.txt": "installed fixture"
+    },
+    "status": 1
+  },
+  {
+    "name": "output-mode-h",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "-h"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "status": 1,
+    "option_property": "help",
+    "option_alias": "-h"
+  },
+  {
+    "name": "output-mode-help",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--help"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "status": 1,
+    "option_property": "help",
+    "option_alias": "--help"
+  },
+  {
+    "name": "option-stage-os-installer",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/stage.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer-type",
+        "stage_os_installer"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "stage.dmg": "$STAGE"
+    }
+  },
+  {
+    "name": "options-repeated-array-options",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--catalog",
+        "testing",
+        "-c",
+        "production",
+        "--arch",
+        "arm64",
+        "--supported-architecture",
+        "x86_64",
+        "--requires",
+        "One",
+        "-r",
+        "Two",
+        "--update-for",
+        "One",
+        "-u",
+        "Two",
+        "--blocking-application",
+        "One.app",
+        "-b",
+        "Two.app",
+        "--installer-environment",
+        "ONE=1",
+        "-E",
+        "TWO=2"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    }
+  },
+  {
+    "name": "options-file-backed-text-and-scripts",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--description",
+        "$ROOT/text.txt",
+        "--notes",
+        "$ROOT/text.txt",
+        "--uninstall-script",
+        "$ROOT/script.sh",
+        "--uninstall-method",
+        "remove_app",
+        "--version-script",
+        "$ROOT/script.sh"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    }
+  },
+  {
+    "name": "options-repeated-scalar-last-wins",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--name",
+        "First",
+        "--name",
+        "Last",
+        "--pkgvers",
+        "1.0",
+        "--pkgvers",
+        "2.0"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    }
+  },
+  {
+    "name": "options-warning-flags-last-wins",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--no-print-warnings",
+        "--print-warnings",
+        "--no-print-warnings"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    }
+  },
+  {
+    "name": "options-invalid-architecture",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--arch",
+        "ppc"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-invalid-version",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--pkgvers",
+        "invalid"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-invalid-restart",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--RestartAction",
+        "None"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-invalid-mode",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--mode",
+        "755"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-invalid-date",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--force-install-after-date",
+        "tomorrow"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-invalid-environment",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer-environment",
+        "missing-equals"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-duplicate-environment",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--installer-environment",
+        "KEY=1",
+        "--installer-environment",
+        "KEY=2"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-missing-script",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--preinstall-script",
+        "$ROOT/missing-script"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    },
+    "status": 10
+  },
+  {
+    "name": "options-missing-file",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/fixture.pkg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--file",
+        "$ROOT/missing-file"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "fixture.pkg": "$PKG"
+    },
+    "files": {
+      "text.txt": "Fixture file text\nsecond line\n",
+      "script.sh": "#!/bin/sh\nexit 0\n"
+    }
+  },
+  {
+    "name": "options-writable-image-warnings-default",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/writable.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "writable.dmg": "$WRITABLE"
+    },
+    "logical_images": [
+      "writable.dmg",
+      "repo/pkgs/writable-1.2.dmg"
+    ]
+  },
+  {
+    "name": "options-writable-image-warnings-disabled",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/writable.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--no-print-warnings"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "writable.dmg": "$WRITABLE"
+    },
+    "logical_images": [
+      "writable.dmg",
+      "repo/pkgs/writable-1.2.dmg"
+    ]
+  },
+  {
+    "name": "options-writable-image-warnings-reenabled",
+    "processor": "MunkiImporter",
+    "environment": {
+      "MUNKI_REPO": "$ROOT/repo",
+      "pkg_path": "$ROOT/writable.dmg",
+      "repo_subdirectory": "",
+      "additional_makepkginfo_options": [
+        "--itemname",
+        "Fixture.app",
+        "--no-print-warnings",
+        "--print-warnings"
+      ]
+    },
+    "directories": [
+      "repo/pkgs",
+      "repo/pkgsinfo",
+      "repo/catalogs",
+      "repo/icons"
+    ],
+    "copy_files": {
+      "writable.dmg": "$WRITABLE"
+    },
+    "logical_images": [
+      "writable.dmg",
+      "repo/pkgs/writable-1.2.dmg"
+    ]
+  }
+]

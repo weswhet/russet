@@ -1,0 +1,208 @@
+{
+  "reference_commit": "c36e58f8d3d8ddb70b6c2d848d2ceca7f767ce5c",
+  "fixture_sha256": "8e2a8150ff3b1bb1e86b9cbe677e9c9714d6d5ce1d39ccbfaa8e3de726f3d352",
+  "platform": "darwin",
+  "cases": {
+    "predicate comparison true": {
+      "status": 0,
+      "environment": {
+        "count": 3,
+        "predicate": "count >= 3",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate comparison false": {
+      "status": 0,
+      "environment": {
+        "count": 3,
+        "predicate": "count < 3",
+        "stop_processing_recipe": false
+      },
+      "files": {}
+    },
+    "predicate boolean grouping": {
+      "status": 0,
+      "environment": {
+        "count": 3,
+        "enabled": true,
+        "predicate": "(count > 1 AND enabled == TRUE) OR count == 0",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate nested key path": {
+      "status": 0,
+      "environment": {
+        "meta": {
+          "version": "1.2"
+        },
+        "predicate": "meta.version == \"1.2\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate membership": {
+      "status": 0,
+      "environment": {
+        "name": "beta",
+        "predicate": "name IN {\"alpha\", \"beta\"}",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate case matching": {
+      "status": 0,
+      "environment": {
+        "name": "alpha",
+        "predicate": "name BEGINSWITH[c] \"AL\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate diacritic matching": {
+      "status": 0,
+      "environment": {
+        "name": "café",
+        "predicate": "name ==[cd] \"CAFE\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate native regex": {
+      "status": 0,
+      "environment": {
+        "name": "alpha",
+        "predicate": "name MATCHES \"a.*\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate malformed": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "predicate negation": {
+      "status": 0,
+      "environment": {
+        "flag": false,
+        "predicate": "NOT flag == TRUE",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate array contains modifiers": {
+      "status": 0,
+      "environment": {
+        "names": [
+          "Résumé"
+        ],
+        "predicate": "names CONTAINS[cd] \"resume\"",
+        "stop_processing_recipe": false
+      },
+      "files": {}
+    },
+    "predicate string membership": {
+      "status": 0,
+      "environment": {
+        "name": "abc",
+        "predicate": "\"b\" IN name",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate suffix modifiers": {
+      "status": 0,
+      "environment": {
+        "name": "CAFÉ",
+        "predicate": "name ENDSWITH[cd] \"fe\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate wildcard matching": {
+      "status": 0,
+      "environment": {
+        "name": "alpha.zip",
+        "predicate": "name LIKE \"a?pha.*\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate missing is null": {
+      "status": 0,
+      "environment": {
+        "predicate": "missing == NIL",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate explicit null": {
+      "status": 0,
+      "environment": {
+        "predicate": "value == NIL",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate boolean numeric equality": {
+      "status": 0,
+      "environment": {
+        "flag": true,
+        "predicate": "flag == 1",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate integer precision": {
+      "status": 0,
+      "environment": {
+        "count": 9007199254740992,
+        "predicate": "count == 9007199254740993",
+        "stop_processing_recipe": false
+      },
+      "files": {}
+    },
+    "predicate numeric inequality": {
+      "status": 0,
+      "environment": {
+        "count": 2.5,
+        "predicate": "count != 2 AND count <= 3",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate escaped literal": {
+      "status": 0,
+      "environment": {
+        "name": "a'b",
+        "predicate": "name == 'a\\'b' ",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    },
+    "predicate array IN modifiers": {
+      "status": 0,
+      "environment": {
+        "names": [
+          "Résumé"
+        ],
+        "predicate": "\"resume\" IN[cd] names",
+        "stop_processing_recipe": false
+      },
+      "files": {}
+    },
+    "predicate array contains exact with modifier": {
+      "status": 0,
+      "environment": {
+        "names": [
+          "Résumé"
+        ],
+        "predicate": "names CONTAINS[c] \"Résumé\"",
+        "stop_processing_recipe": true
+      },
+      "files": {}
+    }
+  }
+}

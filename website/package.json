@@ -1,0 +1,31 @@
+{
+  "name": "russet-docs",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Documentation site for Russet, a native AutoPkg-compatible recipe runner.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "lint:style": "vale sync && vale src/content/docs",
+    "tailnet": "bash scripts/serve-tailnet.sh start",
+    "tailnet:stop": "bash scripts/serve-tailnet.sh stop",
+    "tailnet:status": "bash scripts/serve-tailnet.sh status"
+  },
+  "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.3",
+    "@astrojs/starlight": "^0.42.4",
+    "astro": "^7.3.5",
+    "sharp": "^0.34.0"
+  },
+  "optionalDependencies": {
+    "@vvago/vale": "^3.24.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "sharp@0.35.5": true,
+    "sharp@0.34.5": true,
+    "@vvago/vale@3.24.0": true
+  }
+}

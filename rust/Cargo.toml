@@ -1,0 +1,9 @@
+[workspace]
+members = ["crates/value", "crates/cli", "crates/engine", "crates/processors", "crates/platform", "crates/munki", "crates/helpers", "xtask"]
+exclude = ["vendor/fancy-regex"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"

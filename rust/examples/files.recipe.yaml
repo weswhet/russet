@@ -1,0 +1,14 @@
+Identifier: org.autopkg.rust.example.files
+Description: Create and locate a text file in an isolated development cache.
+Input:
+  NAME: Rust example
+Process:
+  - Processor: EndOfCheckPhase
+  - Processor: FileCreator
+    Arguments:
+      file_path: '%RECIPE_CACHE_DIR%/example.txt'
+      file_content: 'Hello from %NAME%.'
+      file_mode: '0644'
+  - Processor: FileFinder
+    Arguments:
+      pattern: '%RECIPE_CACHE_DIR%/*.txt'

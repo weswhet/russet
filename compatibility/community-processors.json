@@ -1,0 +1,1489 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/autopkg/recipes",
+  "reference_commit": "0f7b61ab061c77710be4140c404910a11f89fc7b",
+  "processors": {
+    "AdobeAcrobatProUpdateInfoProvider": {
+      "description": "Provides URL to the latest Adobe Acrobat Pro release.",
+      "input_variables": {
+        "target_os": {
+          "required": false,
+          "description": "OS X version. Defaults to 10.9"
+        },
+        "major_version": {
+          "required": true,
+          "description": "Major version. Currently supports: 9, 10, 11"
+        },
+        "version": {
+          "required": false,
+          "description": "Update version number. Defaults to latest."
+        },
+        "munki_update_name": {
+          "required": false,
+          "description": "Name for the update in Munki. Defaults to AdobeAcrobatPro{MAJREV}_Update"
+        }
+      },
+      "output_variables": {
+        "url": {
+          "description": "URL to the latest Adobe Reader release."
+        },
+        "version": {
+          "description": "Version for this update."
+        },
+        "additional_pkginfo": {
+          "description": "A pkginfo possibly containing additional 'requires' items."
+        }
+      },
+      "lifecycle": {}
+    },
+    "AdobeFlashURLProvider": {
+      "description": "Provides URL to the latest Adobe Flash Player release.",
+      "input_variables": {
+        "url": {
+          "required": false,
+          "description": "Override URL. If provided, this processor just returns without doing anything."
+        },
+        "version": {
+          "required": false,
+          "description": "Specific version to download. If not defined, defaults to latest version."
+        },
+        "request_headers": {
+          "description": "Optional dictionary of headers to include with the download request.",
+          "required": false
+        },
+        "curl_opts": {
+          "description": "Optional array of curl options to include with the download request.",
+          "required": false
+        },
+        "CURL_PATH": {
+          "required": false,
+          "default": "/usr/bin/curl",
+          "description": "Path to curl binary. Defaults to /usr/bin/curl."
+        }
+      },
+      "output_variables": {
+        "url": {
+          "description": "URL to the latest Adobe Flash Player release."
+        }
+      },
+      "lifecycle": {}
+    },
+    "AdobeReaderRepackager": {
+      "description": "Mounts an Adobe Reader XI install dmg and repackages the AdobeReader.pkg\n    for automated deployment.",
+      "input_variables": {
+        "dmg_path": {
+          "required": true,
+          "description": "Path to a dmg containing the Adobe Reader installer."
+        }
+      },
+      "output_variables": {
+        "pkg_path": "Path to the repackaged package."
+      },
+      "lifecycle": {}
+    },
+    "AdobeReaderURLProvider": {
+      "description": "Provides URL to the latest Adobe Acrobat Reader DC release.",
+      "input_variables": {
+        "os_version": {
+          "required": false,
+          "description": "macOS version to use in URL search. Defaults to 'Mac OS 10.14.0'."
+        },
+        "base_url": {
+          "required": false,
+          "description": "Default is https://rdc.adobe.io/reader/products?os={OS_VERSION}&api_key=dc-get-adobereader-cdn"
+        },
+        "download_url": {
+          "required": false,
+          "description": "Default is https://rdc.adobe.io/reader/downloadUrl?name={DISPLAY_NAME}&os={OS_VERSION}&api_key=dc-get-adobereader-cdn"
+        }
+      },
+      "output_variables": {
+        "url": {
+          "description": "URL to the latest Adobe Acrobat Reader DC release."
+        },
+        "filename": {
+          "description": "The Adobe provided filename to save the download as."
+        },
+        "version": {
+          "description": "Version of the latest Adobe Acrobat Reader DC release."
+        }
+      },
+      "lifecycle": {}
+    },
+    "AutoPkgSourceFinder": {
+      "description": "Finds the root autopkg-autopkg-foo folder from the expanded autopkg zip\n    archive",
+      "input_variables": {
+        "input_path": {
+          "required": true,
+          "description": "Path the zip archive was expanded to."
+        }
+      },
+      "output_variables": {
+        "autopkg_path": {
+          "description": "Root path of expanded autopkg archive."
+        }
+      },
+      "lifecycle": {}
+    },
+    "GenerateRelocatablePython": {
+      "description": "Finds the root autopkg-autopkg-foo folder from the expanded autopkg zip\n    archive",
+      "input_variables": {
+        "requirements_path": {
+          "required": true,
+          "description": "Path to the Requirements.txt file to use."
+        },
+        "python_version": {
+          "required": true,
+          "description": "What version of Python to build."
+        },
+        "os_version": {
+          "required": true,
+          "description": "What OS to fetch."
+        },
+        "upgrade_pip": {
+          "required": false,
+          "description": "Whether to upgrade pip to the latest version."
+        },
+        "relocatable_python_sha": {
+          "required": false,
+          "description": "Git commit SHA to check out after cloning relocatable-python. Pin this to a known-good commit to avoid surprise breakage from upstream changes."
+        }
+      },
+      "output_variables": {
+        "python_path": {
+          "description": "Path to built Python framework."
+        }
+      },
+      "lifecycle": {}
+    },
+    "BarebonesURLProvider": {
+      "description": "Provides a version and dmg download for the Barebones product given.",
+      "input_variables": {
+        "product_name": {
+          "required": true,
+          "description": "Product to fetch URL for. One of 'bbedit', 'yojimbo'."
+        }
+      },
+      "output_variables": {
+        "version": {
+          "description": "Version of the product."
+        },
+        "url": {
+          "description": "Download URL."
+        },
+        "minimum_os_version": {
+          "description": "Minimum OS version supported according to product metadata."
+        }
+      },
+      "lifecycle": {}
+    },
+    "MSOfficeMacURLandUpdateInfoProvider": {
+      "description": "Provides a download URL and update info for Microsoft Mac products, from\n    the Microsoft AutoUpdate manifest feed or, for Edge, the Edge Enterprise API.",
+      "input_variables": {
+        "product": {
+          "required": true,
+          "description": "Name of product to fetch, e.g. Excel."
+        },
+        "version": {
+          "required": false,
+          "default": "latest",
+          "description": "Update type to fetch. Supported values are: 'latest', 'latest-delta', 'latest-standalone'. Defaults to latest. Edge supports only 'latest'."
+        },
+        "munki_required_update_name": {
+          "required": false,
+          "default": "",
+          "description": "If the update is a delta, a 'requires' key will be set according to the minimum version defined in the MS metadata. If this key is set, this name will be used for the required item. If unset, NAME will be used."
+        },
+        "channel": {
+          "required": false,
+          "default": "Production",
+          "description": "Update feed channel that will be checked for updates. Defaults to Production, acceptable values are either a custom UUID or one of: Production, InsiderSlow, InsiderFast. Edge accepts only the named channels, which map to the Edge Enterprise API's Stable, Beta and Dev."
+        }
+      },
+      "output_variables": {
+        "additional_pkginfo": {
+          "description": "Some pkginfo fields extracted from the Microsoft metadata."
+        },
+        "version": {
+          "description": "The version of the update as extracted from the Microsoft metadata."
+        },
+        "minimum_os_version": {
+          "description": "The minimum os version required by the update as extracted from the Microsoft metadata."
+        },
+        "minimum_version_for_delta": {
+          "description": "If this update is a delta, this value will be set to the minimum required application version to which this delta can be applied. Otherwise it will be an empty string."
+        },
+        "url": {
+          "description": "URL to the latest installer."
+        }
+      },
+      "lifecycle": {}
+    },
+    "MozillaURLProvider": {
+      "description": "Provides URL to the latest Firefox release.",
+      "input_variables": {
+        "product_name": {
+          "required": true,
+          "description": "Product to fetch URL for. One of: 'firefox', 'firefox-esr', 'firefox-beta', 'firefox-nightly', 'thunderbird', 'thunderbird-beta'."
+        },
+        "release": {
+          "required": false,
+          "default": "latest",
+          "description": "Which release to download. Examples: 'latest', 79.0"
+        },
+        "locale": {
+          "required": false,
+          "default": "en-US",
+          "description": "Which localization to download, default is 'en-US'."
+        },
+        "platform": {
+          "required": false,
+          "default": "osx",
+          "description": "Which platform/OS to download: 'osx' (default), 'linux', 'linux64', 'win', 'win64'."
+        },
+        "base_url": {
+          "required": false,
+          "description": "(Advanced) URL for downloads.  Default is 'https://download.mozilla.org/?product={product_release}-ssl&os={platform}&lang={locale}'.",
+          "default": "https://download.mozilla.org/?product={product_release}-ssl&os={platform}&lang={locale}"
+        },
+        "versions_base_url": {
+          "required": false,
+          "description": "(Advanced) URL for product release version information.  Default is 'https://product-details.mozilla.org/1.0/{product}_versions.json'.",
+          "default": "https://product-details.mozilla.org/1.0/{product}_versions.json"
+        }
+      },
+      "output_variables": {
+        "url": {
+          "description": "URL to the latest Mozilla product release."
+        },
+        "moz_version": {
+          "description": "Resolved version number for a release normalized to a 3 or 4 digit semantic version. For example:  'latest-beta' -> 79.0b9 -> 79.0.0.9"
+        },
+        "moz_original_version": {
+          "description": "Pre-normalized version number from the product versions information."
+        }
+      },
+      "lifecycle": {}
+    },
+    "MakeCatalogsProcessor": {
+      "description": "Runs makecatalogs on a munki repo",
+      "input_variables": {
+        "MUNKI_REPO": {
+          "required": true,
+          "description": "Munki repo URL."
+        },
+        "MUNKI_REPO_PLUGIN": {
+          "required": false,
+          "description": "Name of a Munki repo plugin. Defaults to FileRepo"
+        },
+        "force_rebuild": {
+          "required": false,
+          "description": "If not false or empty or undefined, force a makecatalogs run."
+        }
+      },
+      "output_variables": {
+        "makecatalogs_resultcode": {
+          "description": "Result code from the makecatalogs operation."
+        },
+        "makecatalogs_stderr": {
+          "description": "Error output (if any) from makecatalogs."
+        }
+      },
+      "lifecycle": {}
+    },
+    "PuppetlabsProductsURLProvider": {
+      "description": "Extracts a URL for a Puppet Labs item.",
+      "input_variables": {
+        "product_name": {
+          "required": true,
+          "description": "Product to fetch URL for. One of 'puppet', 'facter', 'hiera',or 'agent'."
+        },
+        "get_version": {
+          "required": false,
+          "description": "Specific version to request. Defaults to 'latest', which automatically finds the highest available release version."
+        },
+        "get_os_version": {
+          "required": false,
+          "description": "When fetching the puppet-agent, collection-style pkg, designates OS. Defaults to '10.10'. Currently only 10.9 or 10.10 packages are available."
+        }
+      },
+      "output_variables": {
+        "version": {
+          "description": "Version of the product."
+        },
+        "url": {
+          "description": "Download URL."
+        }
+      },
+      "lifecycle": {}
+    },
+    "SassafrasK2ClientCustomizer": {
+      "description": "Given a flat pkg K2Client installer and the k2clientconfig\n    script, run the k2clientconfig script with customizable options.",
+      "input_variables": {
+        "base_pkg_path": {
+          "required": true,
+          "description": "Path to a K2Client.pkg installer to be modified."
+        },
+        "k2clientconfig_options": {
+          "required": true,
+          "description": "String of command arguments to be passed to k2clientconfig."
+        },
+        "k2clientconfig_path": {
+          "required": true,
+          "description": "Full path to a k2clientconfig that's written for modifying flat packages."
+        }
+      },
+      "output_variables": {},
+      "lifecycle": {}
+    }
+  },
+  "ordering": {
+    "AdobeAcrobatProUpdateInfoProvider": {
+      "description": {
+        "display": "Provides URL to the latest Adobe Acrobat Pro release."
+      },
+      "input_variables": [
+        [
+          "target_os",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "OS X version. Defaults to 10.9"
+              }
+            ]
+          ]
+        ],
+        [
+          "major_version",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Major version. Currently supports: 9, 10, 11"
+              }
+            ]
+          ]
+        ],
+        [
+          "version",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Update version number. Defaults to latest."
+              }
+            ]
+          ]
+        ],
+        [
+          "munki_update_name",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Name for the update in Munki. Defaults to AdobeAcrobatPro{MAJREV}_Update"
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "URL to the latest Adobe Reader release."
+              }
+            ]
+          ]
+        ],
+        [
+          "version",
+          [
+            [
+              "description",
+              {
+                "display": "Version for this update."
+              }
+            ]
+          ]
+        ],
+        [
+          "additional_pkginfo",
+          [
+            [
+              "description",
+              {
+                "display": "A pkginfo possibly containing additional 'requires' items."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "AdobeFlashURLProvider": {
+      "description": {
+        "display": "Provides URL to the latest Adobe Flash Player release."
+      },
+      "input_variables": [
+        [
+          "url",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Override URL. If provided, this processor just returns without doing anything."
+              }
+            ]
+          ]
+        ],
+        [
+          "version",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Specific version to download. If not defined, defaults to latest version."
+              }
+            ]
+          ]
+        ],
+        [
+          "request_headers",
+          [
+            [
+              "description",
+              {
+                "display": "Optional dictionary of headers to include with the download request."
+              }
+            ],
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ]
+          ]
+        ],
+        [
+          "curl_opts",
+          [
+            [
+              "description",
+              {
+                "display": "Optional array of curl options to include with the download request."
+              }
+            ],
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ]
+          ]
+        ],
+        [
+          "CURL_PATH",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "/usr/bin/curl"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Path to curl binary. Defaults to /usr/bin/curl."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "URL to the latest Adobe Flash Player release."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "AdobeReaderRepackager": {
+      "description": {
+        "display": "Mounts an Adobe Reader XI install dmg and repackages the AdobeReader.pkg\n    for automated deployment."
+      },
+      "input_variables": [
+        [
+          "dmg_path",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Path to a dmg containing the Adobe Reader installer."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "pkg_path",
+          {
+            "display": "Path to the repackaged package."
+          }
+        ]
+      ]
+    },
+    "AdobeReaderURLProvider": {
+      "description": {
+        "display": "Provides URL to the latest Adobe Acrobat Reader DC release."
+      },
+      "input_variables": [
+        [
+          "os_version",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "macOS version to use in URL search. Defaults to 'Mac OS 10.14.0'."
+              }
+            ]
+          ]
+        ],
+        [
+          "base_url",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Default is https://rdc.adobe.io/reader/products?os={OS_VERSION}&api_key=dc-get-adobereader-cdn"
+              }
+            ]
+          ]
+        ],
+        [
+          "download_url",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Default is https://rdc.adobe.io/reader/downloadUrl?name={DISPLAY_NAME}&os={OS_VERSION}&api_key=dc-get-adobereader-cdn"
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "URL to the latest Adobe Acrobat Reader DC release."
+              }
+            ]
+          ]
+        ],
+        [
+          "filename",
+          [
+            [
+              "description",
+              {
+                "display": "The Adobe provided filename to save the download as."
+              }
+            ]
+          ]
+        ],
+        [
+          "version",
+          [
+            [
+              "description",
+              {
+                "display": "Version of the latest Adobe Acrobat Reader DC release."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "AutoPkgSourceFinder": {
+      "description": {
+        "display": "Finds the root autopkg-autopkg-foo folder from the expanded autopkg zip\n    archive"
+      },
+      "input_variables": [
+        [
+          "input_path",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Path the zip archive was expanded to."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "autopkg_path",
+          [
+            [
+              "description",
+              {
+                "display": "Root path of expanded autopkg archive."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "GenerateRelocatablePython": {
+      "description": {
+        "display": "Finds the root autopkg-autopkg-foo folder from the expanded autopkg zip\n    archive"
+      },
+      "input_variables": [
+        [
+          "requirements_path",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Path to the Requirements.txt file to use."
+              }
+            ]
+          ]
+        ],
+        [
+          "python_version",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "What version of Python to build."
+              }
+            ]
+          ]
+        ],
+        [
+          "os_version",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "What OS to fetch."
+              }
+            ]
+          ]
+        ],
+        [
+          "upgrade_pip",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Whether to upgrade pip to the latest version."
+              }
+            ]
+          ]
+        ],
+        [
+          "relocatable_python_sha",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Git commit SHA to check out after cloning relocatable-python. Pin this to a known-good commit to avoid surprise breakage from upstream changes."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "python_path",
+          [
+            [
+              "description",
+              {
+                "display": "Path to built Python framework."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "BarebonesURLProvider": {
+      "description": {
+        "display": "Provides a version and dmg download for the Barebones product given."
+      },
+      "input_variables": [
+        [
+          "product_name",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Product to fetch URL for. One of 'bbedit', 'yojimbo'."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "version",
+          [
+            [
+              "description",
+              {
+                "display": "Version of the product."
+              }
+            ]
+          ]
+        ],
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "Download URL."
+              }
+            ]
+          ]
+        ],
+        [
+          "minimum_os_version",
+          [
+            [
+              "description",
+              {
+                "display": "Minimum OS version supported according to product metadata."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "MSOfficeMacURLandUpdateInfoProvider": {
+      "description": {
+        "display": "Provides a download URL and update info for Microsoft Mac products, from\n    the Microsoft AutoUpdate manifest feed or, for Edge, the Edge Enterprise API."
+      },
+      "input_variables": [
+        [
+          "product",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Name of product to fetch, e.g. Excel."
+              }
+            ]
+          ]
+        ],
+        [
+          "version",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "latest"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Update type to fetch. Supported values are: 'latest', 'latest-delta', 'latest-standalone'. Defaults to latest. Edge supports only 'latest'."
+              }
+            ]
+          ]
+        ],
+        [
+          "munki_required_update_name",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": ""
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "If the update is a delta, a 'requires' key will be set according to the minimum version defined in the MS metadata. If this key is set, this name will be used for the required item. If unset, NAME will be used."
+              }
+            ]
+          ]
+        ],
+        [
+          "channel",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "Production"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Update feed channel that will be checked for updates. Defaults to Production, acceptable values are either a custom UUID or one of: Production, InsiderSlow, InsiderFast. Edge accepts only the named channels, which map to the Edge Enterprise API's Stable, Beta and Dev."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "additional_pkginfo",
+          [
+            [
+              "description",
+              {
+                "display": "Some pkginfo fields extracted from the Microsoft metadata."
+              }
+            ]
+          ]
+        ],
+        [
+          "version",
+          [
+            [
+              "description",
+              {
+                "display": "The version of the update as extracted from the Microsoft metadata."
+              }
+            ]
+          ]
+        ],
+        [
+          "minimum_os_version",
+          [
+            [
+              "description",
+              {
+                "display": "The minimum os version required by the update as extracted from the Microsoft metadata."
+              }
+            ]
+          ]
+        ],
+        [
+          "minimum_version_for_delta",
+          [
+            [
+              "description",
+              {
+                "display": "If this update is a delta, this value will be set to the minimum required application version to which this delta can be applied. Otherwise it will be an empty string."
+              }
+            ]
+          ]
+        ],
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "URL to the latest installer."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "MozillaURLProvider": {
+      "description": {
+        "display": "Provides URL to the latest Firefox release."
+      },
+      "input_variables": [
+        [
+          "product_name",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Product to fetch URL for. One of: 'firefox', 'firefox-esr', 'firefox-beta', 'firefox-nightly', 'thunderbird', 'thunderbird-beta'."
+              }
+            ]
+          ]
+        ],
+        [
+          "release",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "latest"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Which release to download. Examples: 'latest', 79.0"
+              }
+            ]
+          ]
+        ],
+        [
+          "locale",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "en-US"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Which localization to download, default is 'en-US'."
+              }
+            ]
+          ]
+        ],
+        [
+          "platform",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "osx"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Which platform/OS to download: 'osx' (default), 'linux', 'linux64', 'win', 'win64'."
+              }
+            ]
+          ]
+        ],
+        [
+          "base_url",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "(Advanced) URL for downloads.  Default is 'https://download.mozilla.org/?product={product_release}-ssl&os={platform}&lang={locale}'."
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "https://download.mozilla.org/?product={product_release}-ssl&os={platform}&lang={locale}"
+              }
+            ]
+          ]
+        ],
+        [
+          "versions_base_url",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "(Advanced) URL for product release version information.  Default is 'https://product-details.mozilla.org/1.0/{product}_versions.json'."
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "https://product-details.mozilla.org/1.0/{product}_versions.json"
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "URL to the latest Mozilla product release."
+              }
+            ]
+          ]
+        ],
+        [
+          "moz_version",
+          [
+            [
+              "description",
+              {
+                "display": "Resolved version number for a release normalized to a 3 or 4 digit semantic version. For example:  'latest-beta' -> 79.0b9 -> 79.0.0.9"
+              }
+            ]
+          ]
+        ],
+        [
+          "moz_original_version",
+          [
+            [
+              "description",
+              {
+                "display": "Pre-normalized version number from the product versions information."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "MakeCatalogsProcessor": {
+      "description": {
+        "display": "Runs makecatalogs on a munki repo"
+      },
+      "input_variables": [
+        [
+          "MUNKI_REPO",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Munki repo URL."
+              }
+            ]
+          ]
+        ],
+        [
+          "MUNKI_REPO_PLUGIN",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Name of a Munki repo plugin. Defaults to FileRepo"
+              }
+            ]
+          ]
+        ],
+        [
+          "force_rebuild",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "If not false or empty or undefined, force a makecatalogs run."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "makecatalogs_resultcode",
+          [
+            [
+              "description",
+              {
+                "display": "Result code from the makecatalogs operation."
+              }
+            ]
+          ]
+        ],
+        [
+          "makecatalogs_stderr",
+          [
+            [
+              "description",
+              {
+                "display": "Error output (if any) from makecatalogs."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "PuppetlabsProductsURLProvider": {
+      "description": {
+        "display": "Extracts a URL for a Puppet Labs item."
+      },
+      "input_variables": [
+        [
+          "product_name",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Product to fetch URL for. One of 'puppet', 'facter', 'hiera',or 'agent'."
+              }
+            ]
+          ]
+        ],
+        [
+          "get_version",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Specific version to request. Defaults to 'latest', which automatically finds the highest available release version."
+              }
+            ]
+          ]
+        ],
+        [
+          "get_os_version",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "When fetching the puppet-agent, collection-style pkg, designates OS. Defaults to '10.10'. Currently only 10.9 or 10.10 packages are available."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "version",
+          [
+            [
+              "description",
+              {
+                "display": "Version of the product."
+              }
+            ]
+          ]
+        ],
+        [
+          "url",
+          [
+            [
+              "description",
+              {
+                "display": "Download URL."
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "SassafrasK2ClientCustomizer": {
+      "description": {
+        "display": "Given a flat pkg K2Client installer and the k2clientconfig\n    script, run the k2clientconfig script with customizable options."
+      },
+      "input_variables": [
+        [
+          "base_pkg_path",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Path to a K2Client.pkg installer to be modified."
+              }
+            ]
+          ]
+        ],
+        [
+          "k2clientconfig_options",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "String of command arguments to be passed to k2clientconfig."
+              }
+            ]
+          ]
+        ],
+        [
+          "k2clientconfig_path",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Full path to a k2clientconfig that's written for modifying flat packages."
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": []
+    }
+  },
+  "aliases": {
+    "com.github.autopkg.AutoPkgGitMaster/GenerateRelocatablePython": "GenerateRelocatablePython"
+  },
+  "sources": {
+    "AdobeAcrobatProUpdateInfoProvider": {
+      "path": "AdobeAcrobatPro/AdobeAcrobatProUpdateInfoProvider.py",
+      "sha256": "8c0c14cc9bda3fdd6b2ed343e25037cb3708163a1fbd5cde8ca971cbb5e9f5f6"
+    },
+    "AdobeFlashURLProvider": {
+      "path": "AdobeFlashPlayer/AdobeFlashURLProvider.py",
+      "sha256": "ed9aa63320bc6e9e93478d80a3fa015cc18be9900fe46848f2d1b595a09c23d3"
+    },
+    "AdobeReaderRepackager": {
+      "path": "AdobeReader/AdobeReaderRepackager.py",
+      "sha256": "298c73d80e650bde3878a34e1d5c69d51309f0ce8cb085ed6d81aad9b1c75ea5"
+    },
+    "AdobeReaderURLProvider": {
+      "path": "AdobeReader/AdobeReaderURLProvider.py",
+      "sha256": "f72864ef777f92b182fc3fcdabc212e6e8f4d544888e6308ddcdbdd8cd3e6fb6"
+    },
+    "AutoPkgSourceFinder": {
+      "path": "AutoPkg/AutoPkgSourceFinder.py",
+      "sha256": "e0501914d25a41ffd3c2efc6b637b34a90246e8b4966303aa1185c962e20d249"
+    },
+    "GenerateRelocatablePython": {
+      "path": "AutoPkg/GenerateRelocatablePython.py",
+      "sha256": "f16c86b3e0787d54fcda1e43080d721e1fa61e293a9534bbb7342a0d9eb6f1be"
+    },
+    "BarebonesURLProvider": {
+      "path": "Barebones/BarebonesURLProvider.py",
+      "sha256": "08391cfd4a06f262afd4e01156cd4fd204f45c31779c88c490f44a08f3277718"
+    },
+    "MSOfficeMacURLandUpdateInfoProvider": {
+      "path": "MSOfficeUpdates/MSOfficeMacURLandUpdateInfoProvider.py",
+      "sha256": "c38857373529d32666a5d389748c3f1439a97153021b5de495715aa7925f3937"
+    },
+    "MozillaURLProvider": {
+      "path": "Mozilla/MozillaURLProvider.py",
+      "sha256": "c4ce035b1a629c4925a80003899fcf39480e5224b3015613440f07ab96211f17"
+    },
+    "MakeCatalogsProcessor": {
+      "path": "Munki/MakeCatalogsProcessor.py",
+      "sha256": "158016ad4f973eb08eec55e2e25346eea32bd610ab4c46da801899bfc16b8292"
+    },
+    "PuppetlabsProductsURLProvider": {
+      "path": "Puppetlabs/PuppetlabsProductsURLProvider.py",
+      "sha256": "bc80b4e35e2d6d147dd9dbc5b0a1f069a2669a105eaa18c573ee3dde94d7e54f"
+    },
+    "SassafrasK2ClientCustomizer": {
+      "path": "SassafrasK2Client/SassafrasK2ClientCustomizer.py",
+      "sha256": "e9a7a7d415631d331b6d0fceaec6508369443d1cfff796055d9e4e3f6e6f72ee"
+    }
+  }
+}

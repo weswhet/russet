@@ -1,0 +1,4733 @@
+{
+  "FindAndReplace": {
+    "description": {
+      "display": "Searches the provided 'input_string' and replaces instances of the 'find'\n    string with the 'replace' string.\n\n    Returns 'output_string' (or other variable specified by 'result_output_var_name')\n    containing the result of the find/replace operation.\n\n    "
+    },
+    "input_variables": [
+      [
+        "input_string",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The string you want to perform find/replace on."
+            }
+          ]
+        ]
+      ],
+      [
+        "find",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "This string, if found, will be replaced with the \"replace\" string."
+            }
+          ]
+        ]
+      ],
+      [
+        "replace",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The string that you want to replace the \"find\" string with."
+            }
+          ]
+        ]
+      ],
+      [
+        "result_output_var_name",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The name of the output variable containing the result of the find/replace operation. If not specified then a default of \"output_string\" will \"be used."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "output_string"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "output_string",
+        [
+          [
+            "description",
+            {
+              "display": "The result of find/replace on the input string."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "URLDownloaderPython": {
+    "description": {
+      "display": "This is meant to be a pure python replacement for URLDownloader\n    See: https://github.com/autopkg/autopkg/blob/master/Code/autopkglib/URLDownloader.py\n    "
+    },
+    "input_variables": [
+      [
+        "url",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The URL to download."
+            }
+          ]
+        ]
+      ],
+      [
+        "request_headers",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional dictionary of headers to include with the download request. Keys are header names and values are header values."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_dir",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The directory where the file will be downloaded to. Defaults to RECIPE_CACHE_DIR/downloads."
+            }
+          ]
+        ]
+      ],
+      [
+        "filename",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Filename to override the URL's tail."
+            }
+          ]
+        ]
+      ],
+      [
+        "prefetch_filename",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If True, URLDownloader attempts to determine filename from HTTP headers downloaded before the file itself. 'prefetch_filename' overrides 'filename' option. Filename is determined from the first available source of information in this order:\n\t1. Content-Disposition header\n\t2. Location header\n\t3. 'filename' option (if set)\n\t4. last part of 'url'.  \n'prefetch_filename' is useful for URLs with redirects."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "CHECK_FILESIZE_ONLY",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If True, a server's ETag and Last-Modified headers will not be checked to verify whether a download is newer than a cached item, and only Content-Length (filesize) will be used. This is useful for cases where a download always redirects to different mirrors, which could cause items to be needlessly re-downloaded. Defaults to False."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "PKG",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Local path to the pkg/dmg we'd otherwise download. If provided, the download is skipped and we just use this package or disk image."
+            }
+          ]
+        ]
+      ],
+      [
+        "COMPUTE_HASHES",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Determine whether to compute md5, sha1, and sha256 hashes of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "HEADERS_TO_TEST",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "List of HTTP headers compared against the previous download to detect changes. Setting this replaces the default list for comparison purposes; if 'CHECK_FILESIZE_ONLY' is enabled, only Content-Length is compared. The default headers are always recorded in .info.json regardless, so narrowing this list does not discard cached metadata."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "['ETag', 'Last-Modified', 'Content-Length']"
+            }
+          ]
+        ]
+      ],
+      [
+        "DOWNLOAD_MISSING_FILE",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If the file is missing but matching metadata is present, download the file again. Defaults to True as most current recipes expect the files to be present. This re-fetch does not mark the item as changed (download_changed stays false); download_changed reflects the remote resource only. Omit the key to use the default; a blank string disables it. Note that a recipe Input of null resolves to a blank string during variable substitution, and so disables it."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "True"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pathname",
+        [
+          [
+            "description",
+            {
+              "display": "Path to the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "last_modified",
+        [
+          [
+            "description",
+            {
+              "display": "last-modified header for the downloaded item."
+            }
+          ]
+        ]
+      ],
+      [
+        "etag",
+        [
+          [
+            "description",
+            {
+              "display": "etag header for the downloaded item."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_url",
+        [
+          [
+            "description",
+            {
+              "display": "The final URL the file was downloaded from (after redirects)."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_changed",
+        [
+          [
+            "description",
+            {
+              "display": "Boolean indicating if the download has changed since the last time it was downloaded."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_info",
+        [
+          [
+            "description",
+            {
+              "display": "Info from previous or current download."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_size",
+        [
+          [
+            "description",
+            {
+              "display": "Size of the downloaded file in bytes."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_sha1",
+        [
+          [
+            "description",
+            {
+              "display": "SHA-1 hash of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_sha256",
+        [
+          [
+            "description",
+            {
+              "display": "SHA-256 hash of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_md5",
+        [
+          [
+            "description",
+            {
+              "display": "MD5 hash of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "url_downloader_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "CodeSignatureVerifier": {
+    "description": {
+      "display": "Verifies application bundle or installer package signature."
+    },
+    "input_variables": [
+      [
+        "DISABLE_CODE_SIGNATURE_VERIFICATION",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Skip this Processor step altogether. Typically this would be invoked using AutoPkg's defaults or via '--key' CLI options at the time of the run, rather than being defined explicitly within a recipe."
+            }
+          ]
+        ]
+      ],
+      [
+        "input_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "File path to an application bundle (.app) or installer package (.pkg or .mpkg). Can point to a path inside a .dmg which will be mounted."
+            }
+          ]
+        ]
+      ],
+      [
+        "expected_authority_names",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "An array of strings defining a list of expected certificate authority names. Complete list of the certificate name chain is required and it needs to be in the correct order. These can be determined by running: \n\tpkgutil --check-signature <path_to_pkg>\nRequired to verify an installer package unless DISABLE_CODE_SIGNATURE_VERIFICATION is set."
+            }
+          ]
+        ]
+      ],
+      [
+        "requirement",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A requirement string to pass to codesign. This should always be set to the original designated requirement of the application and can be determined by running:\n\t$ codesign --display -r- <path_to_app>\nRequired to verify an application unless DISABLE_CODE_SIGNATURE_VERIFICATION is set."
+            }
+          ]
+        ]
+      ],
+      [
+        "deep_verification",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Boolean value to specify that any nested code content will be recursively verified as to its full content. Note that this option is ignored if the current system version is less than 10.9."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "True"
+            }
+          ]
+        ]
+      ],
+      [
+        "strict_verification",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Boolean value to control the strictness of signature validation. Defaults to True, which passes '--strict' to codesign; set to False to pass '--no-strict'. Note that this option is ignored if the current system version is less than 10.11."
+            }
+          ]
+        ]
+      ],
+      [
+        "codesign_additional_arguments",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of additional argument strings to pass to codesign."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "PathDeleter": {
+    "description": {
+      "display": "Deletes file paths."
+    },
+    "input_variables": [
+      [
+        "path_list",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "An array or list of pathnames to be deleted, even if that list contains a single item."
+            }
+          ]
+        ]
+      ],
+      [
+        "continue_on_error",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If True, PathDeleter will not raise a ProcessorError when a path cannot be removed: a missing path is skipped, and a directory that still cannot be removed after retrying is force-removed with errors ignored. Useful for best-effort cleanup steps (e.g. clearing a cache) that should never fail the recipe run. Defaults to False, which preserves the original behavior of raising on any failure."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "StopProcessingIf": {
+    "description": {
+      "display": "Sets a variable to tell AutoPackager to stop processing a recipe if a\n    predicate comparison evaluates to true."
+    },
+    "input_variables": [
+      [
+        "predicate",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "NSPredicate-style comparison against an environment key. See https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Predicates/Articles/pSyntax.html"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "stop_processing_recipe",
+        [
+          [
+            "description",
+            {
+              "display": "Boolean. Should we stop processing the recipe?"
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "DeprecationWarning": {
+    "description": {
+      "display": "This processor outputs a warning that a recipe has been deprecated."
+    },
+    "input_variables": [
+      [
+        "warning_message",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Warning message to output."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "deprecation_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Summary of recipe deprecation warnings."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PlistEditor": {
+    "description": {
+      "display": "Merges data with an input plist (which can be empty) and writes a new\n    plist."
+    },
+    "input_variables": [
+      [
+        "input_plist_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "File path to a plist; empty or undefined to start with an empty plist."
+            }
+          ]
+        ]
+      ],
+      [
+        "output_plist_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "File path to a plist. Can be the same path as input_plist."
+            }
+          ]
+        ]
+      ],
+      [
+        "plist_data",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A dictionary of data to be merged with the data from the input plist."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "FileFinder": {
+    "description": {
+      "display": "Finds a filename for use in other Processors.\n\n    Currently only supports glob filename patterns.\n    "
+    },
+    "input_variables": [
+      [
+        "pattern",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Shell glob pattern to match files by"
+            }
+          ]
+        ]
+      ],
+      [
+        "find_method",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Type of pattern to match. Currently only supported type is \"glob\" (also the default)"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "glob"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "found_filename",
+        [
+          [
+            "description",
+            {
+              "display": "Full path of found filename"
+            }
+          ]
+        ]
+      ],
+      [
+        "dmg_found_filename",
+        [
+          [
+            "description",
+            {
+              "display": "DMG-relative path of found filename"
+            }
+          ]
+        ]
+      ],
+      [
+        "found_basename",
+        [
+          [
+            "description",
+            {
+              "display": "Basename of found filename"
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "URLTextSearcher": {
+    "description": {
+      "display": "Downloads a URL using curl and performs a regular expression match\n    on the text."
+    },
+    "input_variables": [
+      [
+        "re_pattern",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Regular expression (Python) to match against page."
+            }
+          ]
+        ]
+      ],
+      [
+        "url",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "URL to search for the regex pattern."
+            }
+          ]
+        ]
+      ],
+      [
+        "result_output_var_name",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The name of the output variable that is returned by the match. If not specified then a default of \"match\" will be used."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "match"
+            }
+          ]
+        ]
+      ],
+      [
+        "request_headers",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional dictionary of headers to include with the download request."
+            }
+          ]
+        ]
+      ],
+      [
+        "curl_opts",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional array of curl options to include with the download request."
+            }
+          ]
+        ]
+      ],
+      [
+        "re_flags",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional array of strings of Python regular expression flags. E.g. IGNORECASE."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "result_output_var_name",
+        [
+          [
+            "description",
+            {
+              "display": "First matched sub-pattern from input found on the fetched URL. Note the actual name of variable depends on the input variable \"result_output_var_name\" or is assigned a default of \"match.\""
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "DmgMounter": {
+    "description": {
+      "display": "Base class for Processors that need to mount disk images."
+    },
+    "input_variables": [],
+    "output_variables": []
+  },
+  "SignToolVerifier": {
+    "description": {
+      "display": "Verifies an authenticode signed installer using the Microsoft SDK\n    signtool executable."
+    },
+    "input_variables": [
+      [
+        "DISABLE_CODE_SIGNATURE_VERIFICATION",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Prevents this processor from running."
+            }
+          ]
+        ]
+      ],
+      [
+        "input_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "('File path to an `.msi` or `.exe` file for Authenticode verification',)"
+            }
+          ]
+        ]
+      ],
+      [
+        "signtool_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The path to signtool.exe. This varies between versions of the Windows SDK, so you can explicitly set that here in an override."
+            }
+          ],
+          [
+            "default",
+            {
+              "dynamic": "signtool_default_path"
+            }
+          ]
+        ]
+      ],
+      [
+        "additional_arguments",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of additional argument strings to pass to signtool. Note that currently '/v' and '/pa' are always passed."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "None"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "Symlinker": {
+    "description": {
+      "display": "Copies source_path to destination_path."
+    },
+    "input_variables": [
+      [
+        "source_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a file or directory to symlink."
+            }
+          ]
+        ]
+      ],
+      [
+        "destination_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to destination."
+            }
+          ]
+        ]
+      ],
+      [
+        "overwrite",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Whether the destination will be overwritten if necessary."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "Versioner": {
+    "description": {
+      "display": "Returns version information from a plist"
+    },
+    "input_variables": [
+      [
+        "input_plist_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "File path to a plist. Can point to a path inside a .dmg which will be mounted."
+            }
+          ]
+        ]
+      ],
+      [
+        "plist_version_key",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Which plist key to use; defaults to CFBundleShortVersionString"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "CFBundleShortVersionString"
+            }
+          ]
+        ]
+      ],
+      [
+        "skip_single_root_dir",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If this flag is set, `input_plist_path` points inside a zip file, and there is a single directory inside the zip file at the root of the archive, then interpret the path in the archive as being relative to that directory. Example:\n          input_plist_path=/tmp/some/archive.zip/path/to/version.plist\n          archive.zip\n            archive-abcdef/\n              path/to/version.plist\n        Will use `archive-abcdef/path/to/version.plist` as the final path. If there is more than one file or directory at the root, the Processor will fail."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "version",
+        [
+          [
+            "description",
+            {
+              "display": "Version of the item."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PkgPayloadUnpacker": {
+    "description": {
+      "display": "Unpacks a package payload."
+    },
+    "input_variables": [
+      [
+        "pkg_payload_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a payload from an expanded flat package or Archive.pax.gz in a bundle package."
+            }
+          ]
+        ]
+      ],
+      [
+        "destination_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Destination directory."
+            }
+          ]
+        ]
+      ],
+      [
+        "purge_destination",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Whether the contents of the destination directory will be removed before unpacking."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "PlistReader": {
+    "description": {
+      "display": "Extracts values from top-level keys in a plist file, and assigns to\n    arbitrary output variables. This behavior is different from other\n    processors that pre-define all their possible output variables.\n    As it is often used for versioning, it defaults to extracting\n    'CFBundleShortVersionString' to 'version'. This can be used as a replacement\n    for both the AppDmgVersioner and Versioner processors."
+    },
+    "input_variables": [
+      [
+        "info_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a plist to be read. If a path to a bundle (ie. a .app) is given, its Info.plist will be found and used. If the path is a folder, it will be searched and the first found bundle will be used. The path can also contain a dmg/iso file and it will be mounted."
+            }
+          ]
+        ]
+      ],
+      [
+        "plist_keys",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "('Dictionary of plist values to query. Key names should match a top-level key to read. Values should be the desired output variable name. Defaults to: ', \"{'CFBundleShortVersionString': 'version'}\")"
+            }
+          ],
+          [
+            "default",
+            [
+              [
+                "CFBundleShortVersionString",
+                {
+                  "display": "version"
+                }
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "plist_reader_output_variables",
+        [
+          [
+            "description",
+            {
+              "display": "Output variables per 'plist_keys' supplied as input. Note that this output variable is used as both a placeholder for documentation and for auditing purposes. One should use the actual named output variables as given as values to 'plist_keys' to refer to the output of this processor."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PkgExtractor": {
+    "description": {
+      "display": "Extracts the contents of a bundle-style pkg (possibly on a disk image)\n    to pkgroot."
+    },
+    "input_variables": [
+      [
+        "pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a package."
+            }
+          ]
+        ]
+      ],
+      [
+        "extract_root",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to where the new package root will be created."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "Installer": {
+    "description": {
+      "display": "Calls autopkginstalld to install a package."
+    },
+    "input_variables": [
+      [
+        "pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to the package to be installed. Can be inside a disk image."
+            }
+          ]
+        ]
+      ],
+      [
+        "new_package_request",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "new_package_request is set by the PkgCreator processor to indicate that a new package was built. If this key is set in the environment and is False or empty the installation will be skipped."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_changed",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "download_changed is set by the URLDownloader processor to indicate that a new file was downloaded. If this key is set in the environment and is False or empty the installation will be skipped, unless new_package_request is non-False."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "install_result",
+        [
+          [
+            "description",
+            {
+              "display": "Result of install request."
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PkgRootCreator": {
+    "description": {
+      "display": "Creates a package root and a directory structure.\n    (Can also be used to create directory structures for other purposes.)"
+    },
+    "input_variables": [
+      [
+        "pkgroot",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to where the package root will be created."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkgdirs",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A dictionary of directories to be created inside the pkgroot, with their modes in octal form."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "MunkiImporter": {
+    "description": {
+      "display": "Imports a pkg or dmg to the Munki repo."
+    },
+    "input_variables": [
+      [
+        "MUNKI_REPO",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a mounted Munki repo."
+            }
+          ]
+        ]
+      ],
+      [
+        "MUNKI_REPO_PLUGIN",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Munki repo plugin. Defaults to FileRepo. Munki must be installed and available  at MUNKILIB_DIR if a plugin other than FileRepo is specified."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "FileRepo"
+            }
+          ]
+        ]
+      ],
+      [
+        "MUNKILIB_DIR",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Directory path that contains munkilib. Defaults to /usr/local/munki"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "/usr/local/munki"
+            }
+          ]
+        ]
+      ],
+      [
+        "force_munki_repo_lib",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "When True, munki code libraries will be utilized when the FileRepo plugin is used. Munki must be installed and available at MUNKILIB_DIR"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a pkg or dmg to import."
+            }
+          ]
+        ]
+      ],
+      [
+        "munkiimport_pkgname",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Corresponds to --pkgname option to munkiimport."
+            }
+          ]
+        ]
+      ],
+      [
+        "munkiimport_appname",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Corresponds to --appname option to munkiimport."
+            }
+          ]
+        ]
+      ],
+      [
+        "repo_subdirectory",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The subdirectory under pkgs to which the item will be copied, and under pkgsinfo where the pkginfo will be created."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkginfo",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dictionary of pkginfo keys to copy to generated pkginfo."
+            }
+          ]
+        ]
+      ],
+      [
+        "extract_icon",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If not empty, attempt to extract and import an icon from the installer item. Munki must be installed and available at MUNKILIB_DIR."
+            }
+          ]
+        ]
+      ],
+      [
+        "force_munkiimport",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If not False or Null, causes the pkg/dmg to be imported even if there is a matching pkg already in the repo."
+            }
+          ]
+        ]
+      ],
+      [
+        "additional_makepkginfo_options",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of additional command-line options that will be inserted when calling 'makepkginfo'."
+            }
+          ]
+        ]
+      ],
+      [
+        "version_comparison_key",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "String to set 'version_comparison_key' for any generated installs items."
+            }
+          ]
+        ]
+      ],
+      [
+        "uninstaller_pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to an uninstaller pkg, supported for Adobe installer_type items."
+            }
+          ]
+        ]
+      ],
+      [
+        "MUNKI_PKGINFO_FILE_EXTENSION",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Extension for output pkginfo files. Default is 'plist'."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "plist"
+            }
+          ]
+        ]
+      ],
+      [
+        "metadata_additions",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A dictionary that will be merged with the pkginfo _metadata.  Unique keys will be added, but overlapping keys will replace existing values."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pkginfo_repo_path",
+        [
+          [
+            "description",
+            {
+              "display": "The repo path where the pkginfo was written. Empty if item not imported."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_repo_path",
+        [
+          [
+            "description",
+            {
+              "display": "The repo path where the pkg was written. Empty if item not imported."
+            }
+          ]
+        ]
+      ],
+      [
+        "munki_info",
+        [
+          [
+            "description",
+            {
+              "display": "The pkginfo property list. Empty if item not imported."
+            }
+          ]
+        ]
+      ],
+      [
+        "munki_repo_changed",
+        [
+          [
+            "description",
+            {
+              "display": "True if item was imported."
+            }
+          ]
+        ]
+      ],
+      [
+        "munki_importer_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PackageRequired": {
+    "description": {
+      "display": "Raises a ProcessorError if the PKG variable doesn't exist."
+    },
+    "input_variables": [],
+    "output_variables": []
+  },
+  "URLDownloader": {
+    "description": {
+      "display": "Downloads a URL to the specified download_dir using curl."
+    },
+    "input_variables": [
+      [
+        "url",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The URL to download."
+            }
+          ]
+        ]
+      ],
+      [
+        "request_headers",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional dictionary of headers to include with the download request."
+            }
+          ]
+        ]
+      ],
+      [
+        "curl_opts",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional array of options to include with the download request."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_dir",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The directory where the file will be downloaded to. Defaults to RECIPE_CACHE_DIR/downloads."
+            }
+          ]
+        ]
+      ],
+      [
+        "filename",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Filename to override the URL's tail."
+            }
+          ]
+        ]
+      ],
+      [
+        "prefetch_filename",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If True, URLDownloader attempts to determine filename from HTTP headers downloaded before the file itself. 'prefetch_filename' overrides 'filename' option. Filename is determined from the first available source of information in this order:\n\t1. Content-Disposition header\n\t2. Location header\n\t3. 'filename' option (if set)\n\t4. last part of 'url'.  \n'prefetch_filename' is useful for URLs with redirects."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "CHECK_FILESIZE_ONLY",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If True, a server's ETag and Last-Modified headers will not be checked to verify whether a download is newer than a cached item, and only Content-Length (filesize) will be used. This is useful for cases where a download always redirects to different mirrors, which could cause items to be needlessly re-downloaded. Defaults to False."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "PKG",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Local path to the pkg/dmg we'd otherwise download. If provided, the download is skipped and we just use this package or disk image."
+            }
+          ]
+        ]
+      ],
+      [
+        "COMPUTE_HASHES",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Determine whether to compute md5, sha1, and sha256 hashes of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "HEADERS_TO_TEST",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "List of HTTP headers compared against the previous download to detect changes. Setting this replaces the default list for comparison purposes; if 'CHECK_FILESIZE_ONLY' is enabled, only Content-Length is compared. The default headers are always recorded in .info.json regardless, so narrowing this list does not discard cached metadata."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "['ETag', 'Last-Modified', 'Content-Length']"
+            }
+          ]
+        ]
+      ],
+      [
+        "DOWNLOAD_MISSING_FILE",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If the file is missing but matching metadata is present, download the file again. Defaults to True as most current recipes expect the files to be present. This re-fetch does not mark the item as changed (download_changed stays false); download_changed reflects the remote resource only. Omit the key to use the default; a blank string disables it. Note that a recipe Input of null resolves to a blank string during variable substitution, and so disables it."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "True"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pathname",
+        [
+          [
+            "description",
+            {
+              "display": "Path to the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "last_modified",
+        [
+          [
+            "description",
+            {
+              "display": "last-modified header for the downloaded item."
+            }
+          ]
+        ]
+      ],
+      [
+        "etag",
+        [
+          [
+            "description",
+            {
+              "display": "etag header for the downloaded item."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_url",
+        [
+          [
+            "description",
+            {
+              "display": "The final URL the file was downloaded from (after redirects)."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_changed",
+        [
+          [
+            "description",
+            {
+              "display": "Boolean indicating if the download has changed since the last time it was downloaded."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_info",
+        [
+          [
+            "description",
+            {
+              "display": "Info from previous or current download."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_size",
+        [
+          [
+            "description",
+            {
+              "display": "Size of the downloaded file in bytes."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_sha1",
+        [
+          [
+            "description",
+            {
+              "display": "SHA-1 hash of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_sha256",
+        [
+          [
+            "description",
+            {
+              "display": "SHA-256 hash of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_md5",
+        [
+          [
+            "description",
+            {
+              "display": "MD5 hash of the downloaded file."
+            }
+          ]
+        ]
+      ],
+      [
+        "url_downloader_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "AppDmgVersioner": {
+    "description": {
+      "display": "Extracts bundle ID and version of app inside dmg."
+    },
+    "input_variables": [
+      [
+        "dmg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a dmg containing an app."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "app_name",
+        [
+          [
+            "description",
+            {
+              "display": "Name of app found at the root of the disk image. This does not search recursively for a matching app. If you need to specify a path, use Versioner instead."
+            }
+          ]
+        ]
+      ],
+      [
+        "bundleid",
+        [
+          [
+            "description",
+            {
+              "display": "Bundle identifier of the app."
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "description",
+            {
+              "display": "Version of the app."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "MunkiOptionalReceiptEditor": {
+    "description": {
+      "display": "Modifies the receipts key in a Munki pkginfo."
+    },
+    "input_variables": [
+      [
+        "pkginfo_repo_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The repo path where the pkginfo was written."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_ids_set_optional_true",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of package IDs to turn optional for Munki"
+            }
+          ]
+        ]
+      ],
+      [
+        "MUNKI_REPO",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a mounted Munki repo."
+            }
+          ]
+        ]
+      ],
+      [
+        "MUNKI_REPO_PLUGIN",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Munki repo plugin. Defaults to FileRepo. Munki must be installed and available at MUNKILIB_DIR if a plugin other than FileRepo is specified."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "FileRepo"
+            }
+          ]
+        ]
+      ],
+      [
+        "MUNKILIB_DIR",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Directory path that contains munkilib. Defaults to /usr/local/munki"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "/usr/local/munki"
+            }
+          ]
+        ]
+      ],
+      [
+        "force_munki_repo_lib",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "When True, munki code libraries will be utilized when the FileRepo plugin is used. Munki must be installed and available at MUNKILIB_DIR"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "repo_subdirectory",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The subdirectory under pkgs and pkgsinfo associated with this pkginfo."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "munki_info",
+        [
+          [
+            "description",
+            {
+              "display": "The updated pkginfo dictionary."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "GitHubReleasesInfoProvider": {
+    "description": {
+      "display": "Get metadata from the latest release from a GitHub project using the\n    GitHub Releases API.\n\n    "
+    },
+    "input_variables": [
+      [
+        "asset_regex",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If set, return only a release asset that matches this regex."
+            }
+          ]
+        ]
+      ],
+      [
+        "github_repo",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Name of a GitHub user and repo, ie. 'MagerValp/AutoDMG'"
+            }
+          ]
+        ]
+      ],
+      [
+        "include_prereleases",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If set to True or a non-empty value, include prereleases."
+            }
+          ]
+        ]
+      ],
+      [
+        "latest_only",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If True or a non-empty value, API call will fetch only the release marked as 'latest' in GitHub. May not play well with 'include_prereleases'."
+            }
+          ]
+        ]
+      ],
+      [
+        "sort_by_highest_tag_names",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Set this to have releases sorted by highest to lowest tag version. By default, releases are sorted descending by date posted. This changes this behavior for cases where an 'older' release may be posted later."
+            }
+          ]
+        ]
+      ],
+      [
+        "curl_opts",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional array of curl options to include with the download request."
+            }
+          ]
+        ]
+      ],
+      [
+        "CURL_PATH",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to curl binary. Defaults to /usr/bin/curl."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "/usr/bin/curl"
+            }
+          ]
+        ]
+      ],
+      [
+        "GITHUB_URL",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If your organization has an internal GitHub instance set this value to your internal GitHub URL ie. 'https://git.internal.corp.com/api/v3'"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "https://api.github.com"
+            }
+          ]
+        ]
+      ],
+      [
+        "GITHUB_TOKEN_PATH",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a file containing your GitHub token. Can be a relative path or absolute path. ie. '~/.custom_gh_token' or '/path/to/token' NOTE: the AutoPkg preference 'GITHUB_TOKEN' takes precedence over this value."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "~/.autopkg_gh_token"
+            }
+          ]
+        ]
+      ],
+      [
+        "GITHUB_RELEASES_PER_PAGE",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "30"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Number of releases to fetch per page, defaults to 30."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "release_notes",
+        [
+          [
+            "description",
+            {
+              "display": "Full release notes body text from the chosen release."
+            }
+          ]
+        ]
+      ],
+      [
+        "url",
+        [
+          [
+            "description",
+            {
+              "display": "URL for the first asset found for the project's latest release."
+            }
+          ]
+        ]
+      ],
+      [
+        "asset_url",
+        [
+          [
+            "description",
+            {
+              "display": "The asset URL for the project's latest release. This is an API-only URL distinct from the browser_download_url, and is required for programmatically downloading assets from private repositories."
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "description",
+            {
+              "display": "Version info parsed, naively derived from the release's tag."
+            }
+          ]
+        ]
+      ],
+      [
+        "asset_created_at",
+        [
+          [
+            "description",
+            {
+              "display": "The release time of the asset."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "MunkiCatalogBuilder": {
+    "description": {
+      "display": "DEPRECATED. This processor now emits a warning and performs no function. Previously it rebuilt Munki catalogs."
+    },
+    "input_variables": [],
+    "output_variables": []
+  },
+  "MunkiSetDefaultCatalog": {
+    "description": {
+      "display": "Edit current munki pkginfo to set the 'catalog' key to the default\n    catalog preference for munkiimport (com.googlecode.munki.munkiimport),\n    if one has been set. Typically this would be run as a preprocessor."
+    },
+    "input_variables": [
+      [
+        "pkginfo",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dictionary of Munki pkginfo."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pkginfo",
+        [
+          [
+            "description",
+            {
+              "display": "Updated pkginfo."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "FlatPkgPacker": {
+    "description": {
+      "display": "Flatten an expanded package using pkgutil."
+    },
+    "input_variables": [
+      [
+        "source_flatpkg_dir",
+        [
+          [
+            "description",
+            {
+              "display": "Path to an extracted flat package"
+            }
+          ],
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ]
+        ]
+      ],
+      [
+        "destination_pkg",
+        [
+          [
+            "description",
+            {
+              "display": "Name of destination pkg to be flattened"
+            }
+          ],
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "MunkiPkginfoMerger": {
+    "description": {
+      "display": "Merges two pkginfo dictionaries."
+    },
+    "input_variables": [
+      [
+        "pkginfo",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dictionary of Munki pkginfo."
+            }
+          ]
+        ]
+      ],
+      [
+        "additional_pkginfo",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dictionary containing additional Munki pkginfo. This will be added to or replace keys in the pkginfo."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pkginfo",
+        [
+          [
+            "description",
+            {
+              "display": "Merged pkginfo."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PkgCreator": {
+    "description": {
+      "display": "Calls autopkgserver to create a package."
+    },
+    "input_variables": [
+      [
+        "pkg_request",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A package request dictionary. See Code/autopkgserver/autopkgserver for more details."
+            }
+          ]
+        ]
+      ],
+      [
+        "force_pkg_build",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "When set, this forces building a new package even if a package already exists in the output directory with the same identifier and version number. Defaults to False"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "pkgbuild_args",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A list of additional arguments to pass to the pkgbuild tool. For example, ['--large-payload'] for packages over 8GB. You can also override pkgbuild's default file exclusion filters. By default, pkgbuild excludes .svn, CVS, .DS_Store, and .git from the payload. Specifying even one --filter replaces ALL default filters, so to keep .git files in your package while still filtering out .DS_Store, use: ['--filter', '\\.DS_Store$']. Each --filter value is a regular expression (use backslash escapes for literal dots, etc.) matched against paths in the package root."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "None"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pkg_path",
+        [
+          [
+            "description",
+            {
+              "display": "The created package."
+            }
+          ]
+        ]
+      ],
+      [
+        "new_package_request",
+        [
+          [
+            "description",
+            {
+              "display": "True if a new package was actually requested to be built. False if a package with the same filename, identifier and version already exists and thus no package was built (see 'force_pkg_build' input variable."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_creator_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PkgInfoCreator": {
+    "description": {
+      "display": "Creates an PackageInfo file for a package."
+    },
+    "input_variables": [
+      [
+        "template_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "An Info.plist template."
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Version of the package."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkgroot",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Virtual root of the package."
+            }
+          ]
+        ]
+      ],
+      [
+        "infofile",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to the info file to create."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkgtype",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "'flat' or 'bundle'."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "DmgCreator": {
+    "description": {
+      "display": "Creates a disk image from a directory."
+    },
+    "input_variables": [
+      [
+        "dmg_root",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Directory that will be copied to a disk image."
+            }
+          ]
+        ]
+      ],
+      [
+        "dmg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The dmg to be created."
+            }
+          ]
+        ]
+      ],
+      [
+        "dmg_format",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The dmg format. Defaults to ULFO."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "ULFO"
+            }
+          ]
+        ]
+      ],
+      [
+        "dmg_filesystem",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The dmg filesystem. Defaults to APFS. Note: APFS requires macOS 10.13 or later to mount."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "APFS"
+            }
+          ]
+        ]
+      ],
+      [
+        "dmg_zlib_level",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Compression level between '1' and '9' to use when using UDZO. Defaults to '5', a point beyond which very little space savings is gained."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "5"
+            }
+          ]
+        ]
+      ],
+      [
+        "dmg_megabytes",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Value to set for the '-megabytes' option, useful as a workaround when hdiutil cannot accurately estimate the required size for the dmg before compression. Not normally required, and the option will not be used if this variable is not defined."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "SparkleUpdateInfoProvider": {
+    "description": {
+      "display": "Provides URL and version information from a Sparkle feed."
+    },
+    "input_variables": [
+      [
+        "appcast_url",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "URL for a Sparkle Appcast feed xml."
+            }
+          ]
+        ]
+      ],
+      [
+        "appcast_request_headers",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dictionary of additional HTTP headers to include in request."
+            }
+          ]
+        ]
+      ],
+      [
+        "appcast_query_pairs",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dictionary of additional query pairs to include in request. Manual url-encoding isn't necessary."
+            }
+          ]
+        ]
+      ],
+      [
+        "alternate_xmlns_url",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Alternate URL for the XML namespace, if the appcast is using an alternate one. Defaults to that used for 'vanilla' Sparkle appcasts."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "http://www.andymatuschak.org/xml-namespaces/sparkle"
+            }
+          ]
+        ]
+      ],
+      [
+        "curl_opts",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Optional array of options to include with the download request."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkginfo_keys_to_copy_from_sparkle_feed",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of pkginfo keys that will be derived from any available metadata from the Sparkle feed and copied to 'additional_pkginfo'. The usefulness of these keys will depend on the admin's environment and the nature of the metadata provided by the application vendor. Note that the 'description' is usually equivalent to 'release notes' for that specific version. Defaults to ['minimum_os_version']. Currently supported keys: description, minimum_os_version"
+            }
+          ]
+        ]
+      ],
+      [
+        "urlencode_path_component",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Boolean value to specify if the path component from the sparkle feed needs to be urlencoded. Defaults to True."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "True"
+            }
+          ]
+        ]
+      ],
+      [
+        "update_channel",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Sparkle 2 provides specifying what channel an update is on. You can specify which channel to look for via this key. If a channel is defined, and exists, then this defined channel will be used."
+            }
+          ]
+        ]
+      ],
+      [
+        "PKG",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Local path to the pkg/dmg we'd otherwise download. If provided, the download is skipped and we just use this package or disk image."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "url",
+        [
+          [
+            "description",
+            {
+              "display": "URL for a download."
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "description",
+            {
+              "display": "Version for the download extracted from the feed. This is a human-readable version if the feed has it (e.g., 2.3.4-pre4), and the basic machine-readable version (e.g., 823a) otherwise."
+            }
+          ]
+        ]
+      ],
+      [
+        "additional_pkginfo",
+        [
+          [
+            "description",
+            {
+              "display": "A pkginfo containing additional keys extracted from the appcast feed. Currently this is 'description' and 'minimum_os_version' if it was defined in the feed."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "PkgCopier": {
+    "description": {
+      "display": "Copies source_pkg to pkg_path."
+    },
+    "input_variables": [
+      [
+        "source_pkg",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a pkg to copy. Can point to a path inside a .dmg which will be mounted. This path may also contain basic globbing characters such as the wildcard '*', but only the first result will be returned."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to destination. Defaults to RECIPE_CACHE_DIR/os.path.basename(source_pkg)"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "pkg_path",
+        [
+          [
+            "description",
+            {
+              "display": "Path to copied pkg."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_copier_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "FlatPkgUnpacker": {
+    "description": {
+      "display": "Expands a flat package using pkgutil or xar.\n    For xar it also optionally skips extracting the payload."
+    },
+    "input_variables": [
+      [
+        "flat_pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a flat package. Can point to a globbed path inside a .dmg which will be mounted."
+            }
+          ]
+        ]
+      ],
+      [
+        "skip_payload",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If true, 'Payload' files will be skipped. Defaults to False. Note if this option is used then the files are extracted using xar(1) instead of pkgutil(1). This means components of the package will not be extracted such as scripts."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "destination_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Directory where archive will be unpacked, created if necessary."
+            }
+          ]
+        ]
+      ],
+      [
+        "purge_destination",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Whether the contents of the destination directory will be removed before unpacking. Note that unless skip_payload argument is used the destination directory will be removed as pkgutil requires an empty destination."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "EndOfCheckPhase": {
+    "description": {
+      "display": "This processor performs no action, but serves as a marker to signal where AutoPkg\n    should stop when the -c/--check options are used."
+    },
+    "input_variables": [],
+    "output_variables": []
+  },
+  "MunkiInstallsItemsCreator": {
+    "description": {
+      "display": "Generates an installs array for a pkginfo file."
+    },
+    "input_variables": [
+      [
+        "installs_item_paths",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of paths to create installs items for."
+            }
+          ]
+        ]
+      ],
+      [
+        "derive_minimum_os_version",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "If minosversion is present in the installs array within additional_pkginfo, then an additional key will be added to additional_pkginfo named minimum_os_version with the value of minosversion."
+            }
+          ]
+        ]
+      ],
+      [
+        "faux_root",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The root of an expanded package or filesystem."
+            }
+          ]
+        ]
+      ],
+      [
+        "version_comparison_key",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Set 'version_comparison_key' for installs items. If this is a string, it is set to this value for all items given to 'installs_item_paths'. If this is a dictionary, takes a mapping of a path as given to 'installs_item_paths' to the desired version_comparison_key.\nExample:\n{'/Applications/Foo.app': 'CFBundleVersion',\n'/Library/Bar.plugin': 'CFBundleShortVersionString'}"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "additional_pkginfo",
+        [
+          [
+            "description",
+            {
+              "display": "Pkginfo dictionary containing installs array."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "FileMover": {
+    "description": {
+      "display": "Moves/renames a file."
+    },
+    "input_variables": [
+      [
+        "source",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Full path to the file to be moved or renamed."
+            }
+          ]
+        ]
+      ],
+      [
+        "target",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Full path where the file should be moved to."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "InstallFromDMG": {
+    "description": {
+      "display": "Calls autopkginstalld to copy items from a disk image to the root\n    filesystem."
+    },
+    "input_variables": [
+      [
+        "dmg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to the disk image."
+            }
+          ]
+        ]
+      ],
+      [
+        "items_to_copy",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Array of dictionaries describing what is to be copied. Each item should contain 'source_item' and 'destination_path', and may optionally include: 'destination_item' to rename the item on copy, and 'user', 'group' and 'mode' to explicitly set those items."
+            }
+          ]
+        ]
+      ],
+      [
+        "download_changed",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "download_changed is set by the URLDownloader processor to indicate that a new file was downloaded. If this key is set in the environment and is False or empty the installation will be skipped."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "install_result",
+        [
+          [
+            "description",
+            {
+              "display": "Result of install request."
+            }
+          ]
+        ]
+      ],
+      [
+        "install_from_dmg_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "VariableSetter": {
+    "description": {
+      "display": "\n    Set new variables for later use by AutoPkg processors.\n\n    Define variables that can be used by other processors. This can be useful\n    when a recipe needs to download two files but `URLDownloader` outputs to\n    the same variable. This processor allows you to set new variables that can\n    be used as input for other processors.\n\n    Examples:\n\n    Yaml Recipe:\n\n    ```yaml\n    - Processor: URLDownloader\n    Arguments:\n        url: https://example.com/foo.app\n    - Processor: VariableSetter\n    Arguments:\n        app_path: \"%pathname%\"\n        app_version: \"%version%\"\n    - Processor: URLDownloader\n    Arguments:\n        url: https://example.com/foo.pkg\n    - Processor: VariableSetter\n    Arguments:\n        pkg_path: \"%pathname%\"\n        pkg_version: \"%version%\"\n    ```\n\n    Plist Recipe:\n\n    ```xml\n    <dict>\n        <key>Processor</key>\n        <string>URLDownloader</string>\n        <key>Arguments</key>\n        <dict>\n            <key>url</key>\n            <string>https://example.com/foo.app</string>\n        </dict>\n    </dict>\n    <dict>\n        <key>Processor</key>\n        <string>VariableSetter</string>\n        <key>Arguments</key>\n        <dict>\n            <key>app_path</key>\n            <string>%pathname%</string>\n            <key>app_version</key>\n            <string>%version%</string>\n        </dict>\n    </dict>\n    <dict>\n        <key>Processor</key>\n        <string>URLDownloader</string>\n        <key>Arguments</key>\n        <dict>\n            <key>url</key>\n            <string>https://example.com/foo.pkg</string>\n        </dict>\n    </dict>\n    <dict>\n        <key>Processor</key>\n        <string>VariableSetter</string>\n        <key>Arguments</key>\n        <dict>\n            <key>pkg_path</key>\n            <string>%pathname%</string>\n            <key>pkg_version</key>\n            <string>%version%</string>\n        </dict>\n    </dict>\n    ```\n    "
+    },
+    "input_variables": [],
+    "output_variables": []
+  },
+  "Unarchiver": {
+    "description": {
+      "display": "Archive decompressor for zip and common tar-compressed formats."
+    },
+    "input_variables": [
+      [
+        "archive_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to an archive. Defaults to contents of the 'pathname' variable, for example as is set by URLDownloader."
+            }
+          ]
+        ]
+      ],
+      [
+        "destination_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Directory where archive will be unpacked, created if necessary. Defaults to RECIPE_CACHE_DIR/NAME."
+            }
+          ]
+        ]
+      ],
+      [
+        "purge_destination",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Whether the contents of the destination directory will be removed before unpacking."
+            }
+          ]
+        ]
+      ],
+      [
+        "archive_format",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The archive format. Currently supported: 'zip', 'tar_gzip', 'tar_bzip2', 'tar'. If omitted, the file extension is used to guess the format."
+            }
+          ]
+        ]
+      ],
+      [
+        "USE_PYTHON_NATIVE_EXTRACTOR",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Controls whether or not Unarchiver extracts the archive with native Python code, or calls out to a platform specific utility. The default is determined on a platform specific basis. Currently, this means that on macOS platform utilities are used, and otherwise Python is used."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "URLGetter": {
+    "description": {
+      "display": "Handles curl HTTP operations. Serves only as superclass. Not for direct use."
+    },
+    "input_variables": [],
+    "output_variables": []
+  },
+  "Copier": {
+    "description": {
+      "display": "Copies source_path to destination_path."
+    },
+    "input_variables": [
+      [
+        "source_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a file or directory to copy. Can point to a path inside a .dmg which will be mounted. This path may also contain globbing patterns such as the wildcard '*', or '**' that matches optional subdirectories but only the first result will be returned."
+            }
+          ]
+        ]
+      ],
+      [
+        "destination_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to destination."
+            }
+          ]
+        ]
+      ],
+      [
+        "overwrite",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Whether the destination will be overwritten if necessary. Uses a boolean value."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  },
+  "MunkiInfoCreator": {
+    "description": {
+      "display": "Creates a pkginfo file for a munki package."
+    },
+    "input_variables": [
+      [
+        "pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to a pkg or dmg in the munki repository."
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Version to override makepkginfo."
+            }
+          ]
+        ]
+      ],
+      [
+        "name",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Name to override makepkginfo."
+            }
+          ]
+        ]
+      ],
+      [
+        "info_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to the pkgsinfo file."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "munki_info",
+        [
+          [
+            "description",
+            {
+              "display": "The pkginfo property list."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "ChocolateyPackager": {
+    "description": {
+      "display": "Run `choco.exe` to build a single Nuget package."
+    },
+    "input_variables": [
+      [
+        "KEEP_BUILD_DIRECTORY",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Usually the temporary directory used for building the package is destroyed after this processor runs. However, for testing and development, it is often useful to inspect the intermediate outputs."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "chocoexe_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The absolute path to `choco.exe` This is not usually needed."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "C:\\ProgramData\\chocolatey\\bin\\choco.exe"
+            }
+          ]
+        ]
+      ],
+      [
+        "additional_install_actions",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Additional powershell code to include after the generated portion of `chocolateyInstall.ps1`. The code provided will run **after** the generated `Install-Chocolatey*` cmdlet has executed. You may rely on the following variables to be defined when this code runs: `$toolsDir`, and `$packageArgs`. These follow their usual convention as shown in examples for building chocolatey packages. "
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The local path to the installation file.\n        This should either be an MSI or an EXE that can perform the application's setup. Defaults to the `pathname` variable, e.g. as set by `URLDownloader`. Note that using this will **copy** the installer into the nupkg. Which is problematic if the installer is over 200MB give or take, according to the Chocolatey documentation.\n        Either this variable **or** `installer_url` MUST be provided."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "<autopkglib.ChocolateyPackager.VariableSentinel object at 0x0>"
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_url",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A URL (HTTPS, UNC, ...) to the installation file.\n        Chocolatey will **download** this file and compare with its embedded checksum at package installation time.\n        Either this variable **or** `installer_path` MUST be provided."
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_checksum",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Hex encoded checksum of the installation file.\n        NOTE: The checksum provided here IS NOT checked when using `installer_path`!"
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_checksum_type",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "One of the valid checksum types: md5, sha1, sha256, sha512"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "sha512"
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_type",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The type of installer: exe, msi, msu, zip"
+            }
+          ]
+        ]
+      ],
+      [
+        "installer_args",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "List of arguments to pass to the installer. If the type is **not** `msi`, then arguments are virtually always necessary to make the installer operate silently. For MSI installers, the processor uses the standard silencing arguments **unless** this variable is provided."
+            }
+          ]
+        ]
+      ],
+      [
+        "output_directory",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Where the final nupkg output will be placed. Defaults to RECIPE_CACHE_DIR/nupkgs"
+            }
+          ]
+        ]
+      ],
+      [
+        "id",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The unique ID of the package. Recommended to be lower case, with '-' for space. E.g., 'Google Chrome' -> google-chrome"
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The version of the package. Please see the technical reference for more details on acceptable versions: https://docs.microsoft.com/en-us/nuget/concepts/package-versioning"
+            }
+          ]
+        ]
+      ],
+      [
+        "title",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "This is user-friendly package name."
+            }
+          ]
+        ]
+      ],
+      [
+        "authors",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The authors of the software (and package)."
+            }
+          ]
+        ]
+      ],
+      [
+        "description",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A long form description of what the package does, what it installs, changelogs, etc."
+            }
+          ]
+        ]
+      ],
+      [
+        "owners",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The owners of the package."
+            }
+          ]
+        ]
+      ],
+      [
+        "licenseUrl",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A URL to the license of the software being packaged."
+            }
+          ]
+        ]
+      ],
+      [
+        "projectUrl",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A URL to the project of the software being packaged."
+            }
+          ]
+        ]
+      ],
+      [
+        "iconUrl",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A URL to the favicon of the software being packaged. This is what gets displayed in GUIs if they render available packages."
+            }
+          ]
+        ]
+      ],
+      [
+        "summary",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A short description of what the package does."
+            }
+          ]
+        ]
+      ],
+      [
+        "releaseNotes",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Notes on this particular release of the package."
+            }
+          ]
+        ]
+      ],
+      [
+        "copyright",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Copyright information."
+            }
+          ]
+        ]
+      ],
+      [
+        "tags",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Tagging information to aid searches. Space separated."
+            }
+          ]
+        ]
+      ],
+      [
+        "icon",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Not sure, but probably something to do with the icon of the package."
+            }
+          ]
+        ]
+      ],
+      [
+        "license",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Licensing information."
+            }
+          ]
+        ]
+      ],
+      [
+        "dependencies",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Dependencies for this package. Must be a list of dictionaries, each with `id` and `version` keys. Where `id` is the chocolatey package id."
+            }
+          ]
+        ]
+      ],
+      [
+        "contentFiles",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Lists the file contents for this package. "
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "nuget_package_path",
+        [
+          [
+            "description",
+            {
+              "display": "Path to the generated nuget package."
+            }
+          ]
+        ]
+      ],
+      [
+        "choco_build_directory",
+        [
+          [
+            "description",
+            {
+              "display": "Path to where chocolatey build files were created.\nPath will only exist on completion if KEEP_BUILD_DIRECTORY is set."
+            }
+          ]
+        ]
+      ],
+      [
+        "chocolatey_packager_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Summary of packaging."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "AppPkgCreator": {
+    "description": {
+      "display": "Calls autopkgserver to create a package from an application."
+    },
+    "input_variables": [
+      [
+        "app_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Path to an application to be packaged. Can be on a disk image and globbed. If not set, defaults to %pathname%/*.app. Typically %pathname% points to a disk image downloaded in a prior recipe step."
+            }
+          ]
+        ]
+      ],
+      [
+        "pkg_path",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "The pathname for the pkg to be created. If not set, defaults to %RECIPE_CACHE_DIR%/%app_name%-%version%.pkg"
+            }
+          ]
+        ]
+      ],
+      [
+        "bundleid",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Bundle identifier of the app. If not set, will be extracted from the CFBundleIdentifier in the app's Info.plist."
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Version of the app. If not set, will be extracted from the CFBundleShortVersionString in the app's Info.plist."
+            }
+          ]
+        ]
+      ],
+      [
+        "version_key",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Alternate key from which to get the app version. If the key does not exist in the app's Info.plist, a ProcessorError will be raised."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "CFBundleShortVersionString"
+            }
+          ]
+        ]
+      ],
+      [
+        "force_pkg_build",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "When set, this forces building a new package even if a package already exists in the output directory with the same identifier and version number. Defaults to False"
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "False"
+            }
+          ]
+        ]
+      ],
+      [
+        "pkgbuild_args",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "A list of additional arguments to pass to the pkgbuild tool. For example, ['--large-payload'] for packages over 8GB. You can also override pkgbuild's default file exclusion filters. By default, pkgbuild excludes .svn, CVS, .DS_Store, and .git from the payload. Specifying even one --filter replaces ALL default filters, so to keep .git files in your package while still filtering out .DS_Store, use: ['--filter', '\\.DS_Store$']. Each --filter value is a regular expression (use backslash escapes for literal dots, etc.) matched against paths in the package root."
+            }
+          ],
+          [
+            "default",
+            {
+              "display": "None"
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": [
+      [
+        "new_package_request",
+        [
+          [
+            "description",
+            {
+              "display": "True if a new package was actually requested to be built. False if a package with the same filename, identifier and version already exists and thus no package was built (see 'force_pkg_build' input variable.)"
+            }
+          ]
+        ]
+      ],
+      [
+        "version",
+        [
+          [
+            "description",
+            {
+              "display": "Version of the app."
+            }
+          ]
+        ]
+      ],
+      [
+        "app_pkg_creator_summary_result",
+        [
+          [
+            "description",
+            {
+              "display": "Description of interesting results."
+            }
+          ]
+        ]
+      ]
+    ]
+  },
+  "FileCreator": {
+    "description": {
+      "display": "Create a file."
+    },
+    "input_variables": [
+      [
+        "file_path",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Full path where the new file will be created."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_content",
+        [
+          [
+            "required",
+            {
+              "display": "True"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "Text content to write to the created file."
+            }
+          ]
+        ]
+      ],
+      [
+        "file_mode",
+        [
+          [
+            "required",
+            {
+              "display": "False"
+            }
+          ],
+          [
+            "description",
+            {
+              "display": "String. Numeric mode for file in octal format."
+            }
+          ]
+        ]
+      ]
+    ],
+    "output_variables": []
+  }
+}

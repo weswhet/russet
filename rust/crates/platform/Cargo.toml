@@ -1,0 +1,20 @@
+[package]
+name = "autopkg-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+plist = { package = "autopkg-value", path = "../value" }
+glob = "0.3"
+regex = "1"
+fancy-regex = "0.16"
+serde_json = "1"
+tempfile = "3"
+
+[dev-dependencies]
+tempfile = "3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation-sys = "0.8"
+objc2 = { version = "0.6", features = ["exception"] }

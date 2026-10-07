@@ -1,0 +1,90 @@
+---
+title: Russet
+description: Russet runs your AutoPkg recipes natively on macOS, Linux, and Windows, without Python.
+template: splash
+hero:
+  tagline: Run your AutoPkg recipes natively on macOS, Linux, and Windows, with the same autopkg command and no Python runtime.
+  # Hero and LinkCard links are relative to this page, the site root, because
+  # Starlight doesn't add the base path to them.
+  actions:
+    - text: Get started
+      link: get-started/quickstart/
+      icon: right-arrow
+    - text: Command-line reference
+      link: reference/cli/
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Russet is a native implementation of AutoPkg, the tool that Mac administrators
+use to download software, package it, and import it into Munki. Russet runs
+your existing recipes with the same `autopkg` command, preference keys, and
+file locations, and it doesn't need Python. It installs in place of Python
+AutoPkg on macOS, keeps the previous installation so that you can roll back,
+and also runs recipes on Linux and Windows.
+
+:::note[Release status]
+Russet doesn't have a published release yet. Its first release is 0.1.0, and
+until it's published, you build Russet from source. For details, see
+[Install Russet](/get-started/install/).
+:::
+
+## What you can do with Russet
+
+<CardGrid>
+	<Card title="Run the recipes you have" icon="rocket">
+		Russet reads plist and YAML recipes, parent recipes, and overrides, and it
+		implements AutoPkg's built-in processors under the same names.
+	</Card>
+	<Card title="Replace AutoPkg in place" icon="random">
+		The installer uses Python AutoPkg's paths, launchd jobs, and sockets, and it
+		keeps the previous installation for rollback.
+	</Card>
+	<Card title="Skip the Python runtime" icon="seti:rust">
+		Russet is a single native executable, plus two helper services on macOS. It
+		never runs Python processors or a bundled interpreter.
+	</Card>
+	<Card title="Verify what you run" icon="approve-check">
+		Recipe overrides keep their parent recipe trust information, and Russet
+		checks every recipe before it runs any of them.
+	</Card>
+	<Card title="Import into Munki" icon="document">
+		Russet generates Munki pkginfo files natively and rebuilds catalogs for
+		file-based Munki repositories.
+	</Card>
+	<Card title="Run on Linux and Windows" icon="laptop">
+		Download, metadata, and Munki catalog recipes run on Linux and Windows, and
+		platform-specific steps fail with a clear error.
+	</Card>
+</CardGrid>
+
+## Start here
+
+<CardGrid>
+	<LinkCard
+		title="System requirements"
+		description="Check that your computer can run Russet."
+		href="get-started/requirements/"
+	/>
+	<LinkCard
+		title="Install Russet"
+		description="Download, verify, and install the autopkg command."
+		href="get-started/install/"
+	/>
+	<LinkCard
+		title="Quickstart"
+		description="Add a recipe repository, create an override, and run your first recipe."
+		href="get-started/quickstart/"
+	/>
+	<LinkCard
+		title="Switch from Python AutoPkg"
+		description="Replace an existing AutoPkg installation and keep a way back."
+		href="guides/switch-from-autopkg/"
+	/>
+</CardGrid>
+
+## About the name
+
+Russet takes its name from russet apples, whose rough skin has a rust-brown
+color. The name refers to Rust, the programming language that Russet uses.

@@ -1,0 +1,332 @@
+[
+  {
+    "name": "run-fixture",
+    "arguments": [
+      "run",
+      "--report-plist",
+      "$ROOT/report.plist",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "install-fixture",
+    "arguments": [
+      "install",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "processor-info-known",
+    "arguments": [
+      "processor-info",
+      "FileCreator"
+    ]
+  },
+  {
+    "name": "processor-info-unknown",
+    "arguments": [
+      "processor-info",
+      "NoSuchProcessor"
+    ]
+  },
+  {
+    "name": "run-help-cluster",
+    "arguments": [
+      "run",
+      "-vh"
+    ]
+  },
+  {
+    "name": "run-ambiguous",
+    "arguments": [
+      "run",
+      "--p"
+    ]
+  },
+  {
+    "name": "run-flag-value",
+    "arguments": [
+      "run",
+      "--check=yes"
+    ]
+  },
+  {
+    "name": "run-short-unknown",
+    "arguments": [
+      "run",
+      "-z"
+    ]
+  },
+  {
+    "name": "run-help-before-bad-cluster",
+    "arguments": [
+      "run",
+      "-vhz"
+    ]
+  },
+  {
+    "name": "run-missing-key",
+    "arguments": [
+      "run",
+      "-k"
+    ]
+  },
+  {
+    "name": "run-empty-attached-prefs-help",
+    "arguments": [
+      "run",
+      "--prefs=",
+      "--help"
+    ]
+  },
+  {
+    "name": "list-processors-ignored-operands",
+    "arguments": [
+      "list-processors",
+      "ignored"
+    ]
+  },
+  {
+    "name": "list-recipes-long-abbreviation",
+    "arguments": [
+      "list-recipes",
+      "--with-i"
+    ]
+  },
+  {
+    "name": "info-fixture",
+    "arguments": [
+      "info",
+      "-q",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "info-multiple",
+    "arguments": [
+      "info",
+      "-q",
+      "Fixture",
+      "Fixture.install"
+    ]
+  },
+  {
+    "name": "new-recipe-plist",
+    "arguments": [
+      "new-recipe",
+      "$ROOT/New.recipe"
+    ]
+  },
+  {
+    "name": "new-recipe-yaml",
+    "arguments": [
+      "new-recipe",
+      "--format=yaml",
+      "$ROOT/New.recipe.yaml"
+    ]
+  },
+  {
+    "name": "audit-fixture-json",
+    "arguments": [
+      "audit",
+      "--json",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "trust-nonoverride",
+    "arguments": [
+      "verify-trust-info",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "update-trust-nonoverride",
+    "arguments": [
+      "update-trust-info",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "clear-cache-dry-empty",
+    "arguments": [
+      "clear-cache",
+      "--dry-run",
+      "all"
+    ]
+  },
+  {
+    "name": "list-recipes-plist",
+    "arguments": [
+      "list-recipes",
+      "--plist"
+    ]
+  },
+  {
+    "name": "list-recipes-identifiers",
+    "arguments": [
+      "list-recipes",
+      "-i"
+    ]
+  },
+  {
+    "name": "search-external-user",
+    "arguments": [
+      "search",
+      "--user",
+      "example",
+      "Firefox"
+    ]
+  },
+  {
+    "name": "run-inheritance",
+    "arguments": [
+      "run",
+      "--report-plist",
+      "$ROOT/report.plist",
+      "Child"
+    ]
+  },
+  {
+    "name": "run-check",
+    "arguments": [
+      "run",
+      "--check",
+      "Check"
+    ]
+  },
+  {
+    "name": "run-list",
+    "arguments": [
+      "run",
+      "-l",
+      "$ROOT/recipes.txt"
+    ]
+  },
+  {
+    "name": "run-pre-post",
+    "arguments": [
+      "run",
+      "--pre",
+      "VariableSetter",
+      "--post",
+      "VariableSetter",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "repo-add-file-rejection",
+    "arguments": [
+      "repo-add",
+      "file://$ROOT/localrepo"
+    ]
+  },
+  {
+    "name": "repo-delete-unknown",
+    "arguments": [
+      "repo-delete",
+      "$ROOT/unknown"
+    ]
+  },
+  {
+    "name": "repo-update-unknown",
+    "arguments": [
+      "repo-update",
+      "$ROOT/unknown"
+    ]
+  },
+  {
+    "name": "make-override-fixture",
+    "arguments": [
+      "make-override",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "run-deprecation-summary",
+    "arguments": [
+      "run",
+      "--report-plist",
+      "$ROOT/report.plist",
+      "Deprecated"
+    ]
+  },
+  {
+    "name": "run-runtime-keys-precedence",
+    "arguments": [
+      "run",
+      "-k",
+      "AUTOPKG_VERSION=9.0",
+      "-k",
+      "PARENT_RECIPES=override",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "auth-file-fallback",
+    "arguments": [
+      "run",
+      "-k",
+      "GITHUB_TOKEN=cli-token",
+      "Auth"
+    ]
+  },
+  {
+    "name": "auth-preference-wins",
+    "arguments": [
+      "run",
+      "-k",
+      "GITHUB_TOKEN=cli-token",
+      "Auth"
+    ]
+  },
+  {
+    "name": "run-verbose-1",
+    "arguments": [
+      "run",
+      "-v",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "run-verbose-2",
+    "arguments": [
+      "run",
+      "-vv",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "run-verbose-3",
+    "arguments": [
+      "run",
+      "-vvv",
+      "Fixture"
+    ]
+  },
+  {
+    "name": "run-failure-report",
+    "arguments": [
+      "run",
+      "--report-plist",
+      "$ROOT/report.plist",
+      "Failure"
+    ]
+  },
+  {
+    "name": "run-filesystem-verbose-1",
+    "arguments": [
+      "run",
+      "-v",
+      "Files"
+    ]
+  },
+  {
+    "name": "run-filesystem-verbose-2",
+    "arguments": [
+      "run",
+      "-vv",
+      "Files"
+    ]
+  }
+]

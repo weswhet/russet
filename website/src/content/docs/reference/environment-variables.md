@@ -1,0 +1,53 @@
+---
+title: Environment variables
+description: The environment variables that change how Russet runs recipes and finds its files.
+---
+
+This page lists the environment variables that Russet reads. For settings that
+persist between runs, use [preferences](/reference/preferences/) instead.
+
+## Recipe variables
+
+When you run `autopkg run` or `autopkg install`, Russet turns every
+environment variable whose name starts with `AUTOPKG_` into a recipe
+variable. The variable name is the part after the prefix. For example,
+`AUTOPKG_MUNKI_REPO` sets the recipe variable `MUNKI_REPO`.
+
+An environment variable overrides the recipe's `Input` values and your
+preferences. Values from a recipe list and from the `--key` option override
+the environment variable. These variables can't supply `GITHUB_TOKEN`, which
+Russet reads only from preferences.
+
+To see the variables that Russet applies, run the recipe with `-vv`.
+
+## Russet variables
+
+The following variables change Russet's own behavior:
+
+| Variable | Description |
+| --- | --- |
+| `AUTOPKG_RECIPE_MAP_PATH` | Location of the recipe map file. Russet ignores this variable when it runs as root and prints a security warning. |
+| `AUTOPKG_DISABLE_RECIPE_MAP` | If set to any non-empty value, Russet doesn't create or refresh the recipe map. |
+
+## System variables
+
+Russet also reads the following standard variables:
+
+| Variable | Platform | Description |
+| --- | --- | --- |
+| `HOME` | All | Home folder for paths that start with `~`. On Windows, Russet uses `HOME` when it's set and `USERPROFILE` otherwise. |
+| `USERPROFILE` | Windows | Home folder when `HOME` isn't set. |
+| `XDG_CONFIG_HOME` | Linux | Parent of the `Autopkg` preference folder. Defaults to `~/.config`. |
+| `LOCALAPPDATA` | Windows | Parent of the `Autopkg` preference folder. Russet fails if this variable isn't set. |
+| `PATH` | All | Search path for curl, Git, and other tools that Russet runs by name. |
+| `SSL_CERT_FILE` | All | Certificate bundle for Transport Layer Security (TLS) connections. On macOS, if this variable names an existing file, Russet doesn't supply its bundled certificates to curl. |
+| `SSL_CERT_DIR` | Linux, macOS | Folder of hashed certificates that `URLDownloaderPython` adds to its trust store. |
+
+Russet doesn't clear the environment of the tools that it runs. For example,
+curl and Git still read their own environment variables, such as proxy
+settings.
+
+## Related pages
+
+- [Preferences](/reference/preferences/)
+- [Run recipes](/guides/run-recipes/)

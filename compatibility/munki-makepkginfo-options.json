@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "munki_version": "7.2.0.5787",
+  "tag": "v7.2.0",
+  "commit": "8896fe831e870732aac760f76566762fc35d5d00",
+  "release_url": "https://github.com/munki/munki/releases/tag/v7.2.0",
+  "sources": [
+    {
+      "path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "url": "https://raw.githubusercontent.com/munki/munki/8896fe831e870732aac760f76566762fc35d5d00/code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "sha256": "1502c25f11e70c292735133314e4756b0d372800a425ae58d0c16092a64cbb29"
+    },
+    {
+      "path": "code/cli/munki/makepkginfo/makepkginfo.swift",
+      "url": "https://raw.githubusercontent.com/munki/munki/8896fe831e870732aac760f76566762fc35d5d00/code/cli/munki/makepkginfo/makepkginfo.swift",
+      "sha256": "a6af0afeb415ae06b00e8ceb6652f4d66b1d3045605a4a6f552a49d57531e732"
+    }
+  ],
+  "options": [
+    {
+      "group": "OverrideOptions",
+      "property": "name",
+      "kind": "Option",
+      "flags": [
+        "--name"
+      ],
+      "swift_declaration": "var name: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 61
+    },
+    {
+      "group": "OverrideOptions",
+      "property": "displayname",
+      "kind": "Option",
+      "flags": [
+        "--displayname"
+      ],
+      "swift_declaration": "var displayname: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 64
+    },
+    {
+      "group": "OverrideOptions",
+      "property": "description",
+      "kind": "Option",
+      "flags": [
+        "--description"
+      ],
+      "swift_declaration": "var description: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 67
+    },
+    {
+      "group": "OverrideOptions",
+      "property": "pkgvers",
+      "kind": "Option",
+      "flags": [
+        "--pkgvers"
+      ],
+      "swift_declaration": "var pkgvers: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 73
+    },
+    {
+      "group": "OverrideOptions",
+      "property": "restartAction",
+      "kind": "Option",
+      "flags": [
+        "--RestartAction"
+      ],
+      "swift_declaration": "var restartAction: RestartAction? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 77
+    },
+    {
+      "group": "OverrideOptions",
+      "property": "uninstallMethod",
+      "kind": "Option",
+      "flags": [
+        "--uninstall-method",
+        "--uninstall_method"
+      ],
+      "swift_declaration": "var uninstallMethod: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 81
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "installcheckScript",
+      "kind": "Option",
+      "flags": [
+        "--installcheck-script",
+        "--installcheck_script"
+      ],
+      "swift_declaration": "var installcheckScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 97
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "uninstallcheckScript",
+      "kind": "Option",
+      "flags": [
+        "--uninstallcheck-script",
+        "--uninstallcheck_script"
+      ],
+      "swift_declaration": "var uninstallcheckScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 101
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "preinstallScript",
+      "kind": "Option",
+      "flags": [
+        "--preinstall-script",
+        "--preinstall_script"
+      ],
+      "swift_declaration": "var preinstallScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 105
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "postinstallScript",
+      "kind": "Option",
+      "flags": [
+        "--postinstall-script",
+        "--postinstall_script"
+      ],
+      "swift_declaration": "var postinstallScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 109
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "preuninstallScript",
+      "kind": "Option",
+      "flags": [
+        "--preuninstall-script",
+        "--preuninstall_script"
+      ],
+      "swift_declaration": "var preuninstallScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 113
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "postuninstallScript",
+      "kind": "Option",
+      "flags": [
+        "--postuninstall-script",
+        "--postuninstall_script"
+      ],
+      "swift_declaration": "var postuninstallScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 117
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "uninstallScript",
+      "kind": "Option",
+      "flags": [
+        "--uninstall-script",
+        "--uninstall_script"
+      ],
+      "swift_declaration": "var uninstallScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 121
+    },
+    {
+      "group": "ScriptOptions",
+      "property": "versionScript",
+      "kind": "Option",
+      "flags": [
+        "--version-script",
+        "--version_script"
+      ],
+      "swift_declaration": "var versionScript: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 125
+    },
+    {
+      "group": "DragNDropOptions",
+      "property": "item",
+      "kind": "Option",
+      "flags": [
+        "-i",
+        "--itemname",
+        "--appname",
+        "-a"
+      ],
+      "swift_declaration": "var item: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 132
+    },
+    {
+      "group": "DragNDropOptions",
+      "property": "destinationpath",
+      "kind": "Option",
+      "flags": [
+        "--destinationpath",
+        "-d"
+      ],
+      "swift_declaration": "var destinationpath: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 137
+    },
+    {
+      "group": "DragNDropOptions",
+      "property": "destitemname",
+      "kind": "Option",
+      "flags": [
+        "--destinationitemname",
+        "--destinationitem"
+      ],
+      "swift_declaration": "var destitemname: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 141
+    },
+    {
+      "group": "DragNDropOptions",
+      "property": "user",
+      "kind": "Option",
+      "flags": [
+        "--owner",
+        "--user",
+        "-o"
+      ],
+      "swift_declaration": "var user: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 145
+    },
+    {
+      "group": "DragNDropOptions",
+      "property": "group",
+      "kind": "Option",
+      "flags": [
+        "--group",
+        "-g"
+      ],
+      "swift_declaration": "var group: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 149
+    },
+    {
+      "group": "DragNDropOptions",
+      "property": "mode",
+      "kind": "Option",
+      "flags": [
+        "--mode",
+        "-m"
+      ],
+      "swift_declaration": "var mode: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 153
+    },
+    {
+      "group": "ApplePackageOptions",
+      "property": "pkgname",
+      "kind": "Option",
+      "flags": [
+        "--pkgname",
+        "-p"
+      ],
+      "swift_declaration": "var pkgname: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 168
+    },
+    {
+      "group": "ApplePackageOptions",
+      "property": "uninstalleritem",
+      "kind": "Option",
+      "flags": [
+        "--uninstalleritem",
+        "--uninstallerdmg",
+        "--uninstallerpkg",
+        "--uninstallpkg",
+        "-U"
+      ],
+      "swift_declaration": "var uninstalleritem: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 172
+    },
+    {
+      "group": "ApplePackageOptions",
+      "property": "installerChoices",
+      "kind": "Flag",
+      "flags": [
+        "--installer-choices",
+        "--installer-choices-xml",
+        "--installer_choices_xml"
+      ],
+      "swift_declaration": "var installerChoices = false",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 180
+    },
+    {
+      "group": "ApplePackageOptions",
+      "property": "installerEnvironment",
+      "kind": "Option",
+      "flags": [
+        "--installer-environment",
+        "--installer_environment",
+        "-E"
+      ],
+      "swift_declaration": "var installerEnvironment = [String]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 186
+    },
+    {
+      "group": "UnattendedInstallOptions",
+      "property": "unattendedInstall",
+      "kind": "Flag",
+      "flags": [
+        "--unattended-install",
+        "--unattended_install"
+      ],
+      "swift_declaration": "var unattendedInstall = false",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 213
+    },
+    {
+      "group": "UnattendedInstallOptions",
+      "property": "unattendedUninstall",
+      "kind": "Flag",
+      "flags": [
+        "--unattended-uninstall",
+        "--unattended_uninstall"
+      ],
+      "swift_declaration": "var unattendedUninstall = false",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 217
+    },
+    {
+      "group": "UnattendedInstallOptions",
+      "property": "forceInstallAfterDate",
+      "kind": "Option",
+      "flags": [
+        "--force-install-after-date",
+        "--force_install_after_date"
+      ],
+      "swift_declaration": "var forceInstallAfterDate: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 221
+    },
+    {
+      "group": "GeneratingInstallsOptions",
+      "property": "file",
+      "kind": "Option",
+      "flags": [
+        "--file",
+        "-f"
+      ],
+      "swift_declaration": "var file = [String]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 238
+    },
+    {
+      "group": "InstallerTypeOptions",
+      "property": "installerType",
+      "kind": "Option",
+      "flags": [
+        "--installer-type",
+        "--installer_type"
+      ],
+      "swift_declaration": "var installerType: InstallerType? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 245
+    },
+    {
+      "group": "InstallerTypeOptions",
+      "property": "nopkg",
+      "kind": "Flag",
+      "flags": [
+        "--nopkg"
+      ],
+      "swift_declaration": "var nopkg = false",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 249
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "autoremove",
+      "kind": "Flag",
+      "flags": [
+        "--autoremove"
+      ],
+      "swift_declaration": "var autoremove = false",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 254
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "onDemand",
+      "kind": "Flag",
+      "flags": [
+        "--OnDemand"
+      ],
+      "swift_declaration": "var onDemand = false",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 257
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "minimumMunkiVersion",
+      "kind": "Option",
+      "flags": [
+        "--minimum-munki-version",
+        "--minimum_munki_version"
+      ],
+      "swift_declaration": "var minimumMunkiVersion: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 261
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "minimumOSVersion",
+      "kind": "Option",
+      "flags": [
+        "--minimum-os-version",
+        "--minimum_os_version"
+      ],
+      "swift_declaration": "var minimumOSVersion: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 265
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "maximumOSVersion",
+      "kind": "Option",
+      "flags": [
+        "--maximum-os-version",
+        "--maximum_os_version"
+      ],
+      "swift_declaration": "var maximumOSVersion: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 270
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "supportedArchitectures",
+      "kind": "Option",
+      "flags": [
+        "--arch",
+        "--supported_architecture",
+        "--supported-architecture"
+      ],
+      "swift_declaration": "var supportedArchitectures = [SupportedArchitecture]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 274
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "updateFor",
+      "kind": "Option",
+      "flags": [
+        "--update-for",
+        "-u",
+        "--update_for"
+      ],
+      "swift_declaration": "var updateFor = [String]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 280
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "requires",
+      "kind": "Option",
+      "flags": [
+        "--requires",
+        "-r"
+      ],
+      "swift_declaration": "var requires = [String]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 284
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "blockingApplication",
+      "kind": "Option",
+      "flags": [
+        "--blocking-application",
+        "-b",
+        "--blocking_application"
+      ],
+      "swift_declaration": "var blockingApplication = [String]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 288
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "catalog",
+      "kind": "Option",
+      "flags": [
+        "--catalog",
+        "-c"
+      ],
+      "swift_declaration": "var catalog = [String]()",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 292
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "category",
+      "kind": "Option",
+      "flags": [
+        "--category"
+      ],
+      "swift_declaration": "var category: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 296
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "developer",
+      "kind": "Option",
+      "flags": [
+        "--developer"
+      ],
+      "swift_declaration": "var developer: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 299
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "iconName",
+      "kind": "Option",
+      "flags": [
+        "--icon",
+        "--iconname",
+        "--icon-name",
+        "--icon_name"
+      ],
+      "swift_declaration": "var iconName: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 302
+    },
+    {
+      "group": "AdditionalPkginfoOptions",
+      "property": "notes",
+      "kind": "Option",
+      "flags": [
+        "--notes"
+      ],
+      "swift_declaration": "var notes: String? = nil",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 309
+    },
+    {
+      "group": "HiddenPkginfoOptions",
+      "property": "printWarnings",
+      "kind": "Flag",
+      "flags": [
+        "--print-warnings",
+        "--no-print-warnings"
+      ],
+      "swift_declaration": "var printWarnings = true",
+      "source_path": "code/cli/munki/shared/admin/pkginfoOptions.swift",
+      "source_line": 332
+    },
+    {
+      "group": "MakePkgInfo",
+      "property": "version",
+      "kind": "Flag",
+      "flags": [
+        "--version",
+        "-V"
+      ],
+      "swift_declaration": "var version = false",
+      "source_path": "code/cli/munki/makepkginfo/makepkginfo.swift",
+      "source_line": 57
+    }
+  ],
+  "implicit_framework_options": [
+    "-h",
+    "--help"
+  ],
+  "positional_arguments": [
+    {
+      "name": "installer-item",
+      "type": "String?"
+    }
+  ],
+  "enum_values": {
+    "RestartAction": [
+      "RequireRestart",
+      "RecommendRestart",
+      "RequireLogout"
+    ],
+    "InstallerType": [
+      "copy_from_dmg",
+      "stage_os_installer"
+    ],
+    "SupportedArchitecture": [
+      "x86_64",
+      "arm64"
+    ]
+  },
+  "limitations": "Static declaration capture; metadata effects and validation semantics require runtime parity tests."
+}

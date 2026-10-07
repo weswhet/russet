@@ -1,0 +1,22 @@
+[package]
+name = "autopkg-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+autopkg-processors = { path = "../processors" }
+autopkg-platform = { path = "../platform" }
+plist = { package = "autopkg-value", path = "../value" }
+serde_yaml = "0.9"
+yaml-rust2 = "0.10"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+regex = "1"
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

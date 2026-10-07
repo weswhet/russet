@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>TopNull</key>
+	<string></string>
+	<key>Typed</key>
+	<dict>
+		<key>blob</key>
+		<data>
+		AAEC/w==
+		</data>
+		<key>date</key>
+		<date>2026-10-06T12:34:56Z</date>
+		<key>disabled</key>
+		<false/>
+		<key>enabled</key>
+		<true/>
+		<key>integer</key>
+		<integer>42</integer>
+		<key>negative</key>
+		<integer>-7</integer>
+		<key>nested</key>
+		<dict>
+			<key>array</key>
+			<array>
+				<string></string>
+				<false/>
+				<integer>0</integer>
+				<dict>
+					<key>blob</key>
+					<data>
+					/wA=
+					</data>
+					<key>text</key>
+					<string>Café</string>
+				</dict>
+			</array>
+		</dict>
+		<key>nullable</key>
+		<string></string>
+		<key>real</key>
+		<real>2.5</real>
+		<key>version</key>
+		<string>2.3</string>
+		<key>zero</key>
+		<integer>0</integer>
+	</dict>
+</dict>
+</plist>

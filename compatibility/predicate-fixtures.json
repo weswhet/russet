@@ -1,0 +1,230 @@
+[
+  {
+    "name": "predicate comparison true",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "count": 3,
+      "predicate": "count >= 3"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate comparison false",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "count": 3,
+      "predicate": "count < 3"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate boolean grouping",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "count": 3,
+      "enabled": true,
+      "predicate": "(count > 1 AND enabled == TRUE) OR count == 0"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate nested key path",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "meta": {
+        "version": "1.2"
+      },
+      "predicate": "meta.version == \"1.2\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate membership",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "beta",
+      "predicate": "name IN {\"alpha\", \"beta\"}"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate case matching",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "alpha",
+      "predicate": "name BEGINSWITH[c] \"AL\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate diacritic matching",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "café",
+      "predicate": "name ==[cd] \"CAFE\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate native regex",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "alpha",
+      "predicate": "name MATCHES \"a.*\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate malformed",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "count": 3,
+      "predicate": "count =="
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "predicate negation",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "flag": false,
+      "predicate": "NOT flag == TRUE"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate array contains modifiers",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "names": [
+        "Résumé"
+      ],
+      "predicate": "names CONTAINS[cd] \"resume\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate string membership",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "abc",
+      "predicate": "\"b\" IN name"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate suffix modifiers",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "CAFÉ",
+      "predicate": "name ENDSWITH[cd] \"fe\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate wildcard matching",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "alpha.zip",
+      "predicate": "name LIKE \"a?pha.*\""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate missing is null",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "predicate": "missing == NIL"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate explicit null",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "value": null,
+      "predicate": "value == NIL"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate boolean numeric equality",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "flag": true,
+      "predicate": "flag == 1"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate integer precision",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "count": 9007199254740992,
+      "predicate": "count == 9007199254740993"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate numeric inequality",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "count": 2.5,
+      "predicate": "count != 2 AND count <= 3"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate escaped literal",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "name": "a'b",
+      "predicate": "name == 'a\\'b' "
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate array IN modifiers",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "names": [
+        "Résumé"
+      ],
+      "predicate": "\"resume\" IN[cd] names"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "predicate array contains exact with modifier",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "names": [
+        "Résumé"
+      ],
+      "predicate": "names CONTAINS[c] \"Résumé\""
+    },
+    "files": {},
+    "status": 0
+  }
+]

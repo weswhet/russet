@@ -1,0 +1,1452 @@
+{
+  "reference_commit": "c36e58f8d3d8ddb70b6c2d848d2ceca7f767ce5c",
+  "fixture_sha256": "6145d248a2bc96e1e4211e8b31399adec3d97c0caabf9c61ad4c28b1d409a9e0",
+  "platform": "darwin",
+  "cases": {
+    "variable passthrough": {
+      "status": 0,
+      "environment": {
+        "nested": {
+          "a": [
+            true,
+            3,
+            "text"
+          ]
+        }
+      },
+      "files": {}
+    },
+    "check marker": {
+      "status": 0,
+      "environment": {},
+      "files": {}
+    },
+    "create Unicode file and mode": {
+      "status": 0,
+      "environment": {
+        "file_content": "héllo\n",
+        "file_mode": "0640",
+        "file_path": "$ROOT/café.txt"
+      },
+      "files": {
+        "café.txt": {
+          "mode": 416,
+          "kind": "file",
+          "sha256": "b95becd154aa095f76c4ca47a5aeb8350d6dfcb838404edfc9dae06628de938d"
+        }
+      }
+    },
+    "missing required file content": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "move file": {
+      "status": 0,
+      "environment": {
+        "source": "$ROOT/source",
+        "target": "$ROOT/target"
+      },
+      "files": {
+        "target": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        }
+      }
+    },
+    "literal replacement": {
+      "status": 0,
+      "environment": {
+        "custom": "a-b-a",
+        "find": ".",
+        "input_string": "a.b.a",
+        "replace": "-",
+        "result_output_var_name": "custom"
+      },
+      "files": {}
+    },
+    "copy plain file": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/target",
+        "source_path": "$ROOT/source"
+      },
+      "files": {
+        "source": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        },
+        "target": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        }
+      }
+    },
+    "copy overwrite file": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/target",
+        "overwrite": true,
+        "source_path": "$ROOT/source"
+      },
+      "files": {
+        "source": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437"
+        },
+        "target": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437"
+        }
+      }
+    },
+    "find file": {
+      "status": 0,
+      "environment": {
+        "find_method": "glob",
+        "found_basename": "z.txt",
+        "found_filename": "$ROOT/z.txt",
+        "pattern": "$ROOT/*.txt"
+      },
+      "files": {
+        "a.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        },
+        "z.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "594e519ae499312b29433b7dd8a97ff068defcba9755b6d5d00e84c524d67b06"
+        }
+      }
+    },
+    "create symlink": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/link",
+        "source_path": "$ROOT/source"
+      },
+      "files": {
+        "link": {
+          "mode": 493,
+          "kind": "symlink",
+          "target": "$ROOT/source"
+        },
+        "source": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        }
+      }
+    },
+    "delete file": {
+      "status": 0,
+      "environment": {
+        "continue_on_error": false,
+        "path_list": [
+          "$ROOT/source"
+        ]
+      },
+      "files": {}
+    },
+    "read plist": {
+      "status": 0,
+      "environment": {
+        "info_path": "$ROOT/info.plist",
+        "plist_keys": {
+          "CFBundleShortVersionString": "version"
+        },
+        "plist_reader_output_variables": {
+          "version": "1.2"
+        },
+        "version": "1.2"
+      },
+      "files": {
+        "info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "CFBundleShortVersionString": "1.2"
+          }
+        }
+      }
+    },
+    "read version": {
+      "status": 0,
+      "environment": {
+        "input_plist_path": "$ROOT/info.plist",
+        "plist_version_key": "CFBundleShortVersionString",
+        "skip_single_root_dir": false,
+        "version": "1.2"
+      },
+      "files": {
+        "info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "CFBundleShortVersionString": "1.2"
+          }
+        }
+      }
+    },
+    "edit plist": {
+      "status": 0,
+      "environment": {
+        "input_plist_path": "$ROOT/info.plist",
+        "output_plist_path": "$ROOT/output.plist",
+        "plist_data": {
+          "hello": "world"
+        }
+      },
+      "files": {
+        "info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "version": "1.2"
+          }
+        },
+        "output.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "hello": "world",
+            "version": "1.2"
+          }
+        }
+      }
+    },
+    "package root directories": {
+      "status": 0,
+      "environment": {
+        "pkgdirs": {
+          "Applications": "0755",
+          "Library": "0750"
+        },
+        "pkgroot": "$ROOT/pkg"
+      },
+      "files": {
+        "pkg": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "pkg/Applications": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "pkg/Library": {
+          "mode": 488,
+          "kind": "directory"
+        }
+      }
+    },
+    "package required missing": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "merge pkginfo": {
+      "status": 0,
+      "environment": {
+        "additional_pkginfo": {
+          "name": "new",
+          "nested": {
+            "new": true
+          }
+        },
+        "pkginfo": {
+          "name": "new",
+          "nested": {
+            "new": true
+          }
+        }
+      },
+      "files": {}
+    },
+    "edit optional receipt": {
+      "status": 0,
+      "environment": {
+        "MUNKILIB_DIR": "/usr/local/munki",
+        "MUNKI_REPO": "$ROOT/repo",
+        "MUNKI_REPO_PLUGIN": "FileRepo",
+        "force_munki_repo_lib": false,
+        "munki_info": {
+          "receipts": [
+            {
+              "optional": true,
+              "packageid": "org.test",
+              "version": "1"
+            },
+            {
+              "packageid": "org.other",
+              "version": "2"
+            }
+          ]
+        },
+        "pkg_ids_set_optional_true": [
+          "org.test"
+        ],
+        "pkginfo_repo_path": "$ROOT/repo/pkgsinfo/test.plist"
+      },
+      "files": {
+        "repo": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "repo/pkgsinfo": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "repo/pkgsinfo/test.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "receipts": [
+              {
+                "optional": true,
+                "packageid": "org.test",
+                "version": "1"
+              },
+              {
+                "packageid": "org.other",
+                "version": "2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "deprecated warning remains executable": {
+      "status": 0,
+      "environment": {
+        "RECIPE_PATH": "$ROOT/fixture.recipe",
+        "deprecation_summary_result": {
+          "data": {
+            "name": "fixture",
+            "warning": "fixture warning"
+          },
+          "report_fields": [
+            "name",
+            "warning"
+          ],
+          "summary_text": "The following recipes have deprecation warnings:"
+        },
+        "warning_message": "fixture warning"
+      },
+      "files": {}
+    },
+    "deprecated catalog builder no-op": {
+      "status": 0,
+      "environment": {
+        "RECIPE_PATH": "$ROOT/fixture.recipe",
+        "deprecation_summary_result": {
+          "data": {
+            "name": "fixture",
+            "warning": "MunkiCatalogBuilder was deprecated in AutoPkg version 2.7.5 and may be removed in a future release."
+          },
+          "report_fields": [
+            "name",
+            "warning"
+          ],
+          "summary_text": "The following recipes have deprecation warnings:"
+        }
+      },
+      "files": {}
+    },
+    "package required existing": {
+      "status": 0,
+      "environment": {
+        "PKG": "$ROOT/preloaded.pkg"
+      },
+      "files": {
+        "preloaded.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d"
+        }
+      }
+    },
+    "AppDmgVersioner missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "ChocolateyPackager missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "CodeSignatureVerifier missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "Copier missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "DmgCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "FileCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "FileFinder missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "FileMover missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "FindAndReplace missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "FlatPkgPacker missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "FlatPkgUnpacker missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "GitHubReleasesInfoProvider missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "InstallFromDMG missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "Installer missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "MunkiImporter missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "MunkiInfoCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "MunkiInstallsItemsCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "MunkiOptionalReceiptEditor missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "MunkiPkginfoMerger missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PathDeleter missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgCopier missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgExtractor missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgInfoCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgPayloadUnpacker missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgRootCreator missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PlistEditor missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PlistReader missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "SignToolVerifier missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "SparkleUpdateInfoProvider missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "StopProcessingIf missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "Symlinker missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "URLDownloader missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "URLDownloaderPython missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "URLTextSearcher missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "Versioner missing required input preflight": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "create file defaults": {
+      "status": 0,
+      "environment": {
+        "file_content": "",
+        "file_path": "$ROOT/new"
+      },
+      "files": {
+        "new": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "create file parent missing": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "create file invalid mode leaves written file": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "new": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        }
+      }
+    },
+    "move overwrites target": {
+      "status": 0,
+      "environment": {
+        "source": "$ROOT/source",
+        "target": "$ROOT/target"
+      },
+      "files": {
+        "target": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437"
+        }
+      }
+    },
+    "move missing source": {
+      "status": 1,
+      "environment": null,
+      "files": {}
+    },
+    "replacement default output": {
+      "status": 0,
+      "environment": {
+        "find": "one",
+        "input_string": "one one",
+        "output_string": "two two",
+        "replace": "two",
+        "result_output_var_name": "output_string"
+      },
+      "files": {}
+    },
+    "replacement empty needle": {
+      "status": 0,
+      "environment": {
+        "find": "",
+        "input_string": "ab",
+        "output_string": "!a!b!",
+        "replace": "!",
+        "result_output_var_name": "output_string"
+      },
+      "files": {}
+    },
+    "finder no matches": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "finder invalid method": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "finder recursive excludes hidden": {
+      "status": 0,
+      "environment": {
+        "find_method": "glob",
+        "found_basename": "a.txt",
+        "found_filename": "$ROOT/visible/a.txt",
+        "pattern": "$ROOT/**/*.txt"
+      },
+      "files": {
+        ".hidden": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        ".hidden/z.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "594e519ae499312b29433b7dd8a97ff068defcba9755b6d5d00e84c524d67b06"
+        },
+        "visible": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "visible/.hidden.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "aaa9402664f1a41f40ebbc52c9993eb66aeb366602958fdfaa283b71e64db123"
+        },
+        "visible/a.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        }
+      }
+    },
+    "copy multiple matches follows filesystem order": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/result",
+        "source_path": "$ROOT/*.txt"
+      },
+      "files": {
+        "a.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        },
+        "b.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+        },
+        "result": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+        }
+      }
+    },
+    "copy directory to new destination": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/destination",
+        "source_path": "$ROOT/source"
+      },
+      "files": {
+        "destination": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "destination/link": {
+          "mode": 493,
+          "kind": "symlink",
+          "target": "nested/file"
+        },
+        "destination/nested": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "destination/nested/file": {
+          "mode": 416,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        "source": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "source/link": {
+          "mode": 493,
+          "kind": "symlink",
+          "target": "nested/file"
+        },
+        "source/nested": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "source/nested/file": {
+          "mode": 416,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        }
+      }
+    },
+    "copy file to existing directory": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/destination",
+        "source_path": "$ROOT/source"
+      },
+      "files": {
+        "destination": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "destination/source": {
+          "mode": 488,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        "source": {
+          "mode": 488,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        }
+      }
+    },
+    "copy missing source": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "symlink dangling source": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/link",
+        "source_path": "$ROOT/missing"
+      },
+      "files": {
+        "link": {
+          "mode": 493,
+          "kind": "symlink",
+          "target": "$ROOT/missing"
+        }
+      }
+    },
+    "symlink refuses existing destination": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "link": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4"
+        },
+        "source": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        }
+      }
+    },
+    "symlink overwrite file": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/link",
+        "overwrite": true,
+        "source_path": "$ROOT/source"
+      },
+      "files": {
+        "link": {
+          "mode": 493,
+          "kind": "symlink",
+          "target": "$ROOT/source"
+        },
+        "source": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        }
+      }
+    },
+    "delete string input and directory": {
+      "status": 0,
+      "environment": {
+        "continue_on_error": false,
+        "path_list": [
+          "$ROOT/tree"
+        ]
+      },
+      "files": {}
+    },
+    "delete missing failure": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "delete missing ignored": {
+      "status": 0,
+      "environment": {
+        "continue_on_error": true,
+        "path_list": [
+          "$ROOT/missing"
+        ]
+      },
+      "files": {}
+    },
+    "delete dangling symlink": {
+      "status": 0,
+      "environment": {
+        "continue_on_error": false,
+        "path_list": [
+          "$ROOT/link"
+        ]
+      },
+      "files": {}
+    },
+    "plist read bundle with mapping": {
+      "status": 0,
+      "environment": {
+        "bundleid": "org.test",
+        "custom_flag": true,
+        "info_path": "$ROOT/Test.app",
+        "plist_keys": {
+          "CFBundleIdentifier": "bundleid",
+          "flag": "custom_flag"
+        },
+        "plist_reader_output_variables": {
+          "bundleid": "org.test",
+          "custom_flag": true
+        }
+      },
+      "files": {
+        "Test.app": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "Test.app/Contents": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "Test.app/Contents/Info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "CFBundleIdentifier": "org.test",
+            "flag": true
+          }
+        }
+      }
+    },
+    "plist read missing key": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {}
+        }
+      }
+    },
+    "plist editor creates new plist": {
+      "status": 0,
+      "environment": {
+        "output_plist_path": "$ROOT/new.plist",
+        "plist_data": {
+          "flag": true,
+          "nested": {
+            "one": [
+              1,
+              "x"
+            ]
+          }
+        }
+      },
+      "files": {
+        "new.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "flag": true,
+            "nested": {
+              "one": [
+                1,
+                "x"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "version missing key uses UNKNOWN": {
+      "status": 0,
+      "environment": {
+        "input_plist_path": "$ROOT/info.plist",
+        "plist_version_key": "CFBundleShortVersionString",
+        "skip_single_root_dir": false,
+        "version": "UNKNOWN_VERSION"
+      },
+      "files": {
+        "info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {}
+        }
+      }
+    },
+    "version numeric value remains typed": {
+      "status": 0,
+      "environment": {
+        "input_plist_path": "$ROOT/info.plist",
+        "plist_version_key": "build",
+        "skip_single_root_dir": false,
+        "version": 42
+      },
+      "files": {
+        "info.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "build": 42
+          }
+        }
+      }
+    },
+    "version missing file": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "version ZIP without explicit directory is not found": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "53433b21fe70e35275e526c6d5b15e2f96c1f3faddb913e4d4ceba52b3869c9c"
+        }
+      }
+    },
+    "version zip skips explicit single root": {
+      "status": 0,
+      "environment": {
+        "input_plist_path": "$ROOT/test.zip/Info.plist",
+        "plist_version_key": "CFBundleShortVersionString",
+        "skip_single_root_dir": true,
+        "version": "9.2"
+      },
+      "files": {
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "fd065e62ca6695be19bd26852363a5126826adfb306f2cb09a223c00cb8128d4"
+        }
+      }
+    },
+    "predicate true": {
+      "status": 0,
+      "environment": {
+        "predicate": "version == '1'",
+        "stop_processing_recipe": true,
+        "version": "1"
+      },
+      "files": {}
+    },
+    "predicate false": {
+      "status": 0,
+      "environment": {
+        "predicate": "version == '2'",
+        "stop_processing_recipe": false,
+        "version": "1"
+      },
+      "files": {}
+    },
+    "predicate invalid expression": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "URLGetter abstract superclass rejects direct execution": {
+      "status": 1,
+      "environment": null,
+      "files": {}
+    },
+    "version ZIP explicit directory normal mode": {
+      "status": 0,
+      "environment": {
+        "input_plist_path": "$ROOT/test.zip/App/Info.plist",
+        "plist_version_key": "CFBundleShortVersionString",
+        "skip_single_root_dir": false,
+        "version": "9.2"
+      },
+      "files": {
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "fd065e62ca6695be19bd26852363a5126826adfb306f2cb09a223c00cb8128d4"
+        }
+      }
+    },
+    "DmgMounter abstract superclass rejects direct execution": {
+      "status": 1,
+      "environment": null,
+      "files": {}
+    },
+    "Unarchiver ZIP portable native": {
+      "status": 0,
+      "environment": {
+        "NAME": "fixture",
+        "RECIPE_CACHE_DIR": "$ROOT",
+        "USE_PYTHON_NATIVE_EXTRACTOR": true,
+        "archive_path": "$ROOT/test.zip",
+        "destination_path": "$ROOT/out"
+      },
+      "files": {
+        "out": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "out/folder": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "out/folder/é.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "3c48591d8d098a4538f5e013dfcf406e948eac4d3277b10bf614e295d6068179"
+        },
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "dd6d9bd46bd58828cfc3f8b905ec705958b8c16cdde29740a1d212bf10e884f0"
+        }
+      }
+    },
+    "Unarchiver ZIP pathname fallback and cache destination": {
+      "status": 0,
+      "environment": {
+        "NAME": "fixture",
+        "RECIPE_CACHE_DIR": "$ROOT",
+        "USE_PYTHON_NATIVE_EXTRACTOR": true,
+        "pathname": "$ROOT/test.zip"
+      },
+      "files": {
+        "fixture": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "fixture/data": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1"
+        },
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "45a10d303bddc1129564baa23eb91ce24cc123f8837eba47be6abbd54171067b"
+        }
+      }
+    },
+    "Unarchiver purges destination before extraction": {
+      "status": 0,
+      "environment": {
+        "NAME": "fixture",
+        "RECIPE_CACHE_DIR": "$ROOT",
+        "USE_PYTHON_NATIVE_EXTRACTOR": true,
+        "archive_path": "$ROOT/test.zip",
+        "destination_path": "$ROOT/out",
+        "purge_destination": true
+      },
+      "files": {
+        "out": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "out/data": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437"
+        },
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "33a5fbf884b9e6ff25a8b0304549c2edb0db8c1c011227b32b390a02e79f0eca"
+        }
+      }
+    },
+    "Unarchiver refuses path traversal": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "out": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "test.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "b80d9b2230262e382fc65c6454229478546407dd013c145602a908f820e48e70"
+        }
+      }
+    },
+    "Unarchiver missing archive input": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "PkgCopier portable package copy with summary": {
+      "status": 0,
+      "environment": {
+        "RECIPE_CACHE_DIR": "$ROOT/cache",
+        "pkg_copier_summary_result": {
+          "data": {
+            "pkg_path": "$ROOT/cache/source.pkg"
+          },
+          "summary_text": "The following packages were copied:"
+        },
+        "pkg_path": "$ROOT/cache/source.pkg",
+        "source_pkg": "$ROOT/source.pkg"
+      },
+      "files": {
+        "cache": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "cache/source.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "d062d5f5a69f19c2a56827500cab26e42cd09fa741ed7e091dae9a6e067da9d3"
+        },
+        "source.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "d062d5f5a69f19c2a56827500cab26e42cd09fa741ed7e091dae9a6e067da9d3"
+        }
+      }
+    },
+    "PkgCopier rejects unsupported extension": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "cache": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "source.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5"
+        }
+      }
+    },
+    "PkgCopier glob follows filesystem order": {
+      "status": 0,
+      "environment": {
+        "pkg_copier_summary_result": {
+          "data": {
+            "pkg_path": "$ROOT/result.pkg"
+          },
+          "summary_text": "The following packages were copied:"
+        },
+        "pkg_path": "$ROOT/result.pkg",
+        "source_pkg": "$ROOT/*.pkg"
+      },
+      "files": {
+        "a.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "a7937b64b8caa58f03721bb6bacf5c78cb235febe0e70b1b84cd99541461a08e"
+        },
+        "b.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4"
+        },
+        "result.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4"
+        }
+      }
+    },
+    "PkgInfoCreator converts plist template": {
+      "status": 0,
+      "environment": {
+        "infofile": "$ROOT/PackageInfo",
+        "pkgroot": "$ROOT/payload",
+        "pkgtype": "flat",
+        "template_path": "$ROOT/template.plist",
+        "version": "2.5"
+      },
+      "files": {
+        "PackageInfo": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "a0dd718707f10b31b55ad7b03ec419a3dfb2ba6d4b59ebedabfc7503e15d9520"
+        },
+        "payload": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "payload/Applications": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "payload/Applications/item": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1"
+        },
+        "template.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {
+            "CFBundleIdentifier": "org.fixture",
+            "CFBundleVersion": "1",
+            "IFPkgFlagAuthorizationAction": "RootAuthorization",
+            "IFPkgFlagRestartAction": "NoRestart"
+          }
+        }
+      }
+    },
+    "PkgInfoCreator updates flat template": {
+      "status": 0,
+      "environment": {
+        "infofile": "$ROOT/PackageInfo",
+        "pkgroot": "$ROOT/payload",
+        "pkgtype": "flat",
+        "template_path": "$ROOT/template.xml",
+        "version": "2.5"
+      },
+      "files": {
+        "PackageInfo": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "c72f3b90057579bb62df62e0d53bd23983062bdedb7a2a9f4c503b431de7d814"
+        },
+        "payload": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "payload/item": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1"
+        },
+        "template.xml": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "66578ff9121f5159cdccffa2dde6a9dc934aab1648ba89b25da589767d053853"
+        }
+      }
+    },
+    "PkgInfoCreator rejects bundle creation": {
+      "status": 10,
+      "environment": null,
+      "files": {
+        "payload": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "template.plist": {
+          "mode": 420,
+          "kind": "plist",
+          "value": {}
+        }
+      }
+    },
+    "PkgCopier double star remains nonrecursive": {
+      "status": 0,
+      "environment": {
+        "RECIPE_CACHE_DIR": "$ROOT/cache",
+        "pkg_copier_summary_result": {
+          "data": {
+            "pkg_path": "$ROOT/cache/direct.pkg"
+          },
+          "summary_text": "The following packages were copied:"
+        },
+        "pkg_path": "$ROOT/cache/direct.pkg",
+        "source_pkg": "$ROOT/**/*.pkg"
+      },
+      "files": {
+        "cache": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "cache/direct.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "d15690f08a575024650b01ffac892cfd2b93e6c57c140f1b6d9e47753cabd579"
+        },
+        "child": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "child/deeper": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "child/deeper/nested.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "233562de1a0288b139c4fa40b7d189f806e906eeb048517aeb67f34ac0e2faf1"
+        },
+        "child/direct.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "d15690f08a575024650b01ffac892cfd2b93e6c57c140f1b6d9e47753cabd579"
+        },
+        "top.pkg": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "28720365c5e7476a011e4f43ac003ee5f16247a263b9d623aa85ed311d73bf39"
+        }
+      }
+    },
+    "Copier unmatched bracket is literal": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/copied.txt",
+        "source_path": "$ROOT/[fixture.txt"
+      },
+      "files": {
+        "[fixture.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "829f8d848b44fa3098194754af5b60e2fb1517b0195956841beb6cac9bc68067"
+        },
+        "copied.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "829f8d848b44fa3098194754af5b60e2fb1517b0195956841beb6cac9bc68067"
+        }
+      }
+    },
+    "Copier unmatched bracket plus wildcard": {
+      "status": 0,
+      "environment": {
+        "destination_path": "$ROOT/copied.txt",
+        "source_path": "$ROOT/[fixture*.txt"
+      },
+      "files": {
+        "[fixture1.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "829f8d848b44fa3098194754af5b60e2fb1517b0195956841beb6cac9bc68067"
+        },
+        "copied.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "829f8d848b44fa3098194754af5b60e2fb1517b0195956841beb6cac9bc68067"
+        }
+      }
+    },
+    "MunkiSetDefaultCatalog preserves metadata": {
+      "status": 0,
+      "environment": {
+        "pkginfo": {
+          "catalogs": [
+            "testing"
+          ],
+          "name": "Fixture"
+        }
+      },
+      "files": {}
+    },
+    "CodeSignatureVerifier accepts Apple fixture": {
+      "status": 0,
+      "environment": {
+        "deep_verification": true,
+        "input_path": "/usr/bin/true",
+        "requirement": "anchor apple",
+        "strict_verification": true
+      },
+      "files": {}
+    },
+    "CodeSignatureVerifier rejects wrong signer": {
+      "status": 10,
+      "environment": null,
+      "files": {}
+    },
+    "SignToolVerifier explicit disabled check": {
+      "status": 0,
+      "environment": {
+        "DISABLE_CODE_SIGNATURE_VERIFICATION": true,
+        "input_path": "$ROOT/fixture.exe"
+      },
+      "files": {}
+    },
+    "Unarchiver default extraction strategy": {
+      "status": 0,
+      "environment": {
+        "NAME": "Fixture",
+        "RECIPE_CACHE_DIR": "$ROOT",
+        "USE_PYTHON_NATIVE_EXTRACTOR": false,
+        "archive_path": "$ROOT/input.zip"
+      },
+      "files": {
+        "Fixture": {
+          "mode": 493,
+          "kind": "directory"
+        },
+        "Fixture/payload.txt": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "c51d9cab89aec430d3274a51bbb930e124935ca08ab6f20d46e1c44651f46497"
+        },
+        "input.zip": {
+          "mode": 420,
+          "kind": "file",
+          "sha256": "8642a87af1099269e39a32007711e40f5b8150413755c13afd9e0cf8b5d81014"
+        }
+      }
+    }
+  }
+}

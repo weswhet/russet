@@ -1,0 +1,1278 @@
+[
+  {
+    "name": "variable passthrough",
+    "processor": "VariableSetter",
+    "environment": {
+      "nested": {
+        "a": [
+          true,
+          3,
+          "text"
+        ]
+      }
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "check marker",
+    "processor": "EndOfCheckPhase",
+    "environment": {},
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "create Unicode file and mode",
+    "processor": "FileCreator",
+    "environment": {
+      "file_path": "$ROOT/café.txt",
+      "file_content": "héllo\n",
+      "file_mode": "0640"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "missing required file content",
+    "processor": "FileCreator",
+    "environment": {
+      "file_path": "$ROOT/no.txt"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "move file",
+    "processor": "FileMover",
+    "environment": {
+      "source": "$ROOT/source",
+      "target": "$ROOT/target"
+    },
+    "files": {
+      "source": "hello"
+    },
+    "status": 0
+  },
+  {
+    "name": "literal replacement",
+    "processor": "FindAndReplace",
+    "environment": {
+      "input_string": "a.b.a",
+      "find": ".",
+      "replace": "-",
+      "result_output_var_name": "custom"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "copy plain file",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/target"
+    },
+    "files": {
+      "source": "hello"
+    },
+    "status": 0
+  },
+  {
+    "name": "copy overwrite file",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/target",
+      "overwrite": true
+    },
+    "files": {
+      "source": "new",
+      "target": "old"
+    },
+    "status": 0
+  },
+  {
+    "name": "find file",
+    "processor": "FileFinder",
+    "environment": {
+      "pattern": "$ROOT/*.txt"
+    },
+    "files": {
+      "a.txt": "a",
+      "z.txt": "z"
+    },
+    "status": 0
+  },
+  {
+    "name": "create symlink",
+    "processor": "Symlinker",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/link"
+    },
+    "files": {
+      "source": "hello"
+    },
+    "status": 0
+  },
+  {
+    "name": "delete file",
+    "processor": "PathDeleter",
+    "environment": {
+      "path_list": [
+        "$ROOT/source"
+      ]
+    },
+    "files": {
+      "source": "hello"
+    },
+    "status": 0
+  },
+  {
+    "name": "read plist",
+    "processor": "PlistReader",
+    "environment": {
+      "info_path": "$ROOT/info.plist"
+    },
+    "files": {
+      "info.plist": {
+        "CFBundleShortVersionString": "1.2"
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "read version",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/info.plist"
+    },
+    "files": {
+      "info.plist": {
+        "CFBundleShortVersionString": "1.2"
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "edit plist",
+    "processor": "PlistEditor",
+    "environment": {
+      "input_plist_path": "$ROOT/info.plist",
+      "output_plist_path": "$ROOT/output.plist",
+      "plist_data": {
+        "hello": "world"
+      }
+    },
+    "files": {
+      "info.plist": {
+        "version": "1.2"
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "package root directories",
+    "processor": "PkgRootCreator",
+    "environment": {
+      "pkgroot": "$ROOT/pkg",
+      "pkgdirs": {
+        "Applications": "0755",
+        "Library": "0750"
+      }
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "package required missing",
+    "processor": "PackageRequired",
+    "environment": {},
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "merge pkginfo",
+    "processor": "MunkiPkginfoMerger",
+    "environment": {
+      "pkginfo": {
+        "name": "old",
+        "nested": {
+          "old": true
+        }
+      },
+      "additional_pkginfo": {
+        "name": "new",
+        "nested": {
+          "new": true
+        }
+      }
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "edit optional receipt",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {
+      "pkginfo_repo_path": "$ROOT/repo/pkgsinfo/test.plist",
+      "pkg_ids_set_optional_true": [
+        "org.test"
+      ],
+      "MUNKI_REPO": "$ROOT/repo"
+    },
+    "files": {
+      "repo/pkgsinfo/test.plist": {
+        "receipts": [
+          {
+            "packageid": "org.test",
+            "version": "1"
+          },
+          {
+            "packageid": "org.other",
+            "version": "2"
+          }
+        ]
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "deprecated warning remains executable",
+    "processor": "DeprecationWarning",
+    "environment": {
+      "warning_message": "fixture warning",
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "deprecated catalog builder no-op",
+    "processor": "MunkiCatalogBuilder",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "package required existing",
+    "processor": "PackageRequired",
+    "environment": {
+      "PKG": "$ROOT/preloaded.pkg"
+    },
+    "files": {
+      "preloaded.pkg": "fixture"
+    },
+    "status": 0
+  },
+  {
+    "name": "AppDmgVersioner missing required input preflight",
+    "processor": "AppDmgVersioner",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "ChocolateyPackager missing required input preflight",
+    "processor": "ChocolateyPackager",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "CodeSignatureVerifier missing required input preflight",
+    "processor": "CodeSignatureVerifier",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "Copier missing required input preflight",
+    "processor": "Copier",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "DmgCreator missing required input preflight",
+    "processor": "DmgCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "FileCreator missing required input preflight",
+    "processor": "FileCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "FileFinder missing required input preflight",
+    "processor": "FileFinder",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "FileMover missing required input preflight",
+    "processor": "FileMover",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "FindAndReplace missing required input preflight",
+    "processor": "FindAndReplace",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "FlatPkgPacker missing required input preflight",
+    "processor": "FlatPkgPacker",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "FlatPkgUnpacker missing required input preflight",
+    "processor": "FlatPkgUnpacker",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "GitHubReleasesInfoProvider missing required input preflight",
+    "processor": "GitHubReleasesInfoProvider",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "InstallFromDMG missing required input preflight",
+    "processor": "InstallFromDMG",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "Installer missing required input preflight",
+    "processor": "Installer",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "MunkiImporter missing required input preflight",
+    "processor": "MunkiImporter",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "MunkiInfoCreator missing required input preflight",
+    "processor": "MunkiInfoCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "MunkiInstallsItemsCreator missing required input preflight",
+    "processor": "MunkiInstallsItemsCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "MunkiOptionalReceiptEditor missing required input preflight",
+    "processor": "MunkiOptionalReceiptEditor",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "MunkiPkginfoMerger missing required input preflight",
+    "processor": "MunkiPkginfoMerger",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PathDeleter missing required input preflight",
+    "processor": "PathDeleter",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PkgCopier missing required input preflight",
+    "processor": "PkgCopier",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PkgCreator missing required input preflight",
+    "processor": "PkgCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PkgExtractor missing required input preflight",
+    "processor": "PkgExtractor",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PkgInfoCreator missing required input preflight",
+    "processor": "PkgInfoCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PkgPayloadUnpacker missing required input preflight",
+    "processor": "PkgPayloadUnpacker",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PkgRootCreator missing required input preflight",
+    "processor": "PkgRootCreator",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PlistEditor missing required input preflight",
+    "processor": "PlistEditor",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "PlistReader missing required input preflight",
+    "processor": "PlistReader",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "SignToolVerifier missing required input preflight",
+    "processor": "SignToolVerifier",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "SparkleUpdateInfoProvider missing required input preflight",
+    "processor": "SparkleUpdateInfoProvider",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "StopProcessingIf missing required input preflight",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "Symlinker missing required input preflight",
+    "processor": "Symlinker",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "URLDownloader missing required input preflight",
+    "processor": "URLDownloader",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "URLDownloaderPython missing required input preflight",
+    "processor": "URLDownloaderPython",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "URLTextSearcher missing required input preflight",
+    "processor": "URLTextSearcher",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "Versioner missing required input preflight",
+    "processor": "Versioner",
+    "environment": {
+      "RECIPE_PATH": "$ROOT/fixture.recipe"
+    },
+    "status": 10
+  },
+  {
+    "name": "create file defaults",
+    "processor": "FileCreator",
+    "environment": {
+      "file_path": "$ROOT/new",
+      "file_content": ""
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "create file parent missing",
+    "processor": "FileCreator",
+    "environment": {
+      "file_path": "$ROOT/missing/new",
+      "file_content": "x"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "create file invalid mode leaves written file",
+    "processor": "FileCreator",
+    "environment": {
+      "file_path": "$ROOT/new",
+      "file_content": "x",
+      "file_mode": "invalid"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "move overwrites target",
+    "processor": "FileMover",
+    "environment": {
+      "source": "$ROOT/source",
+      "target": "$ROOT/target"
+    },
+    "files": {
+      "source": "new",
+      "target": "old"
+    },
+    "status": 0,
+    "status_by_platform": {
+      "win32": 1
+    }
+  },
+  {
+    "name": "move missing source",
+    "processor": "FileMover",
+    "environment": {
+      "source": "$ROOT/missing",
+      "target": "$ROOT/target"
+    },
+    "files": {},
+    "status": 1
+  },
+  {
+    "name": "replacement default output",
+    "processor": "FindAndReplace",
+    "environment": {
+      "input_string": "one one",
+      "find": "one",
+      "replace": "two"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "replacement empty needle",
+    "processor": "FindAndReplace",
+    "environment": {
+      "input_string": "ab",
+      "find": "",
+      "replace": "!"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "finder no matches",
+    "processor": "FileFinder",
+    "environment": {
+      "pattern": "$ROOT/*.absent"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "finder invalid method",
+    "processor": "FileFinder",
+    "environment": {
+      "pattern": "$ROOT/*",
+      "find_method": "regex"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "finder recursive excludes hidden",
+    "processor": "FileFinder",
+    "environment": {
+      "pattern": "$ROOT/**/*.txt"
+    },
+    "files": {
+      "visible/a.txt": "a",
+      ".hidden/z.txt": "z",
+      "visible/.hidden.txt": "h"
+    },
+    "status": 0
+  },
+  {
+    "name": "copy multiple matches follows filesystem order",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/*.txt",
+      "destination_path": "$ROOT/result"
+    },
+    "files": {
+      "a.txt": "a",
+      "b.txt": "b"
+    },
+    "status": 0
+  },
+  {
+    "name": "copy directory to new destination",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/destination"
+    },
+    "files": {
+      "source/nested/file": "x"
+    },
+    "status": 0,
+    "symlinks": {
+      "source/link": "nested/file"
+    },
+    "modes": {
+      "source/nested/file": "0640"
+    }
+  },
+  {
+    "name": "copy file to existing directory",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/destination"
+    },
+    "files": {
+      "source": "x"
+    },
+    "status": 0,
+    "directories": [
+      "destination"
+    ],
+    "modes": {
+      "source": "0750"
+    }
+  },
+  {
+    "name": "copy missing source",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/missing",
+      "destination_path": "$ROOT/destination"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "symlink dangling source",
+    "processor": "Symlinker",
+    "environment": {
+      "source_path": "$ROOT/missing",
+      "destination_path": "$ROOT/link"
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "symlink refuses existing destination",
+    "processor": "Symlinker",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/link"
+    },
+    "files": {
+      "source": "x",
+      "link": "old"
+    },
+    "status": 10
+  },
+  {
+    "name": "symlink overwrite file",
+    "processor": "Symlinker",
+    "environment": {
+      "source_path": "$ROOT/source",
+      "destination_path": "$ROOT/link",
+      "overwrite": true
+    },
+    "files": {
+      "source": "x",
+      "link": "old"
+    },
+    "status": 0
+  },
+  {
+    "name": "delete string input and directory",
+    "processor": "PathDeleter",
+    "environment": {
+      "path_list": "$ROOT/tree"
+    },
+    "files": {
+      "tree/child": "x"
+    },
+    "status": 0
+  },
+  {
+    "name": "delete missing failure",
+    "processor": "PathDeleter",
+    "environment": {
+      "path_list": [
+        "$ROOT/missing"
+      ]
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "delete missing ignored",
+    "processor": "PathDeleter",
+    "environment": {
+      "path_list": [
+        "$ROOT/missing"
+      ],
+      "continue_on_error": true
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "delete dangling symlink",
+    "processor": "PathDeleter",
+    "environment": {
+      "path_list": [
+        "$ROOT/link"
+      ]
+    },
+    "files": {},
+    "status": 0,
+    "symlinks": {
+      "link": "$ROOT/missing"
+    }
+  },
+  {
+    "name": "plist read bundle with mapping",
+    "processor": "PlistReader",
+    "environment": {
+      "info_path": "$ROOT/Test.app",
+      "plist_keys": {
+        "CFBundleIdentifier": "bundleid",
+        "flag": "custom_flag"
+      }
+    },
+    "files": {
+      "Test.app/Contents/Info.plist": {
+        "CFBundleIdentifier": "org.test",
+        "flag": true
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "plist read missing key",
+    "processor": "PlistReader",
+    "environment": {
+      "info_path": "$ROOT/info.plist"
+    },
+    "files": {
+      "info.plist": {}
+    },
+    "status": 10
+  },
+  {
+    "name": "plist editor creates new plist",
+    "processor": "PlistEditor",
+    "environment": {
+      "output_plist_path": "$ROOT/new.plist",
+      "plist_data": {
+        "flag": true,
+        "nested": {
+          "one": [
+            1,
+            "x"
+          ]
+        }
+      }
+    },
+    "files": {},
+    "status": 0
+  },
+  {
+    "name": "version missing key uses UNKNOWN",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/info.plist"
+    },
+    "files": {
+      "info.plist": {}
+    },
+    "status": 0
+  },
+  {
+    "name": "version numeric value remains typed",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/info.plist",
+      "plist_version_key": "build"
+    },
+    "files": {
+      "info.plist": {
+        "build": 42
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "version missing file",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/missing.plist"
+    },
+    "files": {},
+    "status": 10
+  },
+  {
+    "name": "version ZIP without explicit directory is not found",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/test.zip/App/Info.plist"
+    },
+    "files": {},
+    "status": 10,
+    "zip_archives": {
+      "test.zip": {
+        "App/Info.plist": {
+          "CFBundleShortVersionString": "9.2"
+        }
+      }
+    }
+  },
+  {
+    "name": "version zip skips explicit single root",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/test.zip/Info.plist",
+      "skip_single_root_dir": true
+    },
+    "files": {},
+    "status": 0,
+    "zip_archives": {
+      "test.zip": {
+        "App/": "",
+        "App/Info.plist": {
+          "CFBundleShortVersionString": "9.2"
+        }
+      }
+    }
+  },
+  {
+    "name": "predicate true",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "predicate": "version == '1'",
+      "version": "1"
+    },
+    "files": {},
+    "status": 0,
+    "platforms": [
+      "darwin"
+    ]
+  },
+  {
+    "name": "predicate false",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "predicate": "version == '2'",
+      "version": "1"
+    },
+    "files": {},
+    "status": 0,
+    "platforms": [
+      "darwin"
+    ]
+  },
+  {
+    "name": "predicate invalid expression",
+    "processor": "StopProcessingIf",
+    "environment": {
+      "predicate": "version =!= 1",
+      "version": "1"
+    },
+    "files": {},
+    "status": 10,
+    "platforms": [
+      "darwin"
+    ]
+  },
+  {
+    "name": "URLGetter abstract superclass rejects direct execution",
+    "processor": "URLGetter",
+    "environment": {},
+    "files": {},
+    "status": 1
+  },
+  {
+    "name": "version ZIP explicit directory normal mode",
+    "processor": "Versioner",
+    "environment": {
+      "input_plist_path": "$ROOT/test.zip/App/Info.plist"
+    },
+    "zip_archives": {
+      "test.zip": {
+        "App/": "",
+        "App/Info.plist": {
+          "CFBundleShortVersionString": "9.2"
+        }
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "DmgMounter abstract superclass rejects direct execution",
+    "processor": "DmgMounter",
+    "environment": {},
+    "status": 1
+  },
+  {
+    "name": "Unarchiver ZIP portable native",
+    "processor": "Unarchiver",
+    "environment": {
+      "archive_path": "$ROOT/test.zip",
+      "destination_path": "$ROOT/out",
+      "USE_PYTHON_NATIVE_EXTRACTOR": true,
+      "RECIPE_CACHE_DIR": "$ROOT",
+      "NAME": "fixture"
+    },
+    "zip_archives": {
+      "test.zip": {
+        "folder/": "",
+        "folder/é.txt": "héllo"
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "Unarchiver ZIP pathname fallback and cache destination",
+    "processor": "Unarchiver",
+    "environment": {
+      "pathname": "$ROOT/test.zip",
+      "NAME": "fixture",
+      "RECIPE_CACHE_DIR": "$ROOT",
+      "USE_PYTHON_NATIVE_EXTRACTOR": true
+    },
+    "zip_archives": {
+      "test.zip": {
+        "data": "text"
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "Unarchiver purges destination before extraction",
+    "processor": "Unarchiver",
+    "environment": {
+      "archive_path": "$ROOT/test.zip",
+      "destination_path": "$ROOT/out",
+      "USE_PYTHON_NATIVE_EXTRACTOR": true,
+      "purge_destination": true,
+      "archive_format": "zip",
+      "RECIPE_CACHE_DIR": "$ROOT",
+      "NAME": "fixture"
+    },
+    "zip_archives": {
+      "test.zip": {
+        "data": "new"
+      }
+    },
+    "files": {
+      "out/stale": "old"
+    },
+    "status": 0
+  },
+  {
+    "name": "Unarchiver refuses path traversal",
+    "processor": "Unarchiver",
+    "environment": {
+      "archive_path": "$ROOT/test.zip",
+      "destination_path": "$ROOT/out",
+      "USE_PYTHON_NATIVE_EXTRACTOR": true,
+      "RECIPE_CACHE_DIR": "$ROOT",
+      "NAME": "fixture"
+    },
+    "zip_archives": {
+      "test.zip": {
+        "../escape": "bad"
+      }
+    },
+    "status": 10
+  },
+  {
+    "name": "Unarchiver missing archive input",
+    "processor": "Unarchiver",
+    "environment": {},
+    "status": 10
+  },
+  {
+    "name": "PkgCopier portable package copy with summary",
+    "processor": "PkgCopier",
+    "environment": {
+      "source_pkg": "$ROOT/source.pkg",
+      "RECIPE_CACHE_DIR": "$ROOT/cache"
+    },
+    "files": {
+      "source.pkg": "package payload"
+    },
+    "directories": [
+      "cache"
+    ],
+    "status": 0
+  },
+  {
+    "name": "PkgCopier rejects unsupported extension",
+    "processor": "PkgCopier",
+    "environment": {
+      "source_pkg": "$ROOT/source.txt",
+      "RECIPE_CACHE_DIR": "$ROOT/cache"
+    },
+    "files": {
+      "source.txt": "payload"
+    },
+    "directories": [
+      "cache"
+    ],
+    "status": 10
+  },
+  {
+    "name": "PkgCopier glob follows filesystem order",
+    "processor": "PkgCopier",
+    "environment": {
+      "source_pkg": "$ROOT/*.pkg",
+      "pkg_path": "$ROOT/result.pkg"
+    },
+    "files": {
+      "a.pkg": "first",
+      "b.pkg": "second"
+    },
+    "status": 0
+  },
+  {
+    "name": "PkgInfoCreator converts plist template",
+    "processor": "PkgInfoCreator",
+    "environment": {
+      "template_path": "$ROOT/template.plist",
+      "version": "2.5",
+      "pkgroot": "$ROOT/payload",
+      "infofile": "$ROOT/PackageInfo",
+      "pkgtype": "flat"
+    },
+    "files": {
+      "payload/Applications/item": "text",
+      "template.plist": {
+        "CFBundleIdentifier": "org.fixture",
+        "CFBundleVersion": "1",
+        "IFPkgFlagAuthorizationAction": "RootAuthorization",
+        "IFPkgFlagRestartAction": "NoRestart"
+      }
+    },
+    "status": 0
+  },
+  {
+    "name": "PkgInfoCreator updates flat template",
+    "processor": "PkgInfoCreator",
+    "environment": {
+      "template_path": "$ROOT/template.xml",
+      "version": "2.5",
+      "pkgroot": "$ROOT/payload",
+      "infofile": "$ROOT/PackageInfo",
+      "pkgtype": "flat"
+    },
+    "files": {
+      "payload/item": "text",
+      "template.xml": "<pkg-info identifier=\"org.fixture\" version=\"1\"><payload installKBytes=\"0\" /></pkg-info>"
+    },
+    "status": 0
+  },
+  {
+    "name": "PkgInfoCreator rejects bundle creation",
+    "processor": "PkgInfoCreator",
+    "environment": {
+      "template_path": "$ROOT/template.plist",
+      "version": "2.5",
+      "pkgroot": "$ROOT/payload",
+      "infofile": "$ROOT/PackageInfo",
+      "pkgtype": "bundle"
+    },
+    "files": {
+      "template.plist": {}
+    },
+    "directories": [
+      "payload"
+    ],
+    "status": 10
+  },
+  {
+    "name": "PkgCopier double star remains nonrecursive",
+    "processor": "PkgCopier",
+    "environment": {
+      "source_pkg": "$ROOT/**/*.pkg",
+      "RECIPE_CACHE_DIR": "$ROOT/cache"
+    },
+    "files": {
+      "top.pkg": "top",
+      "child/direct.pkg": "direct",
+      "child/deeper/nested.pkg": "nested"
+    },
+    "directories": [
+      "cache"
+    ],
+    "status": 0
+  },
+  {
+    "name": "Copier unmatched bracket is literal",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/[fixture.txt",
+      "destination_path": "$ROOT/copied.txt"
+    },
+    "files": {
+      "[fixture.txt": "literal"
+    },
+    "status": 0
+  },
+  {
+    "name": "Copier unmatched bracket plus wildcard",
+    "processor": "Copier",
+    "environment": {
+      "source_path": "$ROOT/[fixture*.txt",
+      "destination_path": "$ROOT/copied.txt"
+    },
+    "files": {
+      "[fixture1.txt": "literal"
+    },
+    "status": 0
+  },
+  {
+    "name": "MunkiSetDefaultCatalog preserves metadata",
+    "processor": "MunkiSetDefaultCatalog",
+    "environment": {
+      "pkginfo": {
+        "name": "Fixture",
+        "catalogs": [
+          "testing"
+        ]
+      }
+    },
+    "status": 0,
+    "platforms": [
+      "darwin"
+    ]
+  },
+  {
+    "name": "CodeSignatureVerifier accepts Apple fixture",
+    "processor": "CodeSignatureVerifier",
+    "environment": {
+      "input_path": "/usr/bin/true",
+      "requirement": "anchor apple"
+    },
+    "status": 0,
+    "platforms": [
+      "darwin"
+    ]
+  },
+  {
+    "name": "CodeSignatureVerifier rejects wrong signer",
+    "processor": "CodeSignatureVerifier",
+    "environment": {
+      "input_path": "/usr/bin/true",
+      "requirement": "identifier \"org.fixture.wrong\""
+    },
+    "status": 10,
+    "platforms": [
+      "darwin"
+    ]
+  },
+  {
+    "name": "SignToolVerifier explicit disabled check",
+    "processor": "SignToolVerifier",
+    "environment": {
+      "input_path": "$ROOT/fixture.exe",
+      "DISABLE_CODE_SIGNATURE_VERIFICATION": true
+    },
+    "status": 0
+  },
+  {
+    "name": "Unarchiver default extraction strategy",
+    "processor": "Unarchiver",
+    "environment": {
+      "archive_path": "$ROOT/input.zip",
+      "RECIPE_CACHE_DIR": "$ROOT",
+      "NAME": "Fixture"
+    },
+    "zip_archives": {
+      "input.zip": {
+        "payload.txt": "fixture payload"
+      }
+    },
+    "status": 0
+  }
+]

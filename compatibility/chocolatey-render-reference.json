@@ -1,0 +1,92 @@
+{
+  "reference_commit": "c36e58f8d3d8ddb70b6c2d848d2ceca7f767ce5c",
+  "cases": [
+    {
+      "environment": {
+        "id": "demo",
+        "version": "1.0",
+        "title": "Demo & \"test\"",
+        "authors": "Author",
+        "description": "A <package>",
+        "installer_type": "msi",
+        "installer_checksum_type": "sha512",
+        "installer_path": "/tmp/setup's.msi"
+      },
+      "nuspec": "<package xmlns:mstns=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" xmlns:None=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" >\n    <metadata>\n        <id>demo</id>\n        <version>1.0</version>\n        <title>Demo &amp; \"test\"</title>\n        <authors>Author</authors>\n        <description>A &lt;package&gt;</description>\n        <dependencies/>\n    </metadata>\n</package>\n",
+      "script": "$ErrorActionPreference = 'Stop'\n$toolsDir = \"$(Split-Path -Parent $MyInvocation.MyCommand.Definition)\"\n$file = Join-Path $toolsDir 'setup''s.msi'\n$packageArgs = @{\n  packageName = 'demo'\n  fileType = 'msi'\n  silentArgs = '/qn /norestart /l*v MsiInstall.log'\n  file = $file\n}\n\nInstall-ChocolateyInstallPackage @packageArgs\n\n"
+    },
+    {
+      "environment": {
+        "id": "demo",
+        "version": "1.0",
+        "title": "Demo & \"test\"",
+        "authors": "Author",
+        "description": "A <package>",
+        "installer_type": "msi",
+        "installer_checksum_type": "sha512",
+        "installer_url": "https://example.test/app.msi",
+        "installer_checksum": "abcd"
+      },
+      "nuspec": "<package xmlns:mstns=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" xmlns:None=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" >\n    <metadata>\n        <id>demo</id>\n        <version>1.0</version>\n        <title>Demo &amp; \"test\"</title>\n        <authors>Author</authors>\n        <description>A &lt;package&gt;</description>\n        <dependencies/>\n    </metadata>\n</package>\n",
+      "script": "$ErrorActionPreference = 'Stop'\n$toolsDir = \"$(Split-Path -Parent $MyInvocation.MyCommand.Definition)\"\n\n$packageArgs = @{\n  packageName = 'demo'\n  fileType = 'msi'\n  silentArgs = '/qn /norestart /l*v MsiInstall.log'\n  url = 'https://example.test/app.msi'\n  checksum = 'abcd'\n  checksumType = 'sha512'\n}\n\nInstall-ChocolateyPackage @packageArgs\n\n"
+    },
+    {
+      "environment": {
+        "id": "demo",
+        "version": "1.0",
+        "title": "Demo & \"test\"",
+        "authors": "Author",
+        "description": "A <package>",
+        "installer_type": "exe",
+        "installer_checksum_type": "sha512",
+        "installer_path": "/tmp/setup's.exe"
+      },
+      "nuspec": "<package xmlns:mstns=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" xmlns:None=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" >\n    <metadata>\n        <id>demo</id>\n        <version>1.0</version>\n        <title>Demo &amp; \"test\"</title>\n        <authors>Author</authors>\n        <description>A &lt;package&gt;</description>\n        <dependencies/>\n    </metadata>\n</package>\n",
+      "script": "$ErrorActionPreference = 'Stop'\n$toolsDir = \"$(Split-Path -Parent $MyInvocation.MyCommand.Definition)\"\n$file = Join-Path $toolsDir 'setup''s.exe'\n$packageArgs = @{\n  packageName = 'demo'\n  fileType = 'exe'\n  silentArgs = ''\n  file = $file\n}\n\nInstall-ChocolateyInstallPackage @packageArgs\n\n"
+    },
+    {
+      "environment": {
+        "id": "demo",
+        "version": "1.0",
+        "title": "Demo & \"test\"",
+        "authors": "Author",
+        "description": "A <package>",
+        "installer_type": "exe",
+        "installer_checksum_type": "sha512",
+        "installer_url": "https://example.test/app.exe",
+        "installer_checksum": "abcd"
+      },
+      "nuspec": "<package xmlns:mstns=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" xmlns:None=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" >\n    <metadata>\n        <id>demo</id>\n        <version>1.0</version>\n        <title>Demo &amp; \"test\"</title>\n        <authors>Author</authors>\n        <description>A &lt;package&gt;</description>\n        <dependencies/>\n    </metadata>\n</package>\n",
+      "script": "$ErrorActionPreference = 'Stop'\n$toolsDir = \"$(Split-Path -Parent $MyInvocation.MyCommand.Definition)\"\n\n$packageArgs = @{\n  packageName = 'demo'\n  fileType = 'exe'\n  silentArgs = ''\n  url = 'https://example.test/app.exe'\n  checksum = 'abcd'\n  checksumType = 'sha512'\n}\n\nInstall-ChocolateyPackage @packageArgs\n\n"
+    },
+    {
+      "environment": {
+        "id": "demo",
+        "version": "1.0",
+        "title": "Demo & \"test\"",
+        "authors": "Author",
+        "description": "A <package>",
+        "installer_type": "zip",
+        "installer_checksum_type": "sha512",
+        "installer_path": "/tmp/setup's.zip"
+      },
+      "nuspec": "<package xmlns:mstns=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" xmlns:None=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" >\n    <metadata>\n        <id>demo</id>\n        <version>1.0</version>\n        <title>Demo &amp; \"test\"</title>\n        <authors>Author</authors>\n        <description>A &lt;package&gt;</description>\n        <dependencies/>\n    </metadata>\n</package>\n",
+      "script": "$ErrorActionPreference = 'Stop'\n$toolsDir = \"$(Split-Path -Parent $MyInvocation.MyCommand.Definition)\"\n$file = Join-Path $toolsDir 'setup''s.zip'\n$packageArgs = @{\n  packageName = 'demo'\n  fileType = 'zip'\n  silentArgs = ''\n  file = $file\n}\n\nGet-ChocolateyUnzip @packageArgs -Destination $toolsDir\n\n"
+    },
+    {
+      "environment": {
+        "id": "demo",
+        "version": "1.0",
+        "title": "Demo & \"test\"",
+        "authors": "Author",
+        "description": "A <package>",
+        "installer_type": "zip",
+        "installer_checksum_type": "sha512",
+        "installer_url": "https://example.test/app.zip",
+        "installer_checksum": "abcd"
+      },
+      "nuspec": "<package xmlns:mstns=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" xmlns:None=\"http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd\" >\n    <metadata>\n        <id>demo</id>\n        <version>1.0</version>\n        <title>Demo &amp; \"test\"</title>\n        <authors>Author</authors>\n        <description>A &lt;package&gt;</description>\n        <dependencies/>\n    </metadata>\n</package>\n",
+      "script": "$ErrorActionPreference = 'Stop'\n$toolsDir = \"$(Split-Path -Parent $MyInvocation.MyCommand.Definition)\"\n\n$packageArgs = @{\n  packageName = 'demo'\n  fileType = 'zip'\n  silentArgs = ''\n  url = 'https://example.test/app.zip'\n  checksum = 'abcd'\n  checksumType = 'sha512'\n}\n\nInstall-ChocolateyZipPackage @packageArgs -Destination $toolsDir\n\n"
+    }
+  ]
+}

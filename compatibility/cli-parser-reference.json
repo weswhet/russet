@@ -1,0 +1,1201 @@
+{
+  "reference_commit": "c36e58f8d3d8ddb70b6c2d848d2ceca7f767ce5c",
+  "reference_python": "3.11.9",
+  "parsers": {
+    "audit": {
+      "usage": "Usage: autopkg audit [options] recipe [..]\nAudit one or more recipes.\n",
+      "help": "Usage: autopkg audit [options] recipe [..]\nAudit one or more recipes.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n  -l TEXT_FILE, --recipe-list=TEXT_FILE\n                        Path to a text file with a list of recipes to audit.\n  -p, --plist           Output in plist format.\n  -j, --json            Output in JSON format, with a severity for each\n                        finding.\n  --only-check=CHECKS   Comma-separated list of check names to report; omit\n                        all others.\n  --skip-check=CHECKS   Comma-separated list of check names to omit from the\n                        report.\n  --list-checks         Print the available check names and exit.\n  --fail-on=SEVERITY    Return a non-zero exit code if any finding is at or\n                        above this severity (info, warning, error).\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-l",
+            "--recipe-list"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-p",
+            "--plist"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-j",
+            "--json"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--only-check"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--skip-check"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--list-checks"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--fail-on"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "clear-cache": {
+      "usage": "Usage: autopkg clear-cache [options] <recipe|all>\nRemove cached download/work artifacts for a recipe, or all cache contents.\n",
+      "help": "Usage: autopkg clear-cache [options] <recipe|all>\nRemove cached download/work artifacts for a recipe, or all cache contents.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  --dry-run             Print what would be removed without deleting anything.\n  -v, --verbose         Verbose output. With 'all', -v lists each top-level\n                        cache item. -vv lists each item within removed\n                        directories.\n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-v",
+            "--verbose"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "generate-recipe-map": {
+      "usage": "Usage: autopkg generate-recipe-map [options]\nBuild or rebuild the recipe map cache now. Use this to prime\nthe cache in CI or to force a rebuild after suspecting a stale\nor corrupted map.\n",
+      "help": "Usage: autopkg generate-recipe-map [options]\nBuild or rebuild the recipe map cache now. Use this to prime\nthe cache in CI or to force a rebuild after suspecting a stale\nor corrupted map.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n  --include-cwd         Also include the current working directory in the map.\n                        By default '.' is excluded to avoid surprising\n                        behaviour when running from arbitrary locations.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--include-cwd"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        }
+      ]
+    },
+    "info": {
+      "usage": "Usage: autopkg info [options] [recipe]\n",
+      "help": "Usage: autopkg info [options] [recipe]\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n  -q, --quiet           Don't offer to search Github if a recipe can't be\n                        found.\n  -p, --pull            Pull the parent repos if they can't be found in the\n                        search path. Implies agreement to search GitHub.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-q",
+            "--quiet"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-p",
+            "--pull"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        }
+      ]
+    },
+    "install": {
+      "usage": "Usage: autopkg install [options] [itemname ...]\nInstall one or more items.\n",
+      "help": "Usage: autopkg install [options] [itemname ...]\nInstall one or more items.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  --pre=PREPROCESSOR, --preprocessor=PREPROCESSOR\n                        Name of a processor to run before each recipe. Can be\n                        repeated to run multiple preprocessors.\n  --post=POSTPROCESSOR, --postprocessor=POSTPROCESSOR\n                        Name of a processor to run after each recipe. Can be\n                        repeated to run multiple postprocessors.\n  -c, --check           Only check for new/changed downloads.\n  --ignore-parent-trust-verification-errors\n                        Run recipes even if they fail parent trust\n                        verification.\n  -k KEY=VALUE, --key=KEY=VALUE\n                        Provide key/value pairs for recipe input. Caution:\n                        values specified here will be applied to all recipes.\n  -l TEXT_FILE, --recipe-list=TEXT_FILE\n                        Path to a text file with a list of recipes to run.\n  -p PKG_OR_DMG, --pkg=PKG_OR_DMG\n                        Path to a pkg or dmg to provide to a recipe.\n                        Downloading will be skipped.\n  --report-plist=OUTPUT_PATH\n                        File path to save run report plist.\n  -v, --verbose         Verbose output.\n  -q, --quiet           Don't offer to search Github if a recipe can't be\n                        found.\n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--pre",
+            "--preprocessor"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--post",
+            "--postprocessor"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-c",
+            "--check"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--ignore-parent-trust-verification-errors"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-k",
+            "--key"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-l",
+            "--recipe-list"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-p",
+            "--pkg"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--report-plist"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-v",
+            "--verbose"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-q",
+            "--quiet"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "list-processors": {
+      "usage": "Usage: autopkg list-processors [options]\nList the core Processors.\n",
+      "help": "Usage: autopkg list-processors [options]\nList the core Processors.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "list-recipes": {
+      "usage": "Usage: autopkg list-recipes [options]\nList all the recipes this tool can find automatically.\n\n",
+      "help": "Usage: autopkg list-recipes [options]\nList all the recipes this tool can find automatically.\n\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -i, --with-identifiers\n                        Include recipe's identifier in the list.\n  -p, --with-paths      Include recipe's path in the list.\n  --plist               Print recipe list in plist format. This provides all\n                        available key/value pairs of recipes.\n  -a, --show-all        Include recipes with duplicate shortnames, including\n                        overrides. Use in conjunction with '--with-\n                        identifiers', '--with-paths', or '--plist'.\n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-i",
+            "--with-identifiers"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-p",
+            "--with-paths"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--plist"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-a",
+            "--show-all"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "list-repos": {
+      "usage": "Usage: autopkg list-repos\nList all installed recipe repos.\n",
+      "help": "Usage: autopkg list-repos\nList all installed recipe repos.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "make-override": {
+      "usage": "Usage: autopkg make-override [options] [recipe]\nCreate a skeleton override file for a recipe. It will be stored in the first default override directory or that given by '--override-dir'\n",
+      "help": "Usage: autopkg make-override [options] [recipe]\nCreate a skeleton override file for a recipe. It will be stored in the first default override directory or that given by '--override-dir'\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n  -n FILENAME, --name=FILENAME\n                        Name for override file.\n  -f, --force           Force overwrite an override file.\n  -p, --pull            Pull the parent repos if they can't be found in the\n                        search path. Implies agreement to search GitHub.\n  --ignore-deprecation  Make an override even if the specified recipe or one\n                        of its parents is deprecated.\n  --format=FORMAT       The format of the recipe override to be created. Valid\n                        options include: 'plist' (default) or 'yaml'. Can also\n                        be set globally via the 'RECIPE_OVERRIDE_FORMAT'\n                        preference.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-n",
+            "--name"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-f",
+            "--force"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-p",
+            "--pull"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--ignore-deprecation"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "new-recipe": {
+      "usage": "Usage: autopkg new-recipe [options] recipe_pathname\nMake a new template recipe.\n",
+      "help": "Usage: autopkg new-recipe [options] recipe_pathname\nMake a new template recipe.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -i IDENTIFIER, --identifier=IDENTIFIER\n                        Recipe identifier\n  -p PARENT_IDENTIFIER, --parent-identifier=PARENT_IDENTIFIER\n                        Parent recipe identifier for this recipe.\n  --format=FORMAT       The format of the new recipe to be created. Valid\n                        options include: 'plist' (default) or 'yaml'\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-i",
+            "--identifier"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-p",
+            "--parent-identifier"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "processor-info": {
+      "usage": "Usage: autopkg processor-info [options] processorname\n",
+      "help": "Usage: autopkg processor-info [options] processorname\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -r RECIPE, --recipe=RECIPE\n                        Name of recipe using the processor.\n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-r",
+            "--recipe"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "processor-list": {
+      "usage": "Usage: autopkg processor-list [options]\nList the core Processors.\n",
+      "help": "Usage: autopkg processor-list [options]\nList the core Processors.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "repo-add": {
+      "usage": "Usage: autopkg repo-add recipe_repo_url\nDownload one or more new recipe repos and add it to the search path.\nThe 'recipe_repo_url' argument can be of the following forms:\n- repo (implies 'https://github.com/autopkg/repo')\n- user/repo (implies 'https://github.com/user/repo')\n- (http[s]://|git://|ssh://|user@server:)path/to/any/git/repo\n\nExample: 'autopkg repo-add recipes'\n..adds the autopkg/recipes repo from GitHub.\n",
+      "help": "Usage: autopkg repo-add recipe_repo_url\nDownload one or more new recipe repos and add it to the search path.\nThe 'recipe_repo_url' argument can be of the following forms:\n- repo (implies 'https://github.com/autopkg/repo')\n- user/repo (implies 'https://github.com/user/repo')\n- (http[s]://|git://|ssh://|user@server:)path/to/any/git/repo\n\nExample: 'autopkg repo-add recipes'\n..adds the autopkg/recipes repo from GitHub.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "repo-delete": {
+      "usage": "Usage: autopkg repo-delete recipe_repo_path_or_url [...]\nDelete one or more recipe repo and remove it from the search path.\n",
+      "help": "Usage: autopkg repo-delete recipe_repo_path_or_url [...]\nDelete one or more recipe repo and remove it from the search path.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "repo-list": {
+      "usage": "Usage: autopkg repo-list\nList all installed recipe repos.\n",
+      "help": "Usage: autopkg repo-list\nList all installed recipe repos.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "repo-update": {
+      "usage": "Usage: autopkg repo-update recipe_repo_path_or_url [...]\nUpdate one or more recipe repos.\nYou may also use 'all' to update all installed recipe repos.\n",
+      "help": "Usage: autopkg repo-update recipe_repo_path_or_url [...]\nUpdate one or more recipe repos.\nYou may also use 'all' to update all installed recipe repos.\n\nOptions:\n  -h, --help         show this help message and exit\n  --prefs=FILE_PATH  \n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "run": {
+      "usage": "Usage: autopkg run [options] [recipe ...]\nRun one or more recipes.\n",
+      "help": "Usage: autopkg run [options] [recipe ...]\nRun one or more recipes.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  --pre=PREPROCESSOR, --preprocessor=PREPROCESSOR\n                        Name of a processor to run before each recipe. Can be\n                        repeated to run multiple preprocessors.\n  --post=POSTPROCESSOR, --postprocessor=POSTPROCESSOR\n                        Name of a processor to run after each recipe. Can be\n                        repeated to run multiple postprocessors.\n  -c, --check           Only check for new/changed downloads.\n  --ignore-parent-trust-verification-errors\n                        Run recipes even if they fail parent trust\n                        verification.\n  -k KEY=VALUE, --key=KEY=VALUE\n                        Provide key/value pairs for recipe input. Caution:\n                        values specified here will be applied to all recipes.\n  -l TEXT_FILE, --recipe-list=TEXT_FILE\n                        Path to a text file with a list of recipes to run.\n  -p PKG_OR_DMG, --pkg=PKG_OR_DMG\n                        Path to a pkg or dmg to provide to a recipe.\n                        Downloading will be skipped.\n  --report-plist=OUTPUT_PATH\n                        File path to save run report plist.\n  -v, --verbose         Verbose output.\n  -q, --quiet           Don't offer to search Github if a recipe can't be\n                        found.\n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--pre",
+            "--preprocessor"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--post",
+            "--postprocessor"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-c",
+            "--check"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--ignore-parent-trust-verification-errors"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-k",
+            "--key"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-l",
+            "--recipe-list"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-p",
+            "--pkg"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--report-plist"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-v",
+            "--verbose"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-q",
+            "--quiet"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "search": {
+      "usage": "Usage: autopkg search [options] search_term\nSearch for AutoPkg recipes hosted in the AutoPkg organization at\ngithub.com/autopkg. Uses an index that is updated every 4 hours and\ncached locally. Search term is matched against recipe names, app\nnames, and paths. Deprecated recipes are omitted from results.\n",
+      "help": "Usage: autopkg search [options] search_term\nSearch for AutoPkg recipes hosted in the AutoPkg organization at\ngithub.com/autopkg. Uses an index that is updated every 4 hours and\ncached locally. Search term is matched against recipe names, app\nnames, and paths. Deprecated recipes are omitted from results.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -p, --path-only       Restrict search results to the recipe's path only.\n                        Useful for finding recipes in specific directories or\n                        repositories.\n  -t, --use-token       Deprecated. GitHub personal access token will be used\n                        automatically if one is provided. See this wiki page\n                        for details:\n                        https://github.com/autopkg/autopkg/wiki/FAQ#how-do-i-\n                        provide-a-github-personal-access-token-to-autopkg\n  -u USER, --user=USER  Deprecated. GitHub user or organization to search,\n                        other than the default 'autopkg' org. As of AutoPkg\n                        2.9.0, this no longer performs direct searches;\n                        instead, it provides a GitHub search URL.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-p",
+            "--path-only"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-t",
+            "--use-token"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-u",
+            "--user"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "update-trust-info": {
+      "usage": "Usage: autopkg update-trust-info [options] recipe_override_name [...]\nUpdate or add parent recipe trust information for a recipe override.\n",
+      "help": "Usage: autopkg update-trust-info [options] recipe_override_name [...]\nUpdate or add parent recipe trust information for a recipe override.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    },
+    "verify-trust-info": {
+      "usage": "Usage: autopkg verify-trust-info [options] recipe_override_name [...]\nVerify parent recipe trust information for a recipe override.\n",
+      "help": "Usage: autopkg verify-trust-info [options] recipe_override_name [...]\nVerify parent recipe trust information for a recipe override.\n\nOptions:\n  -h, --help            show this help message and exit\n  --prefs=FILE_PATH     \n  -l TEXT_FILE, --recipe-list=TEXT_FILE\n                        Path to a text file with a list of recipes to verify.\n  -v, --verbose         Verbose output. May be specified multiple times.\n  -d DIRECTORY, --search-dir=DIRECTORY\n                        Directory to search for recipes. Can be specified\n                        multiple times.\n  --override-dir=DIRECTORY\n                        Directory to search for recipe overrides. Can be\n                        specified multiple times.\n",
+      "options": [
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "--prefs"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-l",
+            "--recipe-list"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "-v",
+            "--verbose"
+          ],
+          "takes_value": false,
+          "type": null,
+          "choices": null,
+          "nargs": null
+        },
+        {
+          "flags": [
+            "-d",
+            "--search-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        },
+        {
+          "flags": [
+            "--override-dir"
+          ],
+          "takes_value": true,
+          "type": "string",
+          "choices": null,
+          "nargs": 1
+        }
+      ]
+    }
+  }
+}

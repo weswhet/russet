@@ -1,0 +1,92 @@
+name: Rust verified draft release
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full source SHA (must match the selected workflow ref)
+        required: true
+        type: string
+      version:
+        description: Independent Russet distribution version, for example 0.1.0
+        required: true
+        type: string
+      development_run_id:
+        description: Successful four-target Rust development run
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: rust-release-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Require the selected workflow source commit
+        env:
+          SOURCE_COMMIT: ${{ inputs.commit }}
+        run: |
+          test "$GITHUB_REPOSITORY" = "weswhet/russet"
+          test "$SOURCE_COMMIT" = "$GITHUB_SHA"
+      - name: Test promotion rejection and payload preservation
+        run: cargo test --package xtask --bin xtask --locked
+      - name: Verify gates and promote existing archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          DEVELOPMENT_RUN: ${{ inputs.development_run_id }}
+        run: >-
+          cargo xtask promote
+          --commit "$SOURCE_COMMIT" --version "$RELEASE_VERSION"
+          --development-run "$DEVELOPMENT_RUN"
+          --output "$GITHUB_WORKSPACE/release-output"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-rust-release
+          path: release-output/*
+          if-no-files-found: error
+  draft:
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-rust-release
+          path: release-output
+      - name: Create draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -eu
+          tag="rust-v$RELEASE_VERSION"
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" > /tmp/existing-tag || status=$?
+          if [ "$status" -ne 2 ]; then
+            echo 'Refusing an existing tag or an unsuccessful tag lookup' >&2
+            exit 1
+          fi
+          (cd release-output && sha256sum --check SHA256SUMS)
+          cat > /tmp/release-notes.md <<'EOF'
+          Verified native Rust distribution for macOS arm64 and x86-64, Linux x86-64, and Windows x86-64.
+
+          Binaries and installers are preserved from the recorded development archives. Native installation checks, the gate run, and the source commit are recorded in gate-evidence.json and each archive's RELEASE.json. The CLI continues to report the AutoPkg 3.0.0 compatibility version.
+
+          This is a draft. Review the checksums, gate evidence, installation instructions, and rollback evidence before publishing.
+          EOF
+          gh release create "$tag" --draft --target "$SOURCE_COMMIT" \
+            --title "Russet $RELEASE_VERSION" --notes-file /tmp/release-notes.md \
+            release-output/*

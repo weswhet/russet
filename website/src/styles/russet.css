@@ -1,0 +1,17 @@
+/* Russet accent colors for Starlight's light and dark themes. */
+:root {
+	--sl-color-accent-low: #3a1d0c;
+	--sl-color-accent: #d9813f;
+	--sl-color-accent-high: #f6d4b6;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #f9e7d9;
+	--sl-color-accent: #9c4a17;
+	--sl-color-accent-high: #4d230a;
+}
+
+/* Keep wide option tables readable. */
+.sl-markdown-content table code {
+	white-space: nowrap;
+}
