@@ -1,6 +1,7 @@
 //! Native subprocess services. No shell interpolation or Python runtime.
 use std::ffi::OsStr;
 use std::process::{Command, Output};
+pub mod backend;
 pub mod chocolatey;
 pub mod downloads;
 pub mod github;

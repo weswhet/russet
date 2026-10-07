@@ -1,0 +1,15 @@
+[package]
+name = "russet-ditto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for the ditto extraction modes Russet uses."
+
+[target.'cfg(unix)'.dependencies]
+russet-fs = { path = "../fs" }
+zip = { version = "2", default-features = false, features = ["deflate", "bzip2"] }
+flate2 = "1"
+
+[target.'cfg(unix)'.dev-dependencies]
+tempfile = "3"
+xattr = "1"

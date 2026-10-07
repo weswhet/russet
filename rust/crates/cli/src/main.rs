@@ -722,12 +722,8 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
                     if entry[0] == "USE_PYTHON_NATIVE_EXTRACTOR" {
                         for field in entry[1].as_array_mut().unwrap() {
                             if field[0] == "default" {
-                                field[1]["display"] = (if cfg!(target_os = "macos") {
-                                    "False"
-                                } else {
-                                    "True"
-                                })
-                                .into();
+                                field[1]["display"] =
+                                    (if cfg!(windows) { "True" } else { "False" }).into();
                             }
                         }
                     }
@@ -783,7 +779,7 @@ fn main() {
     let standalone = arguments
         .first()
         .is_some_and(|verb| verb == "processor-run");
-    let code = match dispatch(&arguments) {
+    let code = match autopkg_platform::backend::validate().and_then(|()| dispatch(&arguments)) {
         Ok(code) => code,
         Err(error) => {
             if standalone {

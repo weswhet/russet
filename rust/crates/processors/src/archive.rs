@@ -1,4 +1,5 @@
 use super::{io, remove, string, truth, Result};
+use autopkg_platform::backend::{Backend, Tool};
 use plist::{Dictionary, Value};
 use std::{
     fs,
@@ -115,6 +116,66 @@ fn native(kind: &str, source: &Path, destination: &Path) -> Result<()> {
         ))
     }
 }
+/// Runs `ditto` or `tar`, as AutoPkg does on macOS.
+fn platform_utility(kind: &str, source: &str, destination: &Path) -> Result<()> {
+    let mut command = if kind == "zip" || kind == "gzip" {
+        let mut c = Command::new("/usr/bin/ditto");
+        c.args(["--noqtn", "-x"]);
+        if kind == "zip" {
+            c.arg("-k");
+        }
+        c.arg(source).arg(destination);
+        c
+    } else {
+        let mut c = Command::new("/usr/bin/tar");
+        c.args(["-x", "-f", source, "-C"]).arg(destination);
+        if kind == "tar_gzip" {
+            c.arg("-z");
+        } else if kind == "tar_bzip2" {
+            c.arg("-j");
+        }
+        c
+    };
+    let output = command.output().map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err(format!(
+            "Unarchiving {source} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(())
+}
+
+/// Russet's replacement for the platform utilities: `russet-ditto` for zip
+/// and gzip-compressed cpio, and the tar reader for tar archives.
+#[cfg(unix)]
+fn ditto_native(kind: &str, source: &Path, destination: &Path) -> Result<()> {
+    let limits = russet_fs::Limits::default();
+    let report = match kind {
+        "zip" => russet_ditto::extract_zip(source, destination, limits),
+        "gzip" => russet_ditto::extract_cpio(source, destination, limits),
+        _ => return native(kind, source, destination),
+    }
+    .map_err(|e| format!("Unarchiving {} failed: {e}", source.display()))?;
+    for skipped in report.skipped_xattrs {
+        autopkg_platform::processor_output(
+            2,
+            format!(
+                "Couldn't keep extended attribute {} on {}: {}",
+                skipped.name,
+                skipped.path.display(),
+                skipped.reason
+            ),
+        );
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn ditto_native(_kind: &str, _source: &Path, _destination: &Path) -> Result<()> {
+    Err("Native ditto extraction requires macOS or Linux".into())
+}
+
 pub(super) fn execute(env: &mut Dictionary) -> Result<()> {
     let source = env
         .get("archive_path")
@@ -157,33 +218,10 @@ pub(super) fn execute(env: &mut Dictionary) -> Result<()> {
     if truth(env.get("USE_PYTHON_NATIVE_EXTRACTOR")) {
         native(kind, Path::new(&source), &destination)?;
     } else {
-        if !cfg!(target_os = "macos") {
-            return Err("Platform archive utilities are only implemented on macOS; set USE_PYTHON_NATIVE_EXTRACTOR=true for the native Rust extractor".into());
-        }
-        let mut command = if kind == "zip" || kind == "gzip" {
-            let mut c = Command::new("/usr/bin/ditto");
-            c.args(["--noqtn", "-x"]);
-            if kind == "zip" {
-                c.arg("-k");
-            }
-            c.arg(&source).arg(&destination);
-            c
-        } else {
-            let mut c = Command::new("/usr/bin/tar");
-            c.args(["-x", "-f", &source, "-C"]).arg(&destination);
-            if kind == "tar_gzip" {
-                c.arg("-z");
-            } else if kind == "tar_bzip2" {
-                c.arg("-j");
-            }
-            c
-        };
-        let output = command.output().map_err(|e| e.to_string())?;
-        if !output.status.success() {
-            return Err(format!(
-                "Unarchiving {source} failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
+        match autopkg_platform::backend::select(Tool::Ditto) {
+            Backend::Apple => platform_utility(kind, &source, &destination)?,
+            Backend::Native => ditto_native(kind, Path::new(&source), &destination)?,
+            Backend::Unsupported => return Err("Platform archive utilities are only implemented on macOS and Linux; set USE_PYTHON_NATIVE_EXTRACTOR=true for the native Rust extractor".into()),
         }
     }
     autopkg_platform::processor_output(
@@ -300,6 +338,39 @@ mod tests {
         e.insert("USE_PYTHON_NATIVE_EXTRACTOR".into(), true.into());
         super::super::execute("Unarchiver", &mut e).unwrap();
         assert_eq!(fs::read(t.path("out/file.txt")).unwrap(), b"data");
+    }
+    /// The native ditto path keeps what app bundles need: executable modes
+    /// and symlinks. This is the Linux default and RUSSET_NATIVE=ditto on macOS.
+    #[cfg(unix)]
+    #[test]
+    fn zip_ditto_native_keeps_modes_and_symlinks() {
+        use std::os::unix::fs::PermissionsExt;
+        let t = Temp::new();
+        let source = t.path("App.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&source).unwrap());
+        let options = zip::write::SimpleFileOptions::default();
+        zip.start_file(
+            "App.app/Contents/MacOS/App",
+            options.unix_permissions(0o755),
+        )
+        .unwrap();
+        zip.write_all(b"binary").unwrap();
+        zip.add_symlink("App.app/Contents/Current", "MacOS", options)
+            .unwrap();
+        zip.finish().unwrap();
+        let out = Path::new(&t.path("out")).to_path_buf();
+        ditto_native("zip", Path::new(&source), &out).unwrap();
+        let binary = out.join("App.app/Contents/MacOS/App");
+        assert_eq!(
+            fs::metadata(&binary).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+        assert_eq!(
+            fs::read_link(out.join("App.app/Contents/Current")).unwrap(),
+            Path::new("MacOS")
+        );
+        let error = ditto_native("zip", Path::new(&t.path("missing.zip")), &out).unwrap_err();
+        assert!(error.starts_with("Unarchiving "), "{error}");
     }
 }
 

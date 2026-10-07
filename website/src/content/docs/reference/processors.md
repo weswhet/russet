@@ -73,7 +73,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `URLDownloaderPython` | Downloads a file. | All | Kept for recipes that use this name. Russet runs curl instead of Python and ignores `curl_opts`. |
 | `URLGetter` | Base class for processors that use curl. | None | Fails if a recipe runs it directly. |
 | `URLTextSearcher` | Downloads text and matches a regular expression against it. | All | Uses curl. Follows Python regular expression syntax. |
-| `Unarchiver` | Extracts zip and tar archives. | All | On macOS, uses `ditto` and `tar`. On Linux and Windows, uses a built-in extractor, which doesn't support `archive_format` `gzip`. |
+| `Unarchiver` | Extracts zip and tar archives. | All | On macOS, uses `ditto` and `tar`. On Linux, uses a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On Windows, uses a built-in extractor that doesn't support `archive_format` `gzip`. |
 | `VariableSetter` | Sets variables for later steps. | All | None. |
 | `Versioner` | Reads a version from a property list. | All | Reads paths inside zip archives. Paths inside a disk image need macOS. |
 
