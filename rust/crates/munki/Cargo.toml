@@ -19,6 +19,15 @@ encoding_rs = "0.8"
 russet-hdiutil = { path = "../hdiutil" }
 russet-installer = { path = "../installer" }
 russet-xar = { path = "../xar" }
+russet-fs = { path = "../fs" }
+russet-mkbom = { path = "../mkbom" }
+russet-ditto = { path = "../ditto" }
+russet-pkgutil = { path = "../pkgutil" }
+icns = "0.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation-sys = "0.8"
+
+[target.'cfg(unix)'.dev-dependencies]
+russet-pkgbuild = { path = "../pkgbuild" }
+png = "0.18"

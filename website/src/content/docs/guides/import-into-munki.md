@@ -98,8 +98,10 @@ To rebuild the catalogs even when no recipe imported anything, add
 ## Use Munki recipes on Linux and Windows
 
 On Linux, Russet reads packages and disk images itself, so recipes that import
-them into Munki work, with two exceptions: the `installerChoices` option needs
-macOS, and so does `extract_icon`. On Windows, Russet can't read packages or
+them into Munki work, including `extract_icon`. The `installerChoices` option
+still needs macOS. Icons from packages with Apple Archive payloads aren't
+extracted on Linux, and the PNG files aren't byte-identical to the ones macOS
+writes, though the pixels match. On Windows, Russet can't read packages or
 disk images, so those recipes fail. On every platform, processors that only
 edit pkginfo data, such as `MunkiPkginfoMerger`, and `MakeCatalogsProcessor`
 work.

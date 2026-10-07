@@ -60,6 +60,37 @@ mod imp {
         extract_cpio_with(source, destination, limits, true)
     }
 
+    /// Reads one regular file from a cpio archive (plain, gzip, or pbzx)
+    /// without extracting the rest, like `tar -xOf source member`. Returns
+    /// `None` when the archive has no such file, and an error when it's
+    /// larger than `max_bytes`.
+    pub fn read_cpio_member(
+        source: &Path,
+        member: &Path,
+        max_bytes: u64,
+    ) -> io::Result<Option<Vec<u8>>> {
+        let target = russet_fs::clean_relative(member)?;
+        let mut file = File::open(source)?;
+        let mut magic = [0; 4];
+        let read = file.read(&mut magic)?;
+        let file = BufReader::new(File::open(source)?);
+        if read >= 2 && magic[..2] == [0x1f, 0x8b] {
+            crate::cpio::read_member(
+                flate2::bufread::MultiGzDecoder::new(file),
+                &target,
+                max_bytes,
+            )
+        } else if crate::pbzx::is_pbzx(&magic[..read]) {
+            crate::cpio::read_member(
+                BufReader::new(crate::pbzx::PbzxReader::new(file)?),
+                &target,
+                max_bytes,
+            )
+        } else {
+            crate::cpio::read_member(file, &target, max_bytes)
+        }
+    }
+
     /// Like [`extract_cpio`], but with `apple_double` false, `._name` members
     /// stay ordinary files, as `pkgutil --expand` leaves them in Scripts.
     pub fn extract_cpio_with(

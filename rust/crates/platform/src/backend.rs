@@ -69,6 +69,7 @@ impl Tool {
                 | Tool::Codesign
                 | Tool::Pkgbuild
                 | Tool::Mkbom
+                | Tool::Icons
         )
     }
 }
@@ -186,7 +187,8 @@ mod tests {
                 Tool::Codesign,
                 Tool::Pkgutil,
                 Tool::Pkgbuild,
-                Tool::Installer
+                Tool::Installer,
+                Tool::Icons
             ]
         );
         assert!(parse("dito").unwrap_err().contains("unknown tool 'dito'"));
