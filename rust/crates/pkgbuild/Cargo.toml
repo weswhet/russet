@@ -1,0 +1,17 @@
+[package]
+name = "russet-pkgbuild"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for the pkgbuild operations Russet uses: analyzing a root and building a component package."
+
+[target.'cfg(unix)'.dependencies]
+russet-xar = { path = "../xar" }
+russet-mkbom = { path = "../mkbom" }
+russet-ditto = { path = "../ditto" }
+russet-fs = { path = "../fs" }
+flate2 = "1"
+regex = "1"
+roxmltree = "0.20"
+plist = "1"
+tempfile = "3"

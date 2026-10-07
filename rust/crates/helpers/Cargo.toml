@@ -12,3 +12,8 @@ tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+russet-pkgbuild = { path = "../pkgbuild" }
+
+[target.'cfg(unix)'.dev-dependencies]
+russet-xar = { path = "../xar" }
+russet-mkbom = { path = "../mkbom" }

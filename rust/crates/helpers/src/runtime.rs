@@ -7,7 +7,7 @@ use std::{
     path::Path,
 };
 
-fn packaging_syntax(request: &mut Dictionary) -> (bool, Vec<String>) {
+pub(crate) fn packaging_syntax(request: &mut Dictionary) -> (bool, Vec<String>) {
     let mut errors = Vec::new();
     let mut valid = true;
     for key in [

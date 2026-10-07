@@ -67,6 +67,8 @@ impl Tool {
                 | Tool::Pkgutil
                 | Tool::Installer
                 | Tool::Codesign
+                | Tool::Pkgbuild
+                | Tool::Mkbom
         )
     }
 }
@@ -180,13 +182,15 @@ mod tests {
                 Tool::Hdiutil,
                 Tool::Ditto,
                 Tool::Xar,
+                Tool::Mkbom,
                 Tool::Codesign,
                 Tool::Pkgutil,
+                Tool::Pkgbuild,
                 Tool::Installer
             ]
         );
         assert!(parse("dito").unwrap_err().contains("unknown tool 'dito'"));
-        assert!(parse("pkgbuild")
+        assert!(parse("aa")
             .unwrap_err()
             .contains("no native replacement yet"));
     }
@@ -195,10 +199,10 @@ mod tests {
     fn platform_defaults() {
         assert_eq!(decide(Platform::Mac, false, Tool::Ditto), Backend::Apple);
         assert_eq!(decide(Platform::Mac, true, Tool::Ditto), Backend::Native);
-        assert_eq!(decide(Platform::Mac, true, Tool::Pkgbuild), Backend::Apple);
+        assert_eq!(decide(Platform::Mac, true, Tool::Aa), Backend::Apple);
         assert_eq!(decide(Platform::Linux, false, Tool::Ditto), Backend::Native);
         assert_eq!(
-            decide(Platform::Linux, false, Tool::Pkgbuild),
+            decide(Platform::Linux, false, Tool::Aa),
             Backend::Unsupported
         );
         assert_eq!(

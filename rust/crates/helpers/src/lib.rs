@@ -1,13 +1,22 @@
 //! Native helper protocols. `russet --server` and `russet --installd` run the services.
-#[cfg(any(target_os = "macos", all(test, unix)))]
+// The helper services run only on macOS, but their request checks also back
+// the Linux package builder in `native`.
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod common;
-#[cfg(any(target_os = "macos", all(test, unix)))]
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod copier;
-#[cfg(any(target_os = "macos", all(test, unix)))]
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod installer;
-#[cfg(any(target_os = "macos", all(test, unix)))]
+#[cfg(unix)]
+mod native;
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod packager;
-#[cfg(any(target_os = "macos", all(test, unix)))]
+#[cfg(unix)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod runtime;
 
 #[derive(Clone, Copy, Debug)]
@@ -105,15 +114,20 @@ fn request_at(
         autopkg_platform::processor_output(1, line.trim_end());
     }
 }
+/// Builds a package: through the `russet-server` helper on macOS, or with
+/// Russet's in-process builder on Linux and when `RUSSET_NATIVE` names
+/// `pkgbuild`.
 pub fn packaging_request(request: &plist::Dictionary) -> Result<String, String> {
-    #[cfg(target_os = "macos")]
-    {
-        request_at(&Service::Packaging.socket_path(), request, false)
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = request;
-        Err("Package creation through russet-server requires macOS".into())
+    use autopkg_platform::backend::{select, Backend, Tool};
+    match select(Tool::Pkgbuild) {
+        #[cfg(target_os = "macos")]
+        Backend::Apple => request_at(&Service::Packaging.socket_path(), request, false),
+        #[cfg(unix)]
+        Backend::Native => native::package(request),
+        _ => {
+            let _ = request;
+            Err("Package creation is only supported on macOS and Linux".into())
+        }
     }
 }
 pub fn installation_request(request: &plist::Dictionary) -> Result<String, String> {

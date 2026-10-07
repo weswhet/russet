@@ -11,7 +11,17 @@ fn mac() -> Result<()> {
     if cfg!(target_os = "macos") {
         Ok(())
     } else {
-        Err("Package creation and installation are only supported on macOS".into())
+        Err("Package installation is only supported on macOS".into())
+    }
+}
+/// Package creation runs through the helper on macOS and Russet's builder on
+/// Linux.
+fn can_build() -> Result<()> {
+    use autopkg_platform::backend::{select, Backend, Tool};
+    if select(Tool::Pkgbuild) == Backend::Unsupported {
+        Err("Package creation is only supported on macOS and Linux".into())
+    } else {
+        Ok(())
     }
 }
 fn resolve(env: &Dictionary, relative: &str) -> Result<String> {
@@ -82,15 +92,26 @@ fn request(env: &mut Dictionary) -> Result<Dictionary> {
     env.insert("pkg_request".into(), request.clone().into());
     Ok(request)
 }
-fn exists(env: &Dictionary, path: &Path, identifier: &str, version: &str) -> Result<bool> {
-    if !path.exists() || truth(env.get("force_pkg_build")) {
-        return Ok(false);
+/// Reads an existing package's PackageInfo, with `xar` on macOS or the
+/// native reader elsewhere. Logs and returns `None` when it can't.
+fn existing_package_info(env: &Dictionary, path: &Path) -> Result<Option<String>> {
+    use autopkg_platform::backend::{select, Backend, Tool};
+    if select(Tool::Xar) != Backend::Apple {
+        #[cfg(unix)]
+        return Ok(
+            match russet_xar::Archive::open(path).and_then(|mut a| a.read("PackageInfo", 16 << 20))
+            {
+                Ok(bytes) => Some(String::from_utf8_lossy(&bytes).into_owned()),
+                Err(error) => {
+                    autopkg_platform::processor_output(
+                        1,
+                        format!("extraction of {} with xar failed: {error}", path.display()),
+                    );
+                    None
+                }
+            },
+        );
     }
-    mac()?;
-    output(
-        1,
-        format!("Package already exists at path {}.", path.display()),
-    );
     let cache = Path::new(string(env, "RECIPE_CACHE_DIR")?);
     let output = Command::new("/usr/bin/xar")
         .args(["-x", "-C"])
@@ -128,11 +149,26 @@ fn exists(env: &Dictionary, path: &Path, identifier: &str, version: &str) -> Res
         if !failed {
             autopkg_platform::processor_output(1, "Failed to parse existing package, as no PackageInfo file could be found in the extracted archive.");
         }
+        return Ok(None);
+    }
+    let document = io(fs::read_to_string(&info))?;
+    let _ = fs::remove_file(info);
+    Ok(Some(document))
+}
+fn exists(env: &Dictionary, path: &Path, identifier: &str, version: &str) -> Result<bool> {
+    if !path.exists() || truth(env.get("force_pkg_build")) {
+        return Ok(false);
+    }
+    can_build()?;
+    output(
+        1,
+        format!("Package already exists at path {}.", path.display()),
+    );
+    let Some(document) = existing_package_info(env, path)? else {
         autopkg_platform::processor_output(1, format!("Removing {}", path.display()));
         io(fs::remove_file(path))?;
         return Ok(false);
-    }
-    let document = io(fs::read_to_string(&info))?;
+    };
     let doc = roxmltree::Document::parse(&document).map_err(|e| e.to_string())?;
     let root = doc.root_element();
     let local_version = root
@@ -141,7 +177,6 @@ fn exists(env: &Dictionary, path: &Path, identifier: &str, version: &str) -> Res
     let local_id = root
         .attribute("identifier")
         .ok_or("PackageInfo missing identifier")?;
-    let _ = fs::remove_file(info);
     Ok(local_version == version && local_id == identifier)
 }
 fn summary(env: &mut Dictionary, key: &str, request: &Dictionary, path: &str) {
@@ -166,7 +201,7 @@ fn summary(env: &mut Dictionary, key: &str, request: &Dictionary, path: &str) {
     env.insert(key.into(), summary.into());
 }
 pub(super) fn package(env: &mut Dictionary) -> Result<()> {
-    mac()?;
+    can_build()?;
     env.remove("pkg_creator_summary_result");
     let request = request(env)?;
     let path = Path::new(string(&request, "pkgdir")?)
@@ -310,7 +345,7 @@ fn package_app(env: &mut Dictionary, app: &Path) -> Result<()> {
     Ok(())
 }
 pub(super) fn app(env: &mut Dictionary) -> Result<()> {
-    mac()?;
+    can_build()?;
     let path = env
         .get("app_path")
         .and_then(Value::as_string)

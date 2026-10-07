@@ -82,7 +82,7 @@ fn ownerships_enabled(path: &Path) -> bool {
         })
         .unwrap_or(true)
 }
-fn verify_basic(request: &Dictionary, uid: u32) -> Result<(), String> {
+pub(crate) fn verify_basic(request: &Dictionary, uid: u32) -> Result<(), String> {
     directory_owned(Path::new(string(request, "pkgroot")?), uid)?;
     directory_owned(Path::new(string(request, "pkgdir")?), uid)?;
     let name = string(request, "pkgname")?;
@@ -136,7 +136,7 @@ fn verify_basic(request: &Dictionary, uid: u32) -> Result<(), String> {
     }
     Ok(())
 }
-fn chown_path(root: &Path, path: &str) -> Result<PathBuf, String> {
+pub(crate) fn chown_path(root: &Path, path: &str) -> Result<PathBuf, String> {
     if path.is_empty() {
         return Err("Empty chown path".into());
     }

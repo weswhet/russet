@@ -1,0 +1,11 @@
+[package]
+name = "russet-mkbom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native replacement for mkbom and lsbom: writing and reading Apple bill-of-materials (BOM) files."
+
+[dependencies]
+
+[dev-dependencies]
+tempfile = "3"
