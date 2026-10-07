@@ -1,5 +1,5 @@
 //! Legacy bundle-package metadata. Payloads are inspected, never installed.
-use crate::metadata::{command, Options};
+use crate::metadata::Options;
 use autopkg_platform::github::compare_versions;
 use plist::{Dictionary, Value};
 use std::{
@@ -250,49 +250,17 @@ pub(crate) fn package(path: &Path, options: &Options) -> Result<Dictionary, Stri
     if size > 0 {
         info.insert("installed_size".into(), Value::Integer(size.into()));
     }
-    let output = command(
-        "/usr/sbin/installer",
-        &[
-            "-query".as_ref(),
-            "RestartAction".as_ref(),
-            "-pkg".as_ref(),
-            path.as_os_str(),
-            "-plist".as_ref(),
-        ],
-    )?;
-    if let Ok(Value::Dictionary(restart)) = Value::from_reader(std::io::Cursor::new(output)) {
-        if let Some(action) = restart
-            .get("RestartAction")
+    let flag = bundle_info(path).and_then(|d| {
+        d.get("IFPkgFlagRestartAction")
             .and_then(Value::as_string)
-            .filter(|s| *s != "None")
-        {
-            info.insert("RestartAction".into(), Value::String(action.into()));
-        }
+            .map(str::to_owned)
+    });
+    if let Some(action) = crate::tools::restart_action(path, Some(flag.as_deref().unwrap_or("")))? {
+        info.insert("RestartAction".into(), Value::String(action));
     }
     if options.flag("installerChoices") {
-        let output = command(
-            "/usr/sbin/installer",
-            &[
-                "-showChoiceChangesXML".as_ref(),
-                "-pkg".as_ref(),
-                path.as_os_str(),
-            ],
-        )?;
-        if let Ok(Value::Array(choices)) = Value::from_reader(std::io::Cursor::new(output)) {
-            info.insert(
-                "installer_choices_xml".into(),
-                Value::Array(
-                    choices
-                        .into_iter()
-                        .filter(|v| {
-                            v.as_dictionary()
-                                .and_then(|d| d.get("choiceAttribute"))
-                                .and_then(Value::as_string)
-                                == Some("selected")
-                        })
-                        .collect(),
-                ),
-            );
+        if let Some(choices) = crate::tools::installer_choices(path)? {
+            info.insert("installer_choices_xml".into(), Value::Array(choices));
         }
     }
     Ok(info)

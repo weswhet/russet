@@ -107,6 +107,9 @@ dependencies = [
  "md-5",
  "regex",
  "roxmltree",
+ "russet-hdiutil",
+ "russet-installer",
+ "russet-xar",
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
@@ -1108,6 +1111,15 @@ dependencies = [
  "tempfile",
  "udif",
  "xattr",
+]
+
+[[package]]
+name = "russet-installer"
+version = "0.1.0"
+dependencies = [
+ "roxmltree",
+ "russet-xar",
+ "tempfile",
 ]
 
 [[package]]

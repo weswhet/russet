@@ -37,3 +37,7 @@ compatibility version 3.0.0.
   `pkgutil --flatten`, `xar`, `ditto`, and `aa`. They read gzip and pbzx
   payloads. The xar reader rejects packages whose table of contents fails its
   checksum, has more than one checksum element, or points outside the file.
+- On Linux, MunkiImporter and MunkiInfoCreator read packages and disk images.
+  `RestartAction` comes from a built-in replacement for
+  `installer -query RestartAction`, and the image format from one for
+  `hdiutil imageinfo`. `extract_icon` and `installerChoices` still need macOS.

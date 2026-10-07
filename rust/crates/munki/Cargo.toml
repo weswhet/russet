@@ -15,5 +15,10 @@ tempfile = "3"
 regex = "1"
 encoding_rs = "0.8"
 
+[target.'cfg(unix)'.dependencies]
+russet-hdiutil = { path = "../hdiutil" }
+russet-installer = { path = "../installer" }
+russet-xar = { path = "../xar" }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation-sys = "0.8"

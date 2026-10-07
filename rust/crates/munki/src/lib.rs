@@ -8,6 +8,7 @@ pub mod installs;
 pub mod metadata;
 mod mount;
 mod osinstaller;
+mod tools;
 
 use plist::{Dictionary, Value};
 use std::path::{Path, PathBuf};
