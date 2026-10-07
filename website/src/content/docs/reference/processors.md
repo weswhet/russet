@@ -49,7 +49,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `InstallFromDMG` | Copies items from a disk image to the startup volume. | macOS | Uses the `russet-installd` helper service. |
 | `Installer` | Installs a package. | macOS | Uses the `russet-installd` helper service. The package must be in the recipe's cache or on a mounted disk image. |
 | `MunkiCatalogBuilder` | Deprecated. | All | Prints a warning and does nothing. Use `MakeCatalogsProcessor` to rebuild catalogs. |
-| `MunkiImporter` | Imports a package or disk image into a Munki repository. | macOS, Linux | Supports only `FileRepo` Munki repositories. Generates metadata natively and doesn't run `makepkginfo`. On Linux, the `installerChoices` option isn't supported, and `extract_icon` skips packages with Apple Archive payloads. |
+| `MunkiImporter` | Imports a package or disk image into a Munki repository. | macOS, Linux | Supports only `FileRepo` Munki repositories. Generates metadata natively and doesn't run `makepkginfo`. On Linux, the `installerChoices` option isn't supported. |
 | `MunkiInfoCreator` | Creates a pkginfo file for a package or disk image. | macOS, Linux | Reads packages and disk images with macOS tools on macOS and built-in readers on Linux. |
 | `MunkiInstallsItemsCreator` | Creates an `installs` array for a pkginfo file. | All | Some operations need macOS. |
 | `MunkiOptionalReceiptEditor` | Edits the receipts in a pkginfo file. | All | None. |
@@ -61,7 +61,7 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `PkgCreator` | Builds a package from a package root. | macOS, Linux | Uses the `russet-server` helper service on macOS. On Linux, a built-in package builder records the same owners and modes without running as root; it supports the `pkgbuild_args` `--install-location`, `--min-os-version`, `--compression legacy`, and `--filter`. |
 | `PkgExtractor` | Extracts the contents of a bundle-style package. | macOS, Linux | Uses `ditto` on macOS and a built-in replacement on Linux. |
 | `PkgInfoCreator` | Creates a `PackageInfo` file for a package. | All | None. |
-| `PkgPayloadUnpacker` | Unpacks a package payload. | macOS, Linux | Uses `ditto`, with `aa` as a fallback, on macOS. On Linux, a built-in replacement reads gzip and pbzx payloads. |
+| `PkgPayloadUnpacker` | Unpacks a package payload. | macOS, Linux | Uses `ditto`, with `aa` as a fallback, on macOS. On Linux, a built-in replacement reads gzip, pbzx, and Apple Archive payloads, except Apple Archives compressed with LZBITMAP. |
 | `PkgRootCreator` | Creates a package root and its folder structure. | All | On Windows, only the read-only attribute of folder modes applies. |
 | `PlistEditor` | Merges data into a property list file. | All | None. |
 | `PlistReader` | Reads keys from a property list into variables. | All | Paths inside a disk image need macOS or Linux. |

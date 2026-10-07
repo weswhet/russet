@@ -72,8 +72,7 @@ Russet generates Munki metadata natively. On Linux, it reads packages and disk
 images with its built-in readers, including `RestartAction`, which it derives
 from the package's `PackageInfo` or `Distribution` the way `installer` does.
 The `installerChoices` option needs macOS, because `Distribution` files can
-choose packages with JavaScript. Icon extraction works on Linux, except for
-packages with Apple Archive payloads. On Windows,
+choose packages with JavaScript. Icon extraction works on Linux. On Windows,
 importing a package or disk image needs macOS. Processors that only edit
 metadata, such as `MunkiPkginfoMerger`, and the `MakeCatalogsProcessor`
 catalog builder work on every platform.

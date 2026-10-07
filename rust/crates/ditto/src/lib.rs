@@ -33,7 +33,7 @@ pub use imp::*;
 mod imp {
     use russet_fs::{Limits, SkippedXattr};
     use std::fs::{self, File};
-    use std::io::{self, BufReader, Read};
+    use std::io::{self, BufRead, BufReader, Read};
     use std::path::Path;
 
     /// The result of an extraction.
@@ -74,18 +74,21 @@ mod imp {
         let mut magic = [0; 4];
         let read = file.read(&mut magic)?;
         let file = BufReader::new(File::open(source)?);
-        if read >= 2 && magic[..2] == [0x1f, 0x8b] {
+        if russet_aa::is_apple_archive(&magic[..read]) {
+            russet_aa::read_member(source, member, max_bytes)
+        } else if read >= 2 && magic[..2] == [0x1f, 0x8b] {
             crate::cpio::read_member(
                 flate2::bufread::MultiGzDecoder::new(file),
                 &target,
                 max_bytes,
             )
         } else if crate::pbzx::is_pbzx(&magic[..read]) {
-            crate::cpio::read_member(
-                BufReader::new(crate::pbzx::PbzxReader::new(file)?),
-                &target,
-                max_bytes,
-            )
+            let mut payload = BufReader::new(crate::pbzx::PbzxReader::new(file)?);
+            if russet_aa::is_archive(payload.fill_buf()?) {
+                russet_aa::read_member_stream(payload, member, max_bytes)
+            } else {
+                crate::cpio::read_member(payload, &target, max_bytes)
+            }
         } else {
             crate::cpio::read_member(file, &target, max_bytes)
         }
@@ -104,7 +107,10 @@ mod imp {
         let mut magic = [0; 4];
         let read = file.read(&mut magic)?;
         let file = BufReader::new(File::open(source)?);
-        let skipped = if read >= 2 && magic[..2] == [0x1f, 0x8b] {
+        let skipped = if russet_aa::is_apple_archive(&magic[..read]) {
+            // `ditto` can't read Apple Archive payloads; `aa extract` can.
+            russet_aa::extract(source, destination, limits)?
+        } else if read >= 2 && magic[..2] == [0x1f, 0x8b] {
             crate::cpio::extract(
                 flate2::bufread::MultiGzDecoder::new(file),
                 destination,
@@ -113,13 +119,14 @@ mod imp {
             )?
         } else if crate::pbzx::is_pbzx(&magic[..read]) {
             // macOS reads pbzx payloads with `aa extract`, which keeps
-            // `._name` members as ordinary files.
-            crate::cpio::extract(
-                BufReader::new(crate::pbzx::PbzxReader::new(file)?),
-                destination,
-                limits,
-                false,
-            )?
+            // `._name` members as ordinary files. The payload inside is cpio
+            // or an Apple Archive.
+            let mut payload = BufReader::new(crate::pbzx::PbzxReader::new(file)?);
+            if russet_aa::is_archive(payload.fill_buf()?) {
+                russet_aa::extract_stream(payload, destination, limits)?
+            } else {
+                crate::cpio::extract(payload, destination, limits, false)?
+            }
         } else {
             crate::cpio::extract(file, destination, limits, apple_double)?
         };
