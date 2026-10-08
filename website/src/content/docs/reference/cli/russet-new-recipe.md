@@ -1,15 +1,15 @@
 ---
-title: autopkg new-recipe
+title: russet new-recipe
 description: Create a recipe file from a template.
 ---
 
-`autopkg new-recipe` creates a recipe file with placeholder values that you
+`russet new-recipe` creates a recipe file with placeholder values that you
 then edit.
 
 ## Syntax
 
 ```sh
-autopkg new-recipe [OPTIONS] PATH
+russet new-recipe [OPTIONS] PATH
 ```
 
 Replace the following:
@@ -62,7 +62,7 @@ recipe map.
 To create a YAML download recipe, run the following command:
 
 ```sh
-autopkg new-recipe --identifier com.example.download.MyApp MyApp.download.recipe.yaml
+russet new-recipe --identifier com.example.download.MyApp MyApp.download.recipe.yaml
 ```
 
 The output starts with the following line:
@@ -74,4 +74,4 @@ Saved new recipe to MyApp.download.recipe.yaml
 ## Related pages
 
 - [Processors](/reference/processors/)
-- [`autopkg audit`](/reference/cli/autopkg-audit/)
+- [`russet audit`](/reference/cli/russet-audit/)

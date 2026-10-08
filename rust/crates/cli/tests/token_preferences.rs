@@ -49,7 +49,7 @@ fn server() -> (String, thread::JoinHandle<String>) {
     (url, handle)
 }
 fn command(root: &Path, prefs: &Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_russet"));
     command
         .current_dir(root)
         .env("HOME", root)

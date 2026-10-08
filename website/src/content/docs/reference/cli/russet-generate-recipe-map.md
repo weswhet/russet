@@ -1,15 +1,15 @@
 ---
-title: autopkg generate-recipe-map
+title: russet generate-recipe-map
 description: Build or rebuild the recipe map file.
 ---
 
-`autopkg generate-recipe-map` builds the recipe map, a JSON file that lists
+`russet generate-recipe-map` builds the recipe map, a JSON file that lists
 the recipes and overrides in your search and override folders.
 
 ## Syntax
 
 ```sh
-autopkg generate-recipe-map [OPTIONS]
+russet generate-recipe-map [OPTIONS]
 ```
 
 Replace `OPTIONS` with any of the options in the following table.
@@ -55,7 +55,7 @@ off the recipe map with the `DISABLE_RECIPE_MAP` preference or the
 To rebuild the recipe map, run the following command:
 
 ```sh
-autopkg generate-recipe-map
+russet generate-recipe-map
 ```
 
 The output looks like the following:

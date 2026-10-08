@@ -1,6 +1,6 @@
 ---
 title: How Russet works
-description: How the autopkg command, the recipe engine, the built-in processors, and the macOS helper services work together.
+description: How the russet command, the recipe engine, the built-in processors, and the macOS helper services work together.
 ---
 
 Russet is a native implementation of AutoPkg's recipe engine, command-line
@@ -13,7 +13,7 @@ run uses them.
 
 A Russet installation has the following parts:
 
-- **The `autopkg` command:** a single native executable for macOS, Linux, or
+- **The `russet` command:** a single native executable for macOS, Linux, or
   Windows. It reads your preferences, finds recipes, and runs them.
 - **The recipe engine:** loads a recipe and its parent recipes, merges their
   input variables, checks trust information, and runs each processor in
@@ -24,11 +24,12 @@ A Russet installation has the following parts:
   [Processors](/reference/processors/).
 - **Helper services:** on macOS, two privileged launchd services that
   build packages and install software for recipes that run as a standard
-  user.
+  user. Both are the `russet` command, started as `russet --server` and
+  `russet --installd`.
 
 ## What happens when you run a recipe
 
-When you run `autopkg run`, Russet does the following:
+When you run `russet run`, Russet does the following:
 
 1. Reads your preferences and any `--prefs` file.
 1. Finds each recipe that you named, searching your override folders first
@@ -55,10 +56,10 @@ software.
 Russet uses the same design as Python AutoPkg: two launchd services run as
 root, and recipes ask them to do privileged work over a local socket.
 
-| Service | Socket | Used by |
-| --- | --- | --- |
-| `autopkgserver` | `/var/run/autopkgserver` | `PkgCreator`, `AppPkgCreator` |
-| `autopkginstalld` | `/var/run/autopkginstalld` | `Installer`, `InstallFromDMG` |
+| Service | Command | Socket | Used by |
+| --- | --- | --- | --- |
+| `russet-server` | `russet --server` | `/var/run/russet-server` | `PkgCreator`, `AppPkgCreator` |
+| `russet-installd` | `russet --installd` | `/var/run/russet-installd` | `Installer`, `InstallFromDMG` |
 
 launchd starts each service when a recipe connects to its socket, and the
 service exits after it's idle for 10 seconds. The services check who sent each
@@ -69,8 +70,9 @@ request:
 - The package installer installs only packages in the recipe's cache or on a
   volume mounted under `/private/tmp`, where Russet mounts disk images.
 
-The Russet services replace Python AutoPkg's services under the same names
-and socket paths. On Linux and Windows, the processors that need them report
+The Russet services have their own launchd jobs and sockets, so they don't
+conflict with Python AutoPkg's `autopkgserver` and `autopkginstalld` services
+on the same Mac. On Linux and Windows, the processors that need them report
 that only macOS supports package creation and installation.
 
 ## Native tools
@@ -97,7 +99,7 @@ Russet has two version numbers:
   Each release archive records it in `RELEASE.json`. An archive that you
   build from source doesn't have a distribution version.
 - The **compatibility version** is the AutoPkg version that Russet
-  implements. `autopkg version` prints it, and recipes receive it in the
+  implements. `russet version` prints it, and recipes receive it in the
   `AUTOPKG_VERSION` variable. Russet's compatibility version is 3.0.0.
 
 ## What's next

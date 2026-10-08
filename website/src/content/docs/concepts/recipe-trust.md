@@ -30,7 +30,7 @@ processor.
 
 ## What Russet verifies
 
-Before `autopkg run` runs an override, Russet computes the same hashes again
+Before `russet run` runs an override, Russet computes the same hashes again
 and compares them with the trust information. Verification fails when any of
 the following is true:
 
@@ -52,7 +52,7 @@ following conditions:
 
 - The override is inside one of your override folders.
 - The override isn't inside a recipe repository. Recipe repositories are the
-  folder in `RECIPE_REPO_DIR`, where `autopkg repo-add` clones repositories,
+  folder in `RECIPE_REPO_DIR`, where `russet repo-add` clones repositories,
   and every repository in `RECIPE_REPOS`.
 
 The second condition stops a recipe repository from supplying its own trust

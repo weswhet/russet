@@ -641,7 +641,7 @@ pub fn run(args: &[String]) -> Result<i32, String> {
             "--fail-on" => fail = Some(iter.next().ok_or("--fail-on requires severity")?.as_str()),
             "--list-checks" => list = true,
             "-h" | "--help" => {
-                autopkg_platform::text_println!("Usage: autopkg-rs audit [--json|--plist] [--only-check CHECKS|--skip-check CHECKS] [--fail-on SEVERITY] RECIPE ...");
+                autopkg_platform::text_println!("Usage: russet audit [--json|--plist] [--only-check CHECKS|--skip-check CHECKS] [--fail-on SEVERITY] RECIPE ...");
                 return Ok(0);
             }
             "--" => {

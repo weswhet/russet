@@ -5,7 +5,7 @@ use std::{
 };
 
 fn command() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+    Command::new(env!("CARGO_BIN_EXE_russet"))
 }
 
 fn isolated_preferences(root: &std::path::Path) -> std::path::PathBuf {

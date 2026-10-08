@@ -1,14 +1,14 @@
 ---
-title: autopkg info
+title: russet info
 description: Show your current preferences or details about a recipe.
 ---
 
-`autopkg info` prints your current preferences, or a summary of one recipe.
+`russet info` prints your current preferences, or a summary of one recipe.
 
 ## Syntax
 
 ```sh
-autopkg info [OPTIONS] [RECIPE]
+russet info [OPTIONS] [RECIPE]
 ```
 
 Replace the following:
@@ -18,10 +18,10 @@ Replace the following:
 
 ## Description
 
-Without a recipe, `autopkg info` prints `Current preferences:` followed by
+Without a recipe, `russet info` prints `Current preferences:` followed by
 your merged preferences.
 
-With a recipe, `autopkg info` prints the following details:
+With a recipe, `russet info` prints the following details:
 
 - Description and identifier.
 - Whether the recipe imports into Munki, has a check phase, and builds a
@@ -30,7 +30,7 @@ With a recipe, `autopkg info` prints the following details:
 - The recipe's input values.
 
 Russet looks for the recipe at the top level of each search and override
-folder and one folder below it, so `autopkg info` finds recipes in recipe
+folder and one folder below it, so `russet info` finds recipes in recipe
 repositories by name. If an override and its parent have the same name,
 Russet shows the override.
 
@@ -42,7 +42,7 @@ Russet shows the override.
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Searches `FOLDER` for recipe overrides instead of the folders in `RECIPE_OVERRIDE_DIRS`. You can repeat this option. |
 | `-q`, `--quiet` | Accepted for compatibility. This option has no effect. |
-| `-p`, `--pull` | Not supported. Russet exits with an error. To get a missing parent recipe, add its recipe repository with `autopkg repo-add`. |
+| `-p`, `--pull` | Not supported. Russet exits with an error. To get a missing parent recipe, add its recipe repository with `russet repo-add`. |
 
 ## Exit status
 
@@ -58,7 +58,7 @@ Russet shows the override.
 To show details about a recipe, run the following command:
 
 ```sh
-autopkg info TheUnarchiver.download
+russet info TheUnarchiver.download
 ```
 
 The output looks like the following:
@@ -77,10 +77,10 @@ Input values:
 To show your current preferences, run the following command:
 
 ```sh
-autopkg info
+russet info
 ```
 
 ## Related pages
 
-- [`autopkg list-recipes`](/reference/cli/autopkg-list-recipes/)
+- [`russet list-recipes`](/reference/cli/russet-list-recipes/)
 - [Preferences](/reference/preferences/)

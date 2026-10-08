@@ -62,7 +62,7 @@ impl Sandbox {
             .join("Library/AutoPkg/RecipeRepos/com.example.recipes")
     }
     fn autopkg(&self, cwd: &Path, args: &[&str]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+        Command::new(env!("CARGO_BIN_EXE_russet"))
             .env_clear()
             .env("HOME", &self.home)
             .env("USERPROFILE", &self.home)

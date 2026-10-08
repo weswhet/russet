@@ -58,7 +58,7 @@ fn recipe_list_precedence_receipts_and_install_alias() {
     );
     let report = root.join("report.plist");
     let invoke = |args: &[&str]| {
-        let output = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+        let output = Command::new(env!("CARGO_BIN_EXE_russet"))
             .env_clear()
             .env("HOME", root)
             .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
@@ -153,7 +153,7 @@ fn explicit_trust_bypass_keeps_validation_and_option_precedence() {
         serde_json::json!({"Identifier":"org.child","ParentRecipe":"org.parent","Input":{},"Process":[],"ParentRecipeTrustInfo":{}}),
     );
     let invoke = |extra: &[&str]| {
-        Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+        Command::new(env!("CARGO_BIN_EXE_russet"))
             .env_clear()
             .env("HOME", root)
             .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
@@ -190,7 +190,7 @@ fn explicit_trust_bypass_keeps_validation_and_option_precedence() {
     assert!(!invoke(&["--ignore-parent-trust-verification-errors"])
         .status
         .success());
-    let help = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+    let help = Command::new(env!("CARGO_BIN_EXE_russet"))
         .args(["run", "--help"])
         .output()
         .unwrap();
@@ -217,7 +217,7 @@ fn standalone_omits_top_level_binary_null_and_serializes_nested_null() {
     bytes.extend_from_slice(&5u64.to_be_bytes());
     bytes.extend_from_slice(&0u64.to_be_bytes());
     bytes.extend_from_slice(&32u64.to_be_bytes());
-    let mut child = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_russet"))
         .args(["processor-run", "VariableSetter"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -265,7 +265,7 @@ fn default_and_development_caches_resolve_in_isolated_home() {
         ]),
     );
     let invoke = |verb: &str, extra: &[&str], developer: Option<&Path>| {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_russet"));
         command
             .env_clear()
             .env("HOME", &home)
@@ -404,7 +404,7 @@ Process:
         ("Typed.recipe", "org.test.typed.plist"),
         ("Typed.recipe.yaml", "org.test.typed.yaml"),
     ] {
-        let result = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+        let result = Command::new(env!("CARGO_BIN_EXE_russet"))
             .env_clear()
             .env("HOME", root)
             .env("USERPROFILE", root)

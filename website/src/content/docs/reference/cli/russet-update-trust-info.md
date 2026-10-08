@@ -1,15 +1,15 @@
 ---
-title: autopkg update-trust-info
+title: russet update-trust-info
 description: Record the current state of a recipe override's parent recipes.
 ---
 
-`autopkg update-trust-info` updates the trust information in recipe overrides
+`russet update-trust-info` updates the trust information in recipe overrides
 so that it matches the current state of their parent recipes.
 
 ## Syntax
 
 ```sh
-autopkg update-trust-info [OPTIONS] OVERRIDE [OVERRIDE ...]
+russet update-trust-info [OPTIONS] OVERRIDE [OVERRIDE ...]
 ```
 
 Replace the following:
@@ -24,7 +24,7 @@ any non-built-in processor files that they use, writes them to the
 override's `ParentRecipeTrustInfo` key, and prints `Wrote updated PATH`.
 
 Run this command only after you review the changes in the parent recipes. To
-see what changed, run `autopkg verify-trust-info -v` first.
+see what changed, run `russet verify-trust-info -v` first.
 
 If a recipe isn't an override, Russet prints
 `NAME is not a recipe override and has no parent recipe.` and skips it.
@@ -55,11 +55,11 @@ To update the trust information of an override after you review its parent
 recipes, run the following command:
 
 ```sh
-autopkg update-trust-info TheUnarchiver.download
+russet update-trust-info TheUnarchiver.download
 ```
 
 ## Related pages
 
 - [Recipe trust](/concepts/recipe-trust/)
 - [Create recipe overrides](/guides/create-overrides/)
-- [`autopkg verify-trust-info`](/reference/cli/autopkg-verify-trust-info/)
+- [`russet verify-trust-info`](/reference/cli/russet-verify-trust-info/)

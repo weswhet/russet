@@ -1,11 +1,12 @@
 ---
 title: Switch from Python AutoPkg
-description: Replace Python AutoPkg with Russet on a Mac, check your recipes, and update scheduled runs.
+description: Install Russet next to Python AutoPkg on a Mac, check your recipes, and move scheduled runs to Russet.
 ---
 
-This page shows you how to replace Python AutoPkg with Russet on a Mac, check
-that your recipes and overrides work, and update your scheduled runs. If
-something doesn't work, you can roll back to Python AutoPkg.
+This page shows you how to install Russet next to Python AutoPkg on a Mac,
+check that your recipes and overrides work, and move your scheduled runs to
+Russet. Russet doesn't change Python AutoPkg, so you can go back to it at any
+time.
 
 ## Before you begin
 
@@ -14,16 +15,23 @@ something doesn't work, you can roll back to Python AutoPkg.
   format, see [Run recipes](/guides/run-recipes/#run-a-list-of-recipes).
 - Make sure that you can run commands with `sudo`.
 
-## What carries over
+## What Russet shares with Python AutoPkg
 
-Russet uses the same preference domain, folders, and file formats as Python
-AutoPkg, so the following items keep working without changes:
+Russet uses the same preference domain, working folders, and file formats as
+Python AutoPkg, so it uses the following items without changes:
 
 - Your preferences in the `com.github.autopkg` domain.
 - Your recipe repositories, overrides, and their trust information.
 - Your cache, including the download metadata that avoids repeat downloads.
-- The `autopkg` command path, `/usr/local/bin/autopkg`.
-- The helper services' launchd jobs and sockets.
+
+Russet keeps its own installation separate. It installs in `/opt/russet`,
+adds the `russet` command at `/usr/local/bin/russet`, and runs its own helper
+services. Python AutoPkg's `/Library/AutoPkg` folder, its `autopkg` command,
+and its `autopkgserver` and `autopkginstalld` services stay unchanged. The
+`russet` command accepts the same verbs and options as the `autopkg` command.
+
+Because both tools share the cache, don't run the same recipe with both tools
+at the same time.
 
 Russet doesn't run custom processors that recipe repositories supply in
 Python. For the processors that Russet implements, see
@@ -31,23 +39,17 @@ Python. For the processors that Russet implements, see
 
 ## Install Russet
 
-To replace Python AutoPkg, build and package Russet, and then follow the
-macOS installation steps. For details, see
-[Install Russet](/get-started/install/). The installer stops
-the helper services, moves Python AutoPkg's files into a rollback folder,
-installs Russet in their place, and starts the services again. It doesn't
-change your preferences, recipes, or cache.
+Build and package Russet, and then follow the macOS installation steps. For
+details, see [Install Russet](/get-started/install/). The installer doesn't
+change Python AutoPkg, your preferences, your recipes, or your cache.
 
-Both Python AutoPkg 3.0.0 and Russet report version `3.0.0`. To confirm that
-the `autopkg` command is Russet, check the type of the `autopkg` file:
+To confirm that the installer added the `russet` command, run the following command:
 
 ```sh
-file /Library/AutoPkg/autopkg
+russet version
 ```
 
-For Russet, the output names a Mach-O executable, such as
-`Mach-O 64-bit executable arm64`. For Python AutoPkg, the output names a
-Python script.
+The output is `3.0.0`, the AutoPkg version that Russet is compatible with.
 
 ## Check your overrides and recipes
 
@@ -57,7 +59,7 @@ following commands from the folder that holds your recipe list:
 1. Verify the trust information of your overrides:
 
    ```sh
-   autopkg verify-trust-info --recipe-list RECIPE_LIST
+   russet verify-trust-info --recipe-list RECIPE_LIST
    ```
 
    Replace `RECIPE_LIST` with the path to your recipe list file. Each line of
@@ -66,7 +68,7 @@ following commands from the folder that holds your recipe list:
 1. Run the check phase of every recipe:
 
    ```sh
-   autopkg run --check --recipe-list RECIPE_LIST
+   russet run --check --recipe-list RECIPE_LIST
    ```
 
    If a recipe uses a processor that Russet doesn't implement, Russet runs
@@ -83,23 +85,23 @@ following commands from the folder that holds your recipe list:
    AutoPkg produced, such as the packages that it built or the pkginfo files
    that it imported.
 
-## Update scheduled runs
+## Move scheduled runs to Russet
 
-Scheduled jobs that run `autopkg` keep working after you switch. Check how
-each job handles exit statuses. If Russet can't find a recipe,
+Scheduled jobs keep running Python AutoPkg until you change them. In each job,
+replace `autopkg` with `russet`, or `/usr/local/bin/autopkg` with
+`/usr/local/bin/russet`. The verbs and options stay the same. For an example,
+see [Schedule recipe runs](/guides/schedule-runs/).
+
+Check how each job handles exit statuses. If Russet can't find a recipe,
 or a recipe fails trust verification or uses an unsupported processor, Russet
 runs none of the recipes and exits with status `1`. For details, see
 [Exit codes](/reference/exit-codes/).
 
-## Roll back to Python AutoPkg
+## Go back to Python AutoPkg
 
-If Russet doesn't work for your recipes, restore Python AutoPkg:
-
-```sh
-sudo /Library/AutoPkg/install.sh rollback
-```
-
-For details, see [Roll back or remove Russet](/guides/roll-back/).
+If Russet doesn't work for your recipes, change your scheduled jobs back to
+`autopkg`. Python AutoPkg is still installed, so it works as it did before.
+To remove Russet as well, see [Roll back or remove Russet](/guides/roll-back/).
 
 ## What's next
 

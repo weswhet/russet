@@ -80,7 +80,7 @@ fn print_variables(order: &serde_json::Value, indent: usize) {
 
 fn processor_run(args: &[String]) -> Result<i32, String> {
     if args.len() != 1 {
-        return Err("Usage: autopkg-rs processor-run NAME < input.plist > output.plist".into());
+        return Err("Usage: russet processor-run NAME < input.plist > output.plist".into());
     }
     let name = &args[0];
     let manifest = contract();
@@ -258,7 +258,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
             "-v" | "--verbose" => verbose += 1,
             "--ignore-parent-trust-verification-errors" => ignore_trust = true,
             "-h" | "--help" => {
-                autopkg_platform::text_println!("Usage: autopkg-rs {verb} [options] [recipe ...]\n  --pre/--preprocessor NAME   Repeatable preprocessor\n  --post/--postprocessor NAME Repeatable postprocessor\n  -c/--check                 Check for new downloads\n  --ignore-parent-trust-verification-errors\n  -k/--key KEY=VALUE         Repeatable input override\n  -l/--recipe-list PATH      Text or plist recipe list\n  -p/--pkg PATH              Existing package or disk image\n  --report-plist PATH        Save summary report\n  -v/--verbose              Repeat for more diagnostics\n  -q/--quiet                Disable recipe search suggestions\n  -d/--search-dir DIRECTORY  Repeatable recipe directory\n  --override-dir DIRECTORY  Repeatable override directory\n  --prefs PATH              Preference file");
+                autopkg_platform::text_println!("Usage: russet {verb} [options] [recipe ...]\n  --pre/--preprocessor NAME   Repeatable preprocessor\n  --post/--postprocessor NAME Repeatable postprocessor\n  -c/--check                 Check for new downloads\n  --ignore-parent-trust-verification-errors\n  -k/--key KEY=VALUE         Repeatable input override\n  -l/--recipe-list PATH      Text or plist recipe list\n  -p/--pkg PATH              Existing package or disk image\n  --report-plist PATH        Save summary report\n  -v/--verbose              Repeat for more diagnostics\n  -q/--quiet                Disable recipe search suggestions\n  -d/--search-dir DIRECTORY  Repeatable recipe directory\n  --override-dir DIRECTORY  Repeatable override directory\n  --prefs PATH              Preference file");
                 return Ok(0);
             }
             "-q" | "--quiet" => {}
@@ -746,7 +746,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "processor-run" => return processor_run(rest),
         "run" | "install" => return run(verb, rest),
         "help" | "--help" | "-h" => {
-            autopkg_platform::text_println!("Usage: autopkg-rs VERB [options]\n\nDevelopment build. The Python executable remains the release implementation.\n\nImplemented verbs:\n  version\n  list-processors (processor-list)\n  processor-info NAME\n  processor-run NAME < input.plist > output.plist\n  list-recipes [--plist] [-i] [-p]\n  info [RECIPE ...]\n  clear-cache RECIPE ...\n  repo-add URL ...\n  repo-delete REPOSITORY ...\n  repo-list (list-repos)\n  repo-update [REPOSITORY ...]\n  audit RECIPE ...\n  search SEARCH_TERM\n  new-recipe PATH\n  make-override RECIPE\n  update-trust-info RECIPE ...\n  verify-trust-info RECIPE ...\n  generate-recipe-map\n  install RECIPE ...\n  run [-l RECIPE_LIST] [-c] [-v] [-k KEY=VALUE] [-d DIRECTORY] [--prefs FILE] RECIPE ...");
+            autopkg_platform::text_println!("Usage: russet VERB [options]\n\nDevelopment build. The Python executable remains the release implementation.\n\nImplemented verbs:\n  version\n  list-processors (processor-list)\n  processor-info NAME\n  processor-run NAME < input.plist > output.plist\n  list-recipes [--plist] [-i] [-p]\n  info [RECIPE ...]\n  clear-cache RECIPE ...\n  repo-add URL ...\n  repo-delete REPOSITORY ...\n  repo-list (list-repos)\n  repo-update [REPOSITORY ...]\n  audit RECIPE ...\n  search SEARCH_TERM\n  new-recipe PATH\n  make-override RECIPE\n  update-trust-info RECIPE ...\n  verify-trust-info RECIPE ...\n  generate-recipe-map\n  install RECIPE ...\n  run [-l RECIPE_LIST] [-c] [-v] [-k KEY=VALUE] [-d DIRECTORY] [--prefs FILE] RECIPE ...");
         }
         _ => {
             return Err(format!(
@@ -757,8 +757,29 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
     Ok(0)
 }
 
+/// Map `--server` and `--installd` to the privileged helper that launchd starts.
+fn helper_service(arguments: &[String]) -> Option<Result<autopkg_helpers::Service, String>> {
+    let service = match arguments.first().map(String::as_str)? {
+        "--server" => autopkg_helpers::Service::Packaging,
+        "--installd" => autopkg_helpers::Service::Installation,
+        _ => return None,
+    };
+    Some(if arguments.len() == 1 {
+        Ok(service)
+    } else {
+        Err(format!("Usage: russet {}", arguments[0]))
+    })
+}
+
 fn main() {
     let arguments: Vec<_> = env::args().skip(1).collect();
+    if let Some(service) = helper_service(&arguments) {
+        if let Err(error) = service.and_then(autopkg_helpers::run) {
+            autopkg_platform::text_eprintln!("{error}");
+            std::process::exit(1);
+        }
+        std::process::exit(0);
+    }
     let standalone = arguments
         .first()
         .is_some_and(|verb| verb == "processor-run");
@@ -785,6 +806,26 @@ fn main() {
 #[cfg(test)]
 mod option_tests {
     use super::*;
+    #[test]
+    fn helper_flags_select_a_service_and_take_no_arguments() {
+        let args = |list: &[&str]| list.iter().map(|a| a.to_string()).collect::<Vec<_>>();
+        assert!(matches!(
+            helper_service(&args(&["--server"])),
+            Some(Ok(autopkg_helpers::Service::Packaging))
+        ));
+        assert!(matches!(
+            helper_service(&args(&["--installd"])),
+            Some(Ok(autopkg_helpers::Service::Installation))
+        ));
+        assert_eq!(
+            helper_service(&args(&["--server", "extra"]))
+                .unwrap()
+                .unwrap_err(),
+            "Usage: russet --server"
+        );
+        assert!(helper_service(&args(&["run", "--server"])).is_none());
+        assert!(helper_service(&[]).is_none());
+    }
     #[test]
     fn optparse_forms_preserve_values_and_separator() {
         let args = [

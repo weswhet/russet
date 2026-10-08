@@ -1,4 +1,4 @@
-//! Native helper protocols. Development binaries are never installed implicitly.
+//! Native helper protocols. `russet --server` and `russet --installd` run the services.
 #[cfg(any(target_os = "macos", all(test, unix)))]
 mod common;
 #[cfg(any(target_os = "macos", all(test, unix)))]
@@ -16,11 +16,16 @@ pub enum Service {
     Installation,
 }
 impl Service {
+    /// The launchd socket name, the log file name in `/private/var/log`, and
+    /// the socket file name in `/var/run`.
     pub fn name(self) -> &'static str {
         match self {
-            Self::Packaging => "autopkgserver",
-            Self::Installation => "autopkginstalld",
+            Self::Packaging => "russet-server",
+            Self::Installation => "russet-installd",
         }
+    }
+    pub fn socket_path(self) -> std::path::PathBuf {
+        std::path::Path::new("/var/run").join(self.name())
     }
 }
 
@@ -32,7 +37,7 @@ pub fn run(service: Service) -> Result<(), String> {
     #[cfg(not(target_os = "macos"))]
     {
         let _ = service;
-        Err("AutoPkg privileged helpers require macOS".into())
+        Err("Russet helper services require macOS".into())
     }
 }
 
@@ -89,7 +94,7 @@ fn request_at(
     loop {
         let mut line = String::new();
         if reader.read_line(&mut line).map_err(|e| e.to_string())? == 0 {
-            return Err("No reply from autopkginstalld (crash?), check system logs".into());
+            return Err("No reply from russet-installd (crash?), check system logs".into());
         }
         if let Some(result) = line.strip_prefix("OK:") {
             return Ok(result.trim_end().into());
@@ -103,31 +108,23 @@ fn request_at(
 pub fn packaging_request(request: &plist::Dictionary) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        request_at(
-            std::path::Path::new("/var/run/autopkgserver"),
-            request,
-            false,
-        )
+        request_at(&Service::Packaging.socket_path(), request, false)
     }
     #[cfg(not(target_os = "macos"))]
     {
         let _ = request;
-        Err("Package creation through autopkgserver requires macOS".into())
+        Err("Package creation through russet-server requires macOS".into())
     }
 }
 pub fn installation_request(request: &plist::Dictionary) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        request_at(
-            std::path::Path::new("/var/run/autopkginstalld"),
-            request,
-            true,
-        )
+        request_at(&Service::Installation.socket_path(), request, true)
     }
     #[cfg(not(target_os = "macos"))]
     {
         let _ = request;
-        Err("Installation through autopkginstalld requires macOS".into())
+        Err("Installation through russet-installd requires macOS".into())
     }
 }
 

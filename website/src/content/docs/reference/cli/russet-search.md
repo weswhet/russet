@@ -1,15 +1,15 @@
 ---
-title: autopkg search
+title: russet search
 description: Search for recipes in the AutoPkg organization on GitHub.
 ---
 
-`autopkg search` searches an index of the recipes in the AutoPkg organization
+`russet search` searches an index of the recipes in the AutoPkg organization
 on GitHub and prints the matches.
 
 ## Syntax
 
 ```sh
-autopkg search [OPTIONS] TERM
+russet search [OPTIONS] TERM
 ```
 
 Replace the following:
@@ -59,17 +59,17 @@ ignores a token that contains spaces and prints a warning.
 To search for recipes for Firefox, run the following command:
 
 ```sh
-autopkg search firefox
+russet search firefox
 ```
 
 To find recipes whose path contains `Mozilla`, run the following command:
 
 ```sh
-autopkg search --path-only Mozilla
+russet search --path-only Mozilla
 ```
 
 ## Related pages
 
 - [Add recipe repositories](/guides/add-recipe-repositories/)
-- [`autopkg repo-add`](/reference/cli/autopkg-repo-add/)
+- [`russet repo-add`](/reference/cli/russet-repo-add/)
 - [Preferences](/reference/preferences/)

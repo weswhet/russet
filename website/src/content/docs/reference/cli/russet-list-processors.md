@@ -1,15 +1,15 @@
 ---
-title: autopkg list-processors
+title: russet list-processors
 description: List the processors that Russet implements.
 ---
 
-`autopkg list-processors` prints the name of every processor that Russet
-implements. The alias `autopkg processor-list` does the same thing.
+`russet list-processors` prints the name of every processor that Russet
+implements. The alias `russet processor-list` does the same thing.
 
 ## Syntax
 
 ```sh
-autopkg list-processors
+russet list-processors
 ```
 
 ## Description
@@ -40,10 +40,10 @@ To count the processors that your installation implements, run the following
 command:
 
 ```sh
-autopkg list-processors | wc -l
+russet list-processors | wc -l
 ```
 
 ## Related pages
 
 - [Processors](/reference/processors/)
-- [`autopkg processor-info`](/reference/cli/autopkg-processor-info/)
+- [`russet processor-info`](/reference/cli/russet-processor-info/)

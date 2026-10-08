@@ -3,7 +3,7 @@ title: Run recipes
 description: Run one or more recipes, check for new versions, override input values, and save a run report.
 ---
 
-This page shows you how to run recipes with `autopkg run`, check for new
+This page shows you how to run recipes with `russet run`, check for new
 versions without building anything, change input values for a run, run a
 list of recipes, and save a report.
 
@@ -15,7 +15,7 @@ list of recipes, and save a report.
 
 ## Name the recipes to run
 
-`autopkg run` accepts recipes in the following forms:
+`russet run` accepts recipes in the following forms:
 
 - **A short name**, such as `Firefox.download`.
 - **A recipe identifier**, such as `com.github.autopkg.download.firefox-rc-en_US`.
@@ -34,7 +34,7 @@ runs. If Russet can't find a recipe, it prints
 To run a recipe, run the following command:
 
 ```sh
-autopkg run RECIPE
+russet run RECIPE
 ```
 
 Replace `RECIPE` with an override name, an identifier, or a path. To run
@@ -65,7 +65,7 @@ they download the software and before they package or import it. To run only
 the check phase, add `--check`:
 
 ```sh
-autopkg run --check RECIPE
+russet run --check RECIPE
 ```
 
 Russet stops each recipe at its last `EndOfCheckPhase` step. If a recipe
@@ -77,7 +77,7 @@ check mode, Russet doesn't run postprocessors.
 To set an input variable for one run, use `--key`, or its short form, `-k`:
 
 ```sh
-autopkg run -k KEY=VALUE RECIPE
+russet run -k KEY=VALUE RECIPE
 ```
 
 Replace the following:
@@ -92,7 +92,7 @@ To give a recipe a package or disk image that you already downloaded, use
 `--pkg`:
 
 ```sh
-autopkg run --pkg PATH RECIPE
+russet run --pkg PATH RECIPE
 ```
 
 Replace `PATH` with the path to the package or disk image. You can use
@@ -113,7 +113,7 @@ MakeCatalogs.munki
 To run a recipe list, run the following command:
 
 ```sh
-autopkg run --recipe-list RECIPE_LIST
+russet run --recipe-list RECIPE_LIST
 ```
 
 Replace `RECIPE_LIST` with the path to the file.
@@ -128,7 +128,7 @@ To run a built-in processor before or after every recipe in the run, use
 `--preprocessor` or `--postprocessor`. You can repeat each option:
 
 ```sh
-autopkg run --postprocessor PROCESSOR RECIPE
+russet run --postprocessor PROCESSOR RECIPE
 ```
 
 Replace `PROCESSOR` with a processor name from the
@@ -142,7 +142,7 @@ list.
 To save a report of the run as a property list, add `--report-plist`:
 
 ```sh
-autopkg run --report-plist REPORT_PATH RECIPE
+russet run --report-plist REPORT_PATH RECIPE
 ```
 
 Replace `REPORT_PATH` with the path for the report file. The report contains a
@@ -156,7 +156,7 @@ processor's input and output.
 
 ## Check the result
 
-`autopkg run` exits with one of the following statuses:
+`russet run` exits with one of the following statuses:
 
 - `0`: every recipe ran without an error.
 - `70`: at least one recipe failed while it ran. The other recipes still ran.
@@ -167,18 +167,18 @@ For every status, see [Exit codes](/reference/exit-codes/).
 ## Install software with a recipe
 
 On macOS, `install` recipes install software on the computer that runs them.
-To run an install recipe, use `autopkg install` with the software's name:
+To run an install recipe, use `russet install` with the software's name:
 
 ```sh
-autopkg install NAME
+russet install NAME
 ```
 
 Replace `NAME` with the name before `.install`, such as `Firefox`. Russet runs
-`NAME.install`. The `autopkginstalld` helper service installs the software,
-so you don't need to run `autopkg` with `sudo`.
+`NAME.install`. The `russet-installd` helper service installs the software,
+so you don't need to run `russet` with `sudo`.
 
 ## What's next
 
 - [Schedule recipe runs](/guides/schedule-runs/)
-- [`autopkg run` reference](/reference/cli/autopkg-run/)
+- [`russet run` reference](/reference/cli/russet-run/)
 - [Exit codes](/reference/exit-codes/)

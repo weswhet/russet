@@ -191,7 +191,7 @@ commit, capture platform, and a digest of the fixture definitions.
 The portable Rust evaluator is tested directly against the captured results,
 including on macOS, where normal processor execution uses Foundation. The CLI
 test `rust/crates/cli/tests/predicate_reference.rs` also runs all 22 cases
-through `autopkg-rs processor-run` on every platform. It compares the final
+through `russet processor-run` on every platform. It compares the final
 environment, exit status, and files with the frozen results, and rejects
 fixtures whose digest doesn't match. To capture the native results again, use
 the predicate suite in russet-compat on macOS.

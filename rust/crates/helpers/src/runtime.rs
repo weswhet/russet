@@ -201,11 +201,7 @@ fn activate(service: Service) -> Result<std::os::unix::net::UnixListener, String
             count: *mut libc::size_t,
         ) -> libc::c_int;
     }
-    let name = CString::new(match service {
-        Service::Packaging => "AutoPkgServer",
-        Service::Installation => "autopkginstalld",
-    })
-    .unwrap();
+    let name = CString::new(service.name()).unwrap();
     let mut fds = ptr::null_mut();
     let mut count = 0;
     let error = unsafe { launch_activate_socket(name.as_ptr(), &mut fds, &mut count) };

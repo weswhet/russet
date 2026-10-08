@@ -23,7 +23,7 @@ records the parent's trust information.
 To create an override, run the following command:
 
 ```sh
-autopkg make-override RECIPE
+russet make-override RECIPE
 ```
 
 Replace `RECIPE` with the short name or identifier of the recipe, such as
@@ -67,20 +67,20 @@ imported items join:
 ```
 
 The keys available depend on the recipe. To see a recipe's input variables,
-run `autopkg info RECIPE`.
+run `russet info RECIPE`.
 
 Don't edit `ParentRecipeTrustInfo` by hand. Russet maintains it.
 
 ## Verify trust information
 
 When a parent recipe or a processor it uses changes, the override's trust
-information no longer matches. `autopkg run` refuses to run the override
+information no longer matches. `russet run` refuses to run the override
 until you review the change and update the trust information.
 
 To check an override without running it, run the following command:
 
 ```sh
-autopkg verify-trust-info -v OVERRIDE
+russet verify-trust-info -v OVERRIDE
 ```
 
 Replace `OVERRIDE` with the override's short name. To check several
@@ -110,7 +110,7 @@ accept a change, follow these steps:
 1. Find the path of the parent recipe:
 
    ```sh
-   autopkg info OVERRIDE
+   russet info OVERRIDE
    ```
 
    The `Parent recipe(s)` line lists the path of each parent recipe.
@@ -130,7 +130,7 @@ accept a change, follow these steps:
 1. If you trust the change, update the override's trust information:
 
    ```sh
-   autopkg update-trust-info OVERRIDE
+   russet update-trust-info OVERRIDE
    ```
 
    The output names the file that Russet updated:
@@ -147,7 +147,7 @@ warning. To treat a missing trust record as an error, set the
 [Preferences](/reference/preferences/).
 
 To run recipes even when trust verification fails, add
-`--ignore-parent-trust-verification-errors` to `autopkg run`. Use this option
+`--ignore-parent-trust-verification-errors` to `russet run`. Use this option
 only for testing. It skips the check that protects you from changes that
 you haven't reviewed.
 
@@ -155,4 +155,4 @@ you haven't reviewed.
 
 - [Recipe trust](/concepts/recipe-trust/)
 - [Run recipes](/guides/run-recipes/)
-- [`autopkg make-override` reference](/reference/cli/autopkg-make-override/)
+- [`russet make-override` reference](/reference/cli/russet-make-override/)

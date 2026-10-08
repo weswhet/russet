@@ -11,7 +11,7 @@ signature.
 ## Before you begin
 
 - [Install Russet](/get-started/install/), and confirm that
-  `autopkg version` prints `3.0.0`.
+  `russet version` prints `3.0.0`.
 - Make sure that you have Git. To check, run `git --version`. If macOS
   asks you to install the command-line developer tools, install them.
 - Make sure that the computer has internet access.
@@ -24,7 +24,7 @@ repository on GitHub contains the recipes that the AutoPkg project maintains.
 To add it, run the following command:
 
 ```sh
-autopkg repo-add recipes
+russet repo-add recipes
 ```
 
 Russet clones the repository and adds it to your recipe search folders:
@@ -48,7 +48,7 @@ To list the recipes for The Unarchiver, an archive utility, run the following
 command:
 
 ```sh
-autopkg list-recipes | grep -i unarchiver
+russet list-recipes | grep -i unarchiver
 ```
 
 The output lists three recipes:
@@ -63,7 +63,7 @@ The `download` recipe downloads the app and verifies its code signature. To
 see its details, run the following command:
 
 ```sh
-autopkg info TheUnarchiver.download
+russet info TheUnarchiver.download
 ```
 
 The output includes the recipe's identifier and input variables:
@@ -85,7 +85,7 @@ when a recipe changes. For details, see [Recipe trust](/concepts/recipe-trust/).
 To create an override, run the following command:
 
 ```sh
-autopkg make-override TheUnarchiver.download
+russet make-override TheUnarchiver.download
 ```
 
 Russet saves the override in your overrides folder:
@@ -99,7 +99,7 @@ Override file saved to /Users/USERNAME/Library/AutoPkg/RecipeOverrides/TheUnarch
 To run the override with verbose output, run the following command:
 
 ```sh
-autopkg run -v TheUnarchiver.download
+russet run -v TheUnarchiver.download
 ```
 
 Russet runs each processor in the recipe and prints what it does. The output
@@ -139,7 +139,7 @@ To confirm that the parent recipe hasn't changed since you created the
 override, run the following command:
 
 ```sh
-autopkg verify-trust-info TheUnarchiver.download
+russet verify-trust-info TheUnarchiver.download
 ```
 
 The output is the following:
@@ -167,7 +167,7 @@ If you don't want to keep the files from this quickstart, delete them:
 1. Optional: if you don't plan to use the recipe repository, remove it:
 
    ```sh
-   autopkg repo-delete recipes
+   russet repo-delete recipes
    ```
 
 ## What's next

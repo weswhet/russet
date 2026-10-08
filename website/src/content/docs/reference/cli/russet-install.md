@@ -1,27 +1,27 @@
 ---
-title: autopkg install
+title: russet install
 description: Run one or more install recipes by item name.
 ---
 
-`autopkg install` runs install recipes, which install software on the computer
+`russet install` runs install recipes, which install software on the computer
 that runs them.
 
 ## Syntax
 
 ```sh
-autopkg install [OPTIONS] [ITEM ...]
+russet install [OPTIONS] [ITEM ...]
 ```
 
 Replace the following:
 
-- `OPTIONS`: any of the options that [`autopkg run`](/reference/cli/autopkg-run/#options)
+- `OPTIONS`: any of the options that [`russet run`](/reference/cli/russet-run/#options)
   accepts.
 - `ITEM`: the name of the software to install, such as `Firefox`, or the name
   of an install recipe, such as `Firefox.install`.
 
 ## Description
 
-`autopkg install` works like `autopkg run`, except for how it treats the names
+`russet install` works like `russet run`, except for how it treats the names
 that you pass:
 
 - A name without an extension gets `.install` added. For example, `Firefox`
@@ -35,18 +35,18 @@ Russet doesn't change the names in a recipe list that you pass with
 `--recipe-list`.
 
 Install recipes use the `Installer` and `InstallFromDMG` processors, which
-ask the `autopkginstalld` helper service to install software as root. These
+ask the `russet-installd` helper service to install software as root. These
 processors work only on macOS. For details, see
 [How Russet works](/concepts/how-russet-works/#helper-services).
 
-Russet finds, validates, and runs recipes the same way as `autopkg run`. For
+Russet finds, validates, and runs recipes the same way as `russet run`. For
 details, see
-[How Russet finds recipes](/reference/cli/autopkg-run/#how-russet-finds-recipes).
+[How Russet finds recipes](/reference/cli/russet-run/#how-russet-finds-recipes).
 
 ## Options
 
-`autopkg install` accepts the same options as `autopkg run`. For the full
-table, see [`autopkg run` options](/reference/cli/autopkg-run/#options).
+`russet install` accepts the same options as `russet run`. For the full
+table, see [`russet run` options](/reference/cli/russet-run/#options).
 
 ## Exit status
 
@@ -64,18 +64,18 @@ If you have a recipe override named `Firefox.install`, the following command
 runs it:
 
 ```sh
-autopkg install Firefox
+russet install Firefox
 ```
 
 To install the items in a recipe list and print each processor's messages,
 run the following command:
 
 ```sh
-autopkg install -v --recipe-list ~/install-list.txt
+russet install -v --recipe-list ~/install-list.txt
 ```
 
 ## Related pages
 
-- [`autopkg run`](/reference/cli/autopkg-run/)
+- [`russet run`](/reference/cli/russet-run/)
 - [Run recipes](/guides/run-recipes/)
 - [How Russet works](/concepts/how-russet-works/)

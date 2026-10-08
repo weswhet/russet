@@ -1,9 +1,9 @@
 ---
 title: Command-line reference
-description: The syntax, option parsing, and verbs of the autopkg command that Russet installs.
+description: The syntax, option parsing, and verbs of the russet command that Russet installs.
 ---
 
-Russet installs a single command, `autopkg`, that accepts the same verbs and
+Russet installs a single command, `russet`, that accepts the same verbs and
 options as Python AutoPkg 3.0.0. This page describes the general syntax and
 lists every verb.
 
@@ -12,7 +12,7 @@ lists every verb.
 Every command starts with a verb:
 
 ```sh
-autopkg VERB [OPTIONS] [ARGUMENTS]
+russet VERB [OPTIONS] [ARGUMENTS]
 ```
 
 Replace the following:
@@ -27,15 +27,15 @@ Replace the following:
 To print the help for one verb, run the verb with `--help` or `-h`:
 
 ```sh
-autopkg run --help
+russet run --help
 ```
 
 The verb's help prints to standard output, and the command exits with status
 `0`.
 
-To list the verbs, run `autopkg help`, `autopkg --help`, or `autopkg` with no
+To list the verbs, run `russet help`, `russet --help`, or `russet` with no
 arguments. The list prints to standard output, and the command exits with
-status `1`. `autopkg help VERB` prints the same list instead of the help for
+status `1`. `russet help VERB` prints the same list instead of the help for
 `VERB`.
 
 ## Option parsing
@@ -50,7 +50,7 @@ Russet parses options the same way that Python AutoPkg does:
   a short option, such as `-kNAME=VALUE`.
 - `--` ends the options. Russet treats everything after it as an argument.
 - If Russet can't parse an option, it prints the verb's usage and an error,
-  such as `autopkg: error: no such option: --bogus`, and exits with status
+  such as `russet: error: no such option: --bogus`, and exits with status
   `2`.
 
 ## Preferences option
@@ -66,26 +66,26 @@ The following verbs are available:
 
 | Verb | Description |
 | --- | --- |
-| [`audit`](/reference/cli/autopkg-audit/) | Checks recipes for risky patterns without running them. |
-| [`clear-cache`](/reference/cli/autopkg-clear-cache/) | Removes cached files for a recipe or for all recipes. |
-| [`generate-recipe-map`](/reference/cli/autopkg-generate-recipe-map/) | Builds or rebuilds the recipe map file. |
-| [`help`](/reference/cli/autopkg-help/) | Lists the verbs. |
-| [`info`](/reference/cli/autopkg-info/) | Shows your preferences or details about a recipe. |
-| [`install`](/reference/cli/autopkg-install/) | Runs install recipes. |
-| [`list-processors`](/reference/cli/autopkg-list-processors/) | Lists the processors that Russet implements. The alias `processor-list` does the same thing. |
-| [`list-recipes`](/reference/cli/autopkg-list-recipes/) | Lists the recipes in your search and override folders. |
-| [`make-override`](/reference/cli/autopkg-make-override/) | Creates a recipe override. |
-| [`new-recipe`](/reference/cli/autopkg-new-recipe/) | Creates a recipe from a template. |
-| [`processor-info`](/reference/cli/autopkg-processor-info/) | Shows a processor's description and variables. |
-| [`repo-add`](/reference/cli/autopkg-repo-add/) | Clones recipe repositories and adds them to the search path. |
-| [`repo-delete`](/reference/cli/autopkg-repo-delete/) | Removes recipe repositories. |
-| [`repo-list`](/reference/cli/autopkg-repo-list/) | Lists the recipe repositories that you added. The alias `list-repos` does the same thing. |
-| [`repo-update`](/reference/cli/autopkg-repo-update/) | Updates recipe repositories with Git. |
-| [`run`](/reference/cli/autopkg-run/) | Runs recipes. |
-| [`search`](/reference/cli/autopkg-search/) | Searches for recipes in the AutoPkg organization on GitHub. |
-| [`update-trust-info`](/reference/cli/autopkg-update-trust-info/) | Records the current state of a recipe override's parent recipes. |
-| [`verify-trust-info`](/reference/cli/autopkg-verify-trust-info/) | Checks that a recipe override's parent recipes haven't changed. |
-| [`version`](/reference/cli/autopkg-version/) | Prints the AutoPkg compatibility version. |
+| [`audit`](/reference/cli/russet-audit/) | Checks recipes for risky patterns without running them. |
+| [`clear-cache`](/reference/cli/russet-clear-cache/) | Removes cached files for a recipe or for all recipes. |
+| [`generate-recipe-map`](/reference/cli/russet-generate-recipe-map/) | Builds or rebuilds the recipe map file. |
+| [`help`](/reference/cli/russet-help/) | Lists the verbs. |
+| [`info`](/reference/cli/russet-info/) | Shows your preferences or details about a recipe. |
+| [`install`](/reference/cli/russet-install/) | Runs install recipes. |
+| [`list-processors`](/reference/cli/russet-list-processors/) | Lists the processors that Russet implements. The alias `processor-list` does the same thing. |
+| [`list-recipes`](/reference/cli/russet-list-recipes/) | Lists the recipes in your search and override folders. |
+| [`make-override`](/reference/cli/russet-make-override/) | Creates a recipe override. |
+| [`new-recipe`](/reference/cli/russet-new-recipe/) | Creates a recipe from a template. |
+| [`processor-info`](/reference/cli/russet-processor-info/) | Shows a processor's description and variables. |
+| [`repo-add`](/reference/cli/russet-repo-add/) | Clones recipe repositories and adds them to the search path. |
+| [`repo-delete`](/reference/cli/russet-repo-delete/) | Removes recipe repositories. |
+| [`repo-list`](/reference/cli/russet-repo-list/) | Lists the recipe repositories that you added. The alias `list-repos` does the same thing. |
+| [`repo-update`](/reference/cli/russet-repo-update/) | Updates recipe repositories with Git. |
+| [`run`](/reference/cli/russet-run/) | Runs recipes. |
+| [`search`](/reference/cli/russet-search/) | Searches for recipes in the AutoPkg organization on GitHub. |
+| [`update-trust-info`](/reference/cli/russet-update-trust-info/) | Records the current state of a recipe override's parent recipes. |
+| [`verify-trust-info`](/reference/cli/russet-verify-trust-info/) | Checks that a recipe override's parent recipes haven't changed. |
+| [`version`](/reference/cli/russet-version/) | Prints the AutoPkg compatibility version. |
 
 ## Output
 

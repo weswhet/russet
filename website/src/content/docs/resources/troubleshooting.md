@@ -9,7 +9,7 @@ more detail about a failed run, run the recipe again with `-v`, `-vv`, or
 
 ## Recipe not found
 
-**Symptom:** `autopkg run` or `autopkg install` prints the following error
+**Symptom:** `russet run` or `russet install` prints the following error
 and runs no recipes:
 
 ```text
@@ -44,7 +44,7 @@ repositories, such as `~/Library/AutoPkg/RecipeOverrides`. For details, see
 
 ## Unsupported processor
 
-**Symptom:** `autopkg run` prints the following error and runs no recipes:
+**Symptom:** `russet run` prints the following error and runs no recipes:
 
 ```text
 Custom or unknown processor 'NAME' is not supported
@@ -60,7 +60,7 @@ different recipe for the same software. Check the
 
 ## Parent recipe changed
 
-**Symptom:** `autopkg run` or `autopkg verify-trust-info` reports the
+**Symptom:** `russet run` or `russet verify-trust-info` reports the
 following error:
 
 ```text
@@ -68,22 +68,22 @@ Parent recipe RECIPE_IDENTIFIER contents differ from expected
 ```
 
 **Cause:** the parent recipe changed after you created or last updated the
-override, usually because `autopkg repo-update` pulled a new version.
+override, usually because `russet repo-update` pulled a new version.
 
 **Resolution:** review the change, and if you trust it, run
-`autopkg update-trust-info OVERRIDE`. For the steps, see
+`russet update-trust-info OVERRIDE`. For the steps, see
 [Create recipe overrides](/guides/create-overrides/#review-a-change-and-update-trust-information).
 
 ## Can't save preferences
 
-**Symptom:** on Linux or Windows, `autopkg repo-add` or `autopkg repo-delete`
+**Symptom:** on Linux or Windows, `russet repo-add` or `russet repo-delete`
 prints the following error:
 
 ```text
 No writable preference file loaded; use --prefs FILE
 ```
 
-`autopkg repo-add` clones the repository before it prints this error, but it
+`russet repo-add` clones the repository before it prints this error, but it
 doesn't add the repository to your search folders.
 
 **Cause:** Russet saves preferences only to a preference file that it loaded,
@@ -114,39 +114,39 @@ supports, see [Platform support](/concepts/platform-support/).
 following:
 
 ```text
-Couldn't connect to /var/run/autopkgserver: No such file or directory (os error 2)
+Couldn't connect to /var/run/russet-server: No such file or directory (os error 2)
 ```
 
 An install recipe can finish without installing anything. With `-v`, its
 output includes a line that starts with
-`Result: ERROR: Couldn't connect to /var/run/autopkginstalld`.
+`Result: ERROR: Couldn't connect to /var/run/russet-installd`.
 
 **Cause:** the helper service's launchd job isn't loaded.
 
 **Resolution:** check whether launchd has the jobs:
 
 ```sh
-sudo launchctl print system/com.github.autopkgserver
-sudo launchctl print system/com.github.autopkg.autopkginstalld
+sudo launchctl print system/com.github.weswhet.russet.server
+sudo launchctl print system/com.github.weswhet.russet.installd
 ```
 
 If a command reports that it can't find the service, load the job. For
 example, to load the package builder, run the following command:
 
 ```sh
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.github.autopkg.autopkgserver.plist
+sudo launchctl bootstrap system /Library/LaunchDaemons/com.github.weswhet.russet.server.plist
 ```
 
 If launchd has the job but requests still fail, read the service's log in
-`/private/var/log/autopkgserver` or `/private/var/log/autopkginstalld`. A
-helper service refuses to start if its executable or a folder that contains
-it isn't owned by root or is writable by other users. Installing Russet again
+`/private/var/log/russet-server` or `/private/var/log/russet-installd`. A
+helper service refuses to start if `/opt/russet/russet` or a folder that
+contains it isn't owned by root or is writable by other users. Installing Russet again
 restores the expected ownership and permissions.
 
-## macOS refuses to run autopkg
+## macOS refuses to run russet
 
 **Symptom:** after you install Russet, macOS shows an alert that it can't
-open `autopkg` when you run the command.
+open `russet` when you run the command.
 
 **Cause:** the archive came from another computer, for example through a web
 browser, and macOS marked it with a quarantine attribute that the installed
@@ -188,7 +188,7 @@ wait for a Russet release that targets a newer AutoPkg version.
 
 ## Recipe has no check phase
 
-**Symptom:** `autopkg run --check` prints the following error and runs no
+**Symptom:** `russet run --check` prints the following error and runs no
 recipes:
 
 ```text
@@ -204,7 +204,7 @@ Russet can't tell where its check phase ends.
 ## GitHub requests fail
 
 **Symptom:** recipes that use `GitHubReleasesInfoProvider`, or
-`autopkg search`, fail with HTTP 403 errors after several runs.
+`russet search`, fail with HTTP 403 errors after several runs.
 
 **Cause:** GitHub limits the number of API requests that it accepts without
 authentication.

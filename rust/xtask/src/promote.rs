@@ -146,9 +146,7 @@ pub fn development_steps(target: &str) -> Vec<String> {
             "Run cargo test --workspace --exclude xtask --locked --no-fail-fast --target {target}"
         ),
         "Verify archive install, upgrade, rollback, and failure recovery".to_owned(),
-        format!(
-            "Run cargo build --release --locked --target {target} -p autopkg-rs -p autopkg-helpers"
-        ),
+        format!("Run cargo build --release --locked --target {target} -p russet"),
         format!("Run cargo xtask package --target {target} --bin-dir target/{target}/release"),
         "Run actions/upload-artifact@v4".to_owned(),
     ];
@@ -262,7 +260,7 @@ pub fn validate_artifact_attempt(artifact: &Value, job: &Value) -> Result<(), St
 pub fn validate_artifacts(sha: &str, run_id: u64, artifacts: &[Value]) -> Result<(), String> {
     let expected: BTreeSet<String> = TARGETS
         .iter()
-        .map(|(target, _)| format!("autopkg-rs-development-{target}"))
+        .map(|(target, _)| format!("russet-development-{target}"))
         .collect();
     let names: BTreeSet<String> = artifacts
         .iter()
@@ -317,7 +315,7 @@ pub fn safe_name(name: &str) -> Result<Vec<&str>, String> {
 /// Read and validate one development archive's members, keyed by their path
 /// below the archive root.
 pub fn read_payload(data: &[u8], target: &str) -> Result<Entries, String> {
-    let root = format!("autopkg-rs-development-{target}");
+    let root = format!("russet-development-{target}");
     let members = if is_windows(target) {
         read_zip(data)?
     } else {
@@ -340,14 +338,8 @@ pub fn read_payload(data: &[u8], target: &str) -> Result<Entries, String> {
         entries.insert(relative, (member.data, member.mode));
     }
     let suffix = if is_windows(target) { ".exe" } else { "" };
-    let mut binaries = vec![format!("bin/autopkg-rs{suffix}")];
-    if is_apple(target) {
-        binaries.extend([
-            "bin/autopkgserver-rs".into(),
-            "bin/autopkginstalld-rs".into(),
-        ]);
-    }
-    let mut expected: BTreeSet<String> = binaries.iter().cloned().collect();
+    let binary = format!("bin/russet{suffix}");
+    let mut expected = BTreeSet::from([binary.clone()]);
     expected.extend(["README.md", "INSTALL.md", "LICENSE.txt"].map(String::from));
     expected.insert(
         if is_windows(target) {
@@ -360,8 +352,8 @@ pub fn read_payload(data: &[u8], target: &str) -> Result<Entries, String> {
     if is_apple(target) {
         expected.extend(
             [
-                "launchd/autopkgserver.plist",
-                "launchd/autopkginstalld.plist",
+                "launchd/russet-server.plist",
+                "launchd/russet-installd.plist",
             ]
             .map(String::from),
         );
@@ -380,10 +372,11 @@ pub fn read_payload(data: &[u8], target: &str) -> Result<Entries, String> {
         entries.keys().any(|name| name.starts_with("licenses/")),
         "Third-party licenses are missing",
     )?;
-    for name in &binaries {
-        verify_binary(&entries[name].0, target)?;
-        require(entries[name].1 == 0o755, "Executable permissions changed")?;
-    }
+    verify_binary(&entries[&binary].0, target)?;
+    require(
+        entries[&binary].1 == 0o755,
+        "Executable permissions changed",
+    )?;
     Ok(entries)
 }
 
@@ -394,7 +387,7 @@ pub fn release_documents(version: &str, sha: &str) -> Entries {
         "# Russet {version}
 
 This verified native distribution implements the AutoPkg 3.0.0 compatibility
-interface. Its distribution version is {version}; `autopkg version` remains
+interface. Its distribution version is {version}; `russet version` remains
 3.0.0 for recipe compatibility. Source commit: `{sha}`.
 
 The binaries and installers are unchanged from the four-platform development
@@ -413,7 +406,9 @@ candidate documentation as historical context, not this release's status.
 
 Extract the archive for your platform. Keep the extracted directory available
 for rollback. Installers preserve the previous installation in a sibling
-rollback directory and install the native command as `autopkg`.
+rollback directory and install the native command as `russet`. On macOS and
+Linux, Russet installs into `/opt/russet` and links `/usr/local/bin/russet`.
+It doesn't change an existing Python AutoPkg installation.
 
 macOS and Linux (from the extracted directory):
 
@@ -425,18 +420,19 @@ sudo /bin/sh ./install.sh rollback
 Windows PowerShell (choose an installation directory whose parent exists):
 
 ```powershell
-./install.ps1 install -Destination 'C:\Tools\AutoPkg'
-./install.ps1 rollback -Destination 'C:\Tools\AutoPkg'
+./install.ps1 install -Destination 'C:\Tools\Russet'
+./install.ps1 rollback -Destination 'C:\Tools\Russet'
 ```
 
 Windows does not update PATH or Chocolatey shims. Invoke the installed
-`autopkg.exe` directly or configure PATH yourself. After an interrupted Windows
-transaction, run `./install.ps1 recover -Destination 'C:\Tools\AutoPkg'`
+`russet.exe` directly or configure PATH yourself. After an interrupted Windows
+transaction, run `./install.ps1 recover -Destination 'C:\Tools\Russet'`
 from this extracted archive before retrying.
 
-macOS installs the native launchd helpers with the existing service names and
-socket paths. Preferences and recipes retain their existing formats. Retain
-rollback generations until you have verified your own recipes. Detailed staging
+On macOS, launchd starts the helper services as `russet --server` and
+`russet --installd`, with their own job names and sockets, so they don't
+conflict with Python AutoPkg's services. Preferences and recipes retain their
+existing formats. Retain rollback generations until you have verified your own recipes. Detailed staging
 options and transaction behavior are preserved in DEVELOPMENT-INSTALL.md.
 ";
     Entries::from([
@@ -552,7 +548,7 @@ pub fn promote(
         .unwrap_or_default();
     let target_of = |artifact: &Value| {
         text(field(artifact, "name"))
-            .trim_start_matches("autopkg-rs-development-")
+            .trim_start_matches("russet-development-")
             .to_owned()
     };
     for artifact in &artifacts {
@@ -708,10 +704,7 @@ mod tests {
     fn payload(target: &str) -> Entries {
         let suffix = if is_windows(target) { ".exe" } else { "" };
         let mut entries = Entries::from([
-            (
-                format!("bin/autopkg-rs{suffix}"),
-                (executable(target), 0o755),
-            ),
+            (format!("bin/russet{suffix}"), (executable(target), 0o755)),
             (
                 "README.md".into(),
                 (b"original development README".to_vec(), 0o644),
@@ -738,8 +731,7 @@ mod tests {
             );
         }
         if is_apple(target) {
-            for name in ["autopkgserver", "autopkginstalld"] {
-                entries.insert(format!("bin/{name}-rs"), (executable(target), 0o755));
+            for name in ["russet-server", "russet-installd"] {
                 entries.insert(
                     format!("launchd/{name}.plist"),
                     (b"launchd bytes".to_vec(), 0o644),
@@ -770,7 +762,7 @@ mod tests {
             let mut raws = HashMap::new();
             for (index, (target, _)) in TARGETS.iter().enumerate() {
                 let id = 10 + index as u64;
-                let name = format!("autopkg-rs-development-{target}");
+                let name = format!("russet-development-{target}");
                 let extension = if is_windows(target) {
                     ".zip"
                 } else {
@@ -971,7 +963,7 @@ mod tests {
             assert!(safe_name(name).is_err(), "{name}");
         }
         let target = "x86_64-unknown-linux-gnu";
-        let root = format!("autopkg-rs-development-{target}");
+        let root = format!("russet-development-{target}");
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("bad.tar.gz");
         for mutation in [
@@ -986,14 +978,14 @@ mod tests {
             let mut entries = payload(target);
             match mutation {
                 "binary" => {
-                    entries.insert("bin/autopkg-rs".into(), (b"not ELF".to_vec(), 0o755));
+                    entries.insert("bin/russet".into(), (b"not ELF".to_vec(), 0o755));
                 }
                 "extra" => {
                     entries.insert("unknown".into(), (b"extra".to_vec(), 0o644));
                 }
                 "permission" => {
-                    let data = entries["bin/autopkg-rs"].0.clone();
-                    entries.insert("bin/autopkg-rs".into(), (data, 0o4755));
+                    let data = entries["bin/russet"].0.clone();
+                    entries.insert("bin/russet".into(), (data, 0o4755));
                 }
                 "missing" => {
                     entries.remove("LICENSE.txt");

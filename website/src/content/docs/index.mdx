@@ -3,7 +3,7 @@ title: Russet
 description: Russet runs your AutoPkg recipes natively on macOS, Linux, and Windows, without Python.
 template: splash
 hero:
-  tagline: Run your AutoPkg recipes natively on macOS, Linux, and Windows, with the same autopkg command and no Python runtime.
+  tagline: Run your AutoPkg recipes natively on macOS, Linux, and Windows, with the russet command and no Python runtime.
   # Hero and LinkCard links are relative to this page, the site root, because
   # Starlight doesn't add the base path to them.
   actions:
@@ -19,9 +19,10 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 Russet is a native implementation of AutoPkg, the tool that Mac administrators
 use to download software, package it, and import it into Munki. Russet runs
-your existing recipes with the same `autopkg` command, preference keys, and
-file locations, and it doesn't need Python. It installs in place of Python
-AutoPkg on macOS, keeps the previous installation so that you can roll back,
+your existing recipes with the same preference keys and file locations, and
+it doesn't need Python. Its `russet` command accepts the same verbs and options
+as the `autopkg` command. On macOS, it installs next to Python AutoPkg without
+changing it, keeps the previous Russet installation so that you can roll back,
 and also runs recipes on Linux and Windows.
 
 :::note[Release status]
@@ -37,9 +38,10 @@ until it's published, you build Russet from source. For details, see
 		Russet reads plist and YAML recipes, parent recipes, and overrides, and it
 		implements AutoPkg's built-in processors under the same names.
 	</Card>
-	<Card title="Replace AutoPkg in place" icon="random">
-		The installer uses Python AutoPkg's paths, launchd jobs, and sockets, and it
-		keeps the previous installation for rollback.
+	<Card title="Install next to AutoPkg" icon="random">
+		Russet installs in its own folder with its own helper services, so Python
+		AutoPkg keeps working. The installer keeps the previous Russet installation
+		for rollback.
 	</Card>
 	<Card title="Skip the Python runtime" icon="seti:rust">
 		Russet is a single native executable, plus two helper services on macOS. It
@@ -69,7 +71,7 @@ until it's published, you build Russet from source. For details, see
 	/>
 	<LinkCard
 		title="Install Russet"
-		description="Download, verify, and install the autopkg command."
+		description="Download, verify, and install the russet command."
 		href="get-started/install/"
 	/>
 	<LinkCard

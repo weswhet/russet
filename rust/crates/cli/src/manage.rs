@@ -1197,7 +1197,7 @@ pub fn new_recipe(args: &[String]) -> Result<i32, String> {
             "--format" => format = iter.next().ok_or("--format requires a value")?.clone(),
             "--prefs" => prefs = Some(iter.next().ok_or("--prefs requires a path")?.clone()),
             "-h" | "--help" => {
-                autopkg_platform::text_println!("Usage: autopkg-rs new-recipe [--identifier ID] [--parent-identifier ID] [--format plist|yaml] recipe_pathname");
+                autopkg_platform::text_println!("Usage: russet new-recipe [--identifier ID] [--parent-identifier ID] [--format plist|yaml] recipe_pathname");
                 return Ok(0);
             }
             flag if flag.starts_with('-') => {
@@ -1297,7 +1297,7 @@ pub fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let options = parse(verb, args)?;
     if options.help {
         autopkg_platform::text_println!(
-            "Usage: autopkg-rs {verb} [--prefs FILE] [options] [arguments]"
+            "Usage: russet {verb} [--prefs FILE] [options] [arguments]"
         );
         return Ok(0);
     }

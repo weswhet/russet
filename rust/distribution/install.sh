@@ -6,7 +6,7 @@ umask 022
 usage() {
     echo 'Usage: install.sh install|rollback [--root EXISTING_DIRECTORY] [--platform Darwin|Linux]'
 }
-fail() { echo "autopkg installer: $*" >&2; exit 1; }
+fail() { echo "russet installer: $*" >&2; exit 1; }
 action=${1:-}
 [ "$#" -gt 0 ] && shift
 root=/
@@ -29,15 +29,13 @@ if [ "$root" = / ]; then
 else
     prefix=$root
 fi
-case "$platform" in
-    Darwin) destination=$prefix/Library/AutoPkg; history=$prefix/Library/AutoPkg-Rollbacks ;;
-    Linux) destination=$prefix/usr/local/lib/autopkg; history=$prefix/usr/local/lib/autopkg-rollbacks ;;
-    *) fail "Unsupported platform: $platform" ;;
-esac
-command=$prefix/usr/local/bin/autopkg
+case "$platform" in Darwin|Linux) ;; *) fail "Unsupported platform: $platform" ;; esac
+destination=$prefix/opt/russet
+history=$prefix/opt/russet-rollbacks
+command=$prefix/usr/local/bin/russet
 daemon_dir=$prefix/Library/LaunchDaemons
-packaging=$daemon_dir/com.github.autopkg.autopkgserver.plist
-installation=$daemon_dir/com.github.autopkg.autopkginstalld.plist
+packaging=$daemon_dir/com.github.weswhet.russet.server.plist
+installation=$daemon_dir/com.github.weswhet.russet.installd.plist
 source=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
 
 exists() { [ -e "$1" ] || [ -L "$1" ]; }
@@ -76,7 +74,7 @@ restore_entry() {
 
 if [ "$action" = rollback ]; then
     [ ! -L "$destination" ] || fail 'Installed directory must not be a symlink'
-    marker=$destination/.autopkg-rust-rollback
+    marker=$destination/.russet-rollback
     [ -f "$marker" ] && [ ! -L "$marker" ] || fail 'No native installation rollback record'
     generation=$(cat "$marker")
     case "$generation" in "$history"/generation.*) ;; *) fail 'Invalid rollback record' ;; esac
@@ -142,14 +140,11 @@ if [ "$action" = rollback ]; then
     exit 0
 fi
 
-for binary in autopkg-rs; do
+for binary in russet; do
     [ -f "$source/bin/$binary" ] && [ ! -L "$source/bin/$binary" ] && [ -x "$source/bin/$binary" ] || fail "Missing native executable: $binary"
 done
 if [ "$platform" = Darwin ]; then
-    for binary in autopkgserver-rs autopkginstalld-rs; do
-        [ -f "$source/bin/$binary" ] && [ ! -L "$source/bin/$binary" ] && [ -x "$source/bin/$binary" ] || fail "Missing native helper: $binary"
-    done
-    for plist in autopkgserver.plist autopkginstalld.plist; do
+    for plist in russet-server.plist russet-installd.plist; do
         [ -f "$source/launchd/$plist" ] && [ ! -L "$source/launchd/$plist" ] || fail "Missing launchd configuration: $plist"
     done
 fi
@@ -159,17 +154,13 @@ generation=$(mktemp -d "$history/generation.XXXXXXXX")
 chmod 0755 "$generation"
 stage=$generation/candidate
 mkdir -m 0755 "$stage"
-cp "$source/bin/autopkg-rs" "$stage/autopkg"
+cp "$source/bin/russet" "$stage/russet"
 cp "$source/install.sh" "$stage/install.sh"
-chmod 0755 "$stage/autopkg" "$stage/install.sh"
-printf '%s\n' "$generation" > "$stage/.autopkg-rust-rollback"
+chmod 0755 "$stage/russet" "$stage/install.sh"
+printf '%s\n' "$generation" > "$stage/.russet-rollback"
 if [ "$platform" = Darwin ]; then
-    mkdir -m 0755 "$stage/autopkgserver"
-    cp "$source/bin/autopkgserver-rs" "$stage/autopkgserver/autopkgserver"
-    cp "$source/bin/autopkginstalld-rs" "$stage/autopkgserver/autopkginstalld"
-    chmod 0755 "$stage/autopkgserver/"*
-    cp "$source/launchd/autopkgserver.plist" "$generation/next-packaging.plist"
-    cp "$source/launchd/autopkginstalld.plist" "$generation/next-installation.plist"
+    cp "$source/launchd/russet-server.plist" "$generation/next-packaging.plist"
+    cp "$source/launchd/russet-installd.plist" "$generation/next-installation.plist"
     chmod 0644 "$generation/next-"*.plist
 fi
 
@@ -180,7 +171,7 @@ recover() {
     if [ "$changed" = 1 ]; then
         unload
         # Preserve the failed candidate for diagnostics; never delete the old release.
-        if [ -f "$destination/.autopkg-rust-rollback" ] && [ "$(cat "$destination/.autopkg-rust-rollback")" = "$generation" ]; then
+        if [ -f "$destination/.russet-rollback" ] && [ "$(cat "$destination/.russet-rollback")" = "$generation" ]; then
             mv "$destination" "$generation/failed-candidate"
         fi
         if [ -f "$generation/command-installed" ] && exists "$command"; then mv "$command" "$generation/failed-command"; fi
@@ -217,9 +208,9 @@ if [ "$platform" = Darwin ]; then
     mv "$generation/next-installation.plist" "$installation"
 fi
 : > "$generation/command-installed"
-ln -s "$destination/autopkg" "$command"
+ln -s "$destination/russet" "$command"
 load
 : > "$generation/committed"
 changed=0
 trap - EXIT HUP INT TERM
-echo "Installed native AutoPkg; rollback: $destination/install.sh rollback"
+echo "Installed Russet; rollback: $destination/install.sh rollback"

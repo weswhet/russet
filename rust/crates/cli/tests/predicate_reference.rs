@@ -1,4 +1,4 @@
-//! Run every portable predicate fixture through `autopkg-rs processor-run`
+//! Run every portable predicate fixture through `russet processor-run`
 //! and compare the complete result with the frozen results that the pinned
 //! AutoPkg reference produced with native NSPredicate on macOS.
 
@@ -203,7 +203,7 @@ fn portable_predicates_match_frozen_native_results() {
         } else {
             environment.to_writer_xml(&mut input).unwrap();
         }
-        let mut child = Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_russet"))
             .args(["processor-run", "StopProcessingIf"])
             .current_dir(&root)
             .env("HOME", &home)

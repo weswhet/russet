@@ -19,9 +19,9 @@ From the repository root:
 
 ```sh
 cargo build --manifest-path rust/Cargo.toml --workspace
-rust/target/debug/autopkg-rs list-processors
-rust/target/debug/autopkg-rs processor-info FileCreator
-env AUTOPKG_RS_CACHE_DIR=/tmp/autopkg-rust-example rust/target/debug/autopkg-rs run -v rust/examples/files.recipe.yaml
+rust/target/debug/russet list-processors
+rust/target/debug/russet processor-info FileCreator
+env AUTOPKG_RS_CACHE_DIR=/tmp/autopkg-rust-example rust/target/debug/russet run -v rust/examples/files.recipe.yaml
 ```
 
 Cache paths follow Python AutoPkg: `CACHE_DIR` preferences, then `~/Library/AutoPkg/Cache`, with home expansion and absolute-path normalization. `AUTOPKG_RS_CACHE_DIR` supplies a separate cache when the preference is unset; `--key CACHE_DIR=...` overrides the per-recipe cache. To keep experiments and their run reports isolated, use a separate preference cache or `AUTOPKG_RS_CACHE_DIR`, and a separate mutable Munki repository.
@@ -30,7 +30,7 @@ processors read a dictionary plist from stdin and write a dictionary plist to
 stdout:
 
 ```sh
-rust/target/debug/autopkg-rs processor-run FileCreator < input.plist > output.plist
+rust/target/debug/russet processor-run FileCreator < input.plist > output.plist
 ```
 
 Standalone processor errors exit with code 10; failures corresponding to uncaught
@@ -74,13 +74,13 @@ path.
 
 | Crate | Responsibility |
 | --- | --- |
-| `autopkg-rs` | CLI and native command output |
+| `russet` | CLI and native command output |
 | `autopkg-value` | Typed values, nulls, and explicit property-list serialization |
 | `autopkg-engine` | Loading, inheritance, substitution, validation, trust, preferences, caches, and receipts |
 | `autopkg-processors` | Explicit built-in registry and sequential processor implementations |
 | `autopkg-platform` | Foundation, native tools, mounts, signatures, GitHub, and Chocolatey |
 | `autopkg-munki` | FileRepo indexes, metadata, imports, receipt editing, and icons |
-| `autopkg-helpers` | Native socket clients and development macOS helper executables |
+| `autopkg-helpers` | Native socket clients and the macOS helper services that `russet --server` and `russet --installd` run |
 | `xtask` | Development archives, installer tests, and release promotion; not shipped |
 
 ## Known boundaries
@@ -113,16 +113,16 @@ To build a development archive, run these commands from `rust/`, replacing
 `TARGET` with the Rust target triple, such as `aarch64-apple-darwin`:
 
 ```sh
-cargo build --release --locked --target TARGET -p autopkg-rs -p autopkg-helpers
+cargo build --release --locked --target TARGET -p russet
 cargo xtask package --target TARGET --bin-dir target/TARGET/release
 ```
 
 `cargo xtask package` verifies each executable's architecture and writes
-`dist/autopkg-rs-development-TARGET.tar.gz`, or a `.zip` file for Windows
+`dist/russet-development-TARGET.tar.gz`, or a `.zip` file for Windows
 targets. The archive contains the CLI, license notices, documentation, the
-installer, and, on macOS, the helper binaries and the launchd plists from
-[`distribution/launchd/`](distribution/launchd/). It contains no Python
-runtime. Archive helper names keep the `-rs` suffix; packaging alone doesn't
+installer, and, on macOS, the launchd plists from
+[`distribution/launchd/`](distribution/launchd/), which run `russet --server`
+and `russet --installd`. It contains no Python runtime. Packaging alone doesn't
 install or activate services.
 
 The installers keep previous installations in rollback generations; see

@@ -29,12 +29,12 @@ such as `testing` or `production`.
 
 ## Check phase
 
-The part of a recipe before its `EndOfCheckPhase` step. `autopkg run --check`
+The part of a recipe before its `EndOfCheckPhase` step. `russet run --check`
 runs only this part, which usually checks for and downloads a new version.
 
 ## Compatibility version
 
-The AutoPkg version that Russet implements, 3.0.0. `autopkg version` prints
+The AutoPkg version that Russet implements, 3.0.0. `russet version` prints
 it, and recipes compare their `MinimumVersion` with it.
 
 ## Custom processor
@@ -49,8 +49,9 @@ in `RELEASE.json`. An archive that you build from source doesn't have one.
 
 ## Helper services
 
-Two launchd services on macOS, `autopkgserver` and `autopkginstalld`, that
-run as root to build packages and install software for recipes.
+Two launchd services on macOS, `russet-server` and `russet-installd`, that
+run as root to build packages and install software for recipes. launchd starts
+them as `russet --server` and `russet --installd`.
 
 ## Munki
 
@@ -104,7 +105,7 @@ identifier. By default, it's `~/Library/AutoPkg/recipe_map.json`.
 
 ## Recipe repository
 
-A Git repository of recipes. `autopkg repo-add` clones recipe repositories
+A Git repository of recipes. `russet repo-add` clones recipe repositories
 into `~/Library/AutoPkg/RecipeRepos` by default.
 
 ## Rollback generation

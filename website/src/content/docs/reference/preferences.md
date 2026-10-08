@@ -35,7 +35,7 @@ on top. A preference file can be one of the following formats:
 - A binary property list.
 - A JSON object. JSON can't store dates or binary data.
 
-When a command changes preferences, such as `autopkg repo-add`, Russet writes
+When a command changes preferences, such as `russet repo-add`, Russet writes
 the change to a file if it loaded one:
 
 - With `--prefs FILE`, Russet writes all of the merged preferences to that
@@ -59,8 +59,8 @@ Windows.
 | --- | --- | --- |
 | `RECIPE_SEARCH_DIRS` | `.`, `~/Library/AutoPkg/Recipes`, `/Library/AutoPkg/Recipes` | Folders to search for recipes. A string or an array of strings. |
 | `RECIPE_OVERRIDE_DIRS` | `~/Library/AutoPkg/RecipeOverrides` | Folders to search for recipe overrides. A string or an array of strings. |
-| `RECIPE_REPO_DIR` | `~/Library/AutoPkg/RecipeRepos` | Folder where `autopkg repo-add` clones recipe repositories. |
-| `RECIPE_REPOS` | Empty | The recipe repositories that `autopkg repo-add` added, keyed by local path. Russet maintains this key. |
+| `RECIPE_REPO_DIR` | `~/Library/AutoPkg/RecipeRepos` | Folder where `russet repo-add` clones recipe repositories. |
+| `RECIPE_REPOS` | Empty | The recipe repositories that `russet repo-add` added, keyed by local path. Russet maintains this key. |
 | `RECIPE_MAP_PATH` | `~/Library/AutoPkg/recipe_map.json` | Location of the recipe map file. |
 | `DISABLE_RECIPE_MAP` | `false` | If `true`, Russet doesn't create or refresh the recipe map. |
 | `CACHE_DIR` | `~/Library/AutoPkg/Cache` | Folder for downloads, build products, receipts, and run results. |

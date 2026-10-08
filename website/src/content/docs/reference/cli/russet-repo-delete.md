@@ -1,22 +1,22 @@
 ---
-title: autopkg repo-delete
+title: russet repo-delete
 description: Remove recipe repositories and take them out of your recipe search path.
 ---
 
-`autopkg repo-delete` removes recipe repositories from your preferences and
+`russet repo-delete` removes recipe repositories from your preferences and
 deletes their local folders.
 
 ## Syntax
 
 ```sh
-autopkg repo-delete [OPTIONS] REPOSITORY [REPOSITORY ...]
+russet repo-delete [OPTIONS] REPOSITORY [REPOSITORY ...]
 ```
 
 Replace the following:
 
 - `OPTIONS`: any of the options in the following table.
 - `REPOSITORY`: a recipe repository's local path, its URL, or a short form
-  that `autopkg repo-add` accepts, such as `recipes`.
+  that `russet repo-add` accepts, such as `recipes`.
 
 ## Description
 
@@ -58,11 +58,11 @@ To remove the AutoPkg project's main recipe repository, run the following
 command:
 
 ```sh
-autopkg repo-delete recipes
+russet repo-delete recipes
 ```
 
 ## Related pages
 
-- [`autopkg repo-add`](/reference/cli/autopkg-repo-add/)
-- [`autopkg repo-list`](/reference/cli/autopkg-repo-list/)
+- [`russet repo-add`](/reference/cli/russet-repo-add/)
+- [`russet repo-list`](/reference/cli/russet-repo-list/)
 - [Add recipe repositories](/guides/add-recipe-repositories/)

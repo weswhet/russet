@@ -142,6 +142,7 @@ function Test-ArchiveInstallation([string]$PackageBinary) {
     $Destination = Join-Path $script:FixtureRoot 'installed package'
     [void][IO.Directory]::CreateDirectory($Destination)
     $LegacyBinary = Join-Path $Destination 'autopkg.exe'
+    $InstalledBinary = Join-Path $Destination 'russet.exe'
     $LegacyPreferences = Join-Path $Destination 'preferences.dat'
     [IO.File]::WriteAllBytes($LegacyBinary, [byte[]]@(0, 1, 255, 13, 10))
     [IO.File]::WriteAllText($LegacyPreferences, 'existing fixture preferences')
@@ -155,24 +156,24 @@ function Test-ArchiveInstallation([string]$PackageBinary) {
         $Result = Invoke-Native $PowerShell @('-NoProfile', '-NonInteractive', '-File', $Installer,
             '-Action', $Action, '-Destination', $Destination)
         Assert-That ($Result.ExitCode -eq 0) "Packaged $Action failed: $($Result.Stderr)"
-        $Marker = Join-Path $Destination '.autopkg-rust-rollback'
+        $Marker = Join-Path $Destination '.russet-rollback'
         if ($Action -eq 'install') {
-            Assert-That ((Get-FileHash -LiteralPath $LegacyBinary -Algorithm SHA256).Hash -eq $PackageHash) 'Installed binary differs from archive.'
+            Assert-That ((Get-FileHash -LiteralPath $InstalledBinary -Algorithm SHA256).Hash -eq $PackageHash) 'Installed binary differs from archive.'
             $CurrentMarker = [IO.File]::ReadAllText($Marker)
             if ($null -eq $FirstMarker) { $FirstMarker = $CurrentMarker }
             else { Assert-That ($CurrentMarker -ne $FirstMarker) 'Upgrade did not create a separate rollback generation.' }
-            $Version = Invoke-Native $LegacyBinary @('version')
+            $Version = Invoke-Native $InstalledBinary @('version')
             Assert-That ($Version.ExitCode -eq 0) "Installed CLI cannot execute: $($Version.Stderr)"
         } elseif (Test-Path -LiteralPath $Marker) {
             Assert-That ([IO.File]::ReadAllText($Marker) -eq $FirstMarker) 'First rollback did not restore the first installation record.'
-            Assert-That ((Get-FileHash -LiteralPath $LegacyBinary -Algorithm SHA256).Hash -eq $PackageHash) 'First rollback changed the previous binary.'
+            Assert-That ((Get-FileHash -LiteralPath $InstalledBinary -Algorithm SHA256).Hash -eq $PackageHash) 'First rollback changed the previous binary.'
         } else {
             Assert-That ((Get-FileHash -LiteralPath $LegacyBinary -Algorithm SHA256).Hash -eq $LegacyHash) 'Second rollback did not restore original binary bytes.'
             Assert-That ((Get-FileHash -LiteralPath $LegacyPreferences -Algorithm SHA256).Hash -eq $PreferencesHash) 'Second rollback did not restore original preferences.'
             Assert-That (@(Get-ChildItem -LiteralPath $Destination -Force).Count -eq 2) 'Second rollback left extra files in the original installation.'
         }
     }
-    Assert-That (-not (Test-Path -LiteralPath (Join-Path $Destination '.autopkg-rust-rollback'))) 'Two rollbacks did not exhaust the native generations.'
+    Assert-That (-not (Test-Path -LiteralPath (Join-Path $Destination '.russet-rollback'))) 'Two rollbacks did not exhaust the native generations.'
 }
 
 $script:FixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('autopkg-windows-gate-' + [Guid]::NewGuid().ToString('N'))
@@ -186,8 +187,8 @@ try {
         $ArchivePath = (Resolve-Path -LiteralPath $ArchivePath).Path
         $Expanded = Join-Path $FixtureRoot 'archive'
         [IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $Expanded)
-        $Candidates = @(Get-ChildItem -LiteralPath $Expanded -Filter 'autopkg-rs.exe' -File -Recurse)
-        Assert-That ($Candidates.Count -eq 1) 'Archive must contain exactly one autopkg-rs.exe.'
+        $Candidates = @(Get-ChildItem -LiteralPath $Expanded -Filter 'russet.exe' -File -Recurse)
+        Assert-That ($Candidates.Count -eq 1) 'Archive must contain exactly one russet.exe.'
         $Binary = $Candidates[0].FullName
     }
     $script:NativeBinary = (Resolve-Path -LiteralPath $Binary).Path

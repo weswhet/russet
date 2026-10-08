@@ -1,11 +1,12 @@
 [package]
-name = "autopkg-rs"
+name = "russet"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 autopkg-engine = { path = "../engine" }
+autopkg-helpers = { path = "../helpers" }
 autopkg-processors = { path = "../processors" }
 plist = { package = "autopkg-value", path = "../value" }
 serde_json = "1"

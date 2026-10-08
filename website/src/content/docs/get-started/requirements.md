@@ -51,9 +51,9 @@ Russet doesn't bundle or use Python. It runs native system tools for some
 operations:
 
 - **curl:** Russet uses curl for downloads, GitHub API requests, and
-  `autopkg search`. macOS and Windows include curl. On Linux, install curl
+  `russet search`. macOS and Windows include curl. On Linux, install curl
   from your distribution's package manager.
-- **Git:** `autopkg repo-add` and `autopkg repo-update` clone and update
+- **Git:** `russet repo-add` and `russet repo-update` clone and update
   recipe repositories with Git. Trust information also records Git details
   when Git is available. Install Git on every platform where you manage
   recipe repositories.

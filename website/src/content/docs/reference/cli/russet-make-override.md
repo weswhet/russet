@@ -1,16 +1,16 @@
 ---
-title: autopkg make-override
+title: russet make-override
 description: Create a recipe override with trust information for its parent recipes.
 ---
 
-`autopkg make-override` creates a recipe override: a small recipe that
+`russet make-override` creates a recipe override: a small recipe that
 inherits from another recipe, lets you change its input values, and records
 trust information for its parent recipes.
 
 ## Syntax
 
 ```sh
-autopkg make-override [OPTIONS] RECIPE
+russet make-override [OPTIONS] RECIPE
 ```
 
 Replace the following:
@@ -52,7 +52,7 @@ Russet refreshes the recipe map.
 | `--override-dir FOLDER` | Writes the override to `FOLDER` instead of the first folder in `RECIPE_OVERRIDE_DIRS`. If you repeat this option, Russet uses the first folder. |
 | `-n FILENAME`, `--name FILENAME` | Names the override file `FILENAME`. The name can't contain path separators. |
 | `-f`, `--force` | Overwrites an existing override file. |
-| `-p`, `--pull` | Not supported. Russet exits with an error. To get a missing parent recipe, add its recipe repository with `autopkg repo-add`. |
+| `-p`, `--pull` | Not supported. Russet exits with an error. To get a missing parent recipe, add its recipe repository with `russet repo-add`. |
 | `--ignore-deprecation` | Creates the override even if the recipe or one of its parents has a `DeprecationWarning` step. |
 | `--format FORMAT` | Writes the override as `plist` or `yaml`. The default is the value of the `RECIPE_OVERRIDE_FORMAT` preference, or `plist`. |
 
@@ -71,7 +71,7 @@ To create an override for a recipe from a recipe repository, run the
 following command:
 
 ```sh
-autopkg make-override TheUnarchiver.download
+russet make-override TheUnarchiver.download
 ```
 
 The output looks like the following:
@@ -83,11 +83,11 @@ Override file saved to /Users/alex/Library/AutoPkg/RecipeOverrides/TheUnarchiver
 To create a YAML override, run the following command:
 
 ```sh
-autopkg make-override --format yaml TheUnarchiver.download
+russet make-override --format yaml TheUnarchiver.download
 ```
 
 ## Related pages
 
 - [Create recipe overrides](/guides/create-overrides/)
 - [Recipe trust](/concepts/recipe-trust/)
-- [`autopkg update-trust-info`](/reference/cli/autopkg-update-trust-info/)
+- [`russet update-trust-info`](/reference/cli/russet-update-trust-info/)

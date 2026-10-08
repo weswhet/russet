@@ -38,23 +38,23 @@ jobs:
       - run: cargo test --workspace --exclude xtask --locked --no-fail-fast --target ${{ matrix.target }}
       - name: Verify archive install, upgrade, rollback, and failure recovery
         run: cargo test --package xtask --locked --no-fail-fast --target ${{ matrix.target }}
-      - run: cargo build --release --locked --target ${{ matrix.target }} -p autopkg-rs -p autopkg-helpers
+      - run: cargo build --release --locked --target ${{ matrix.target }} -p russet
       - run: cargo xtask package --target ${{ matrix.target }} --bin-dir target/${{ matrix.target }}/release
       - name: Verify installed macOS helpers, upgrade, and rollback
         if: runner.os == 'macOS'
         run: |
-          tar -xzf dist/autopkg-rs-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
-          sudo env AUTOPKG_DISPOSABLE_CI=1 GITHUB_ACTIONS=true RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" RUNNER_OS="$RUNNER_OS" /bin/sh ../Scripts/verify_rust_macos_vm.sh "$RUNNER_TEMP/autopkg-rs-development-${{ matrix.target }}"
+          tar -xzf dist/russet-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
+          sudo env AUTOPKG_DISPOSABLE_CI=1 GITHUB_ACTIONS=true RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" RUNNER_OS="$RUNNER_OS" /bin/sh ../Scripts/verify_rust_macos_vm.sh "$RUNNER_TEMP/russet-development-${{ matrix.target }}"
       - name: Verify native Windows workflows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ../Scripts/verify_rust_windows.ps1 -ArchivePath (Resolve-Path dist/autopkg-rs-development-${{ matrix.target }}.zip)
+        run: ../Scripts/verify_rust_windows.ps1 -ArchivePath (Resolve-Path dist/russet-development-${{ matrix.target }}.zip)
       - name: Verify Linux installation without Python
         if: runner.os == 'Linux'
         run: |
-          tar -xzf dist/autopkg-rs-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
-          docker run --rm --network none -e AUTOPKG_DISPOSABLE_CONTAINER=1 -v "$RUNNER_TEMP/autopkg-rs-development-${{ matrix.target }}:/candidate:ro" -v "$GITHUB_WORKSPACE/Scripts/verify_rust_linux.sh:/verify.sh:ro" ubuntu:24.04 /bin/sh /verify.sh /candidate
+          tar -xzf dist/russet-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
+          docker run --rm --network none -e AUTOPKG_DISPOSABLE_CONTAINER=1 -v "$RUNNER_TEMP/russet-development-${{ matrix.target }}:/candidate:ro" -v "$GITHUB_WORKSPACE/Scripts/verify_rust_linux.sh:/verify.sh:ro" ubuntu:24.04 /bin/sh /verify.sh /candidate
       - uses: actions/upload-artifact@v4
         with:
-          name: autopkg-rs-development-${{ matrix.target }}
+          name: russet-development-${{ matrix.target }}
           path: rust/dist/*

@@ -34,7 +34,7 @@ To schedule a daily run, follow these steps:
        <string>com.example.russet</string>
        <key>ProgramArguments</key>
        <array>
-           <string>/usr/local/bin/autopkg</string>
+           <string>/usr/local/bin/russet</string>
            <string>run</string>
            <string>--recipe-list</string>
            <string>recipes.txt</string>
@@ -51,9 +51,9 @@ To schedule a daily run, follow these steps:
            <integer>0</integer>
        </dict>
        <key>StandardOutPath</key>
-       <string>/Users/USERNAME/russet-work/autopkg.log</string>
+       <string>/Users/USERNAME/russet-work/russet.log</string>
        <key>StandardErrorPath</key>
-       <string>/Users/USERNAME/russet-work/autopkg.log</string>
+       <string>/Users/USERNAME/russet-work/russet.log</string>
    </dict>
    </plist>
    ```
@@ -76,7 +76,7 @@ To schedule a daily run, follow these steps:
    launchctl kickstart gui/$(id -u)/com.example.russet
    ```
 
-   When the run finishes, read `~/russet-work/autopkg.log`.
+   When the run finishes, read `~/russet-work/russet.log`.
 
 The agent runs at 6:00 AM in the computer's local time zone each day. If the
 computer is asleep at that time, launchd runs the job when it wakes.
@@ -94,7 +94,7 @@ On Linux, use cron. To schedule a daily run, follow these steps:
 1. Add the following line:
 
    ```text
-   0 6 * * * cd "$HOME/russet-work" && /usr/local/bin/autopkg run --recipe-list recipes.txt --report-plist report.plist >> autopkg.log 2>&1
+   0 6 * * * cd "$HOME/russet-work" && /usr/local/bin/russet run --recipe-list recipes.txt --report-plist report.plist >> russet.log 2>&1
    ```
 
    The `cd` command sets the folder for the relative paths in the command.
@@ -107,7 +107,7 @@ On Windows, use Task Scheduler. To schedule a daily run, run the following
 commands in PowerShell:
 
 ```powershell
-$action = New-ScheduledTaskAction -Execute 'C:\Tools\AutoPkg\autopkg.exe' `
+$action = New-ScheduledTaskAction -Execute 'C:\Tools\Russet\russet.exe' `
     -Argument 'run --recipe-list recipes.txt --report-plist report.plist' `
     -WorkingDirectory 'C:\russet-work'
 $trigger = New-ScheduledTaskTrigger -Daily -At 6am
@@ -119,7 +119,7 @@ folder, change the paths in the first command.
 
 ## Check the result of a scheduled run
 
-The exit status of `autopkg run` shows how the run went:
+The exit status of `russet run` shows how the run went:
 
 | Status | Meaning |
 | --- | --- |

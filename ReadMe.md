@@ -8,7 +8,7 @@ operations such as packaging, disk-image mounting, and signature verification.
 Russet hasn't published a release yet; the first release will be 0.1.0. Until
 then, build an archive from source as the
 [installation guide](https://weswhet.github.io/russet/get-started/install/)
-describes. The included installer installs the native command as `autopkg` and
+describes. The included installer installs the native command as `russet` and
 supports rollback to the previous installation.
 
 Compatibility targets AutoPkg commit `c36e58f` and Munki `7.2.0.5787`. Existing
@@ -19,7 +19,7 @@ tool remain limited to that platform; no compatibility promise is made for
 older operating-system images outside the CI matrix.
 
 Russet distribution versions are independent of the AutoPkg compatibility version.
-For recipe compatibility, `autopkg version` reports **3.0.0**. A release
+For recipe compatibility, `russet version` reports **3.0.0**. A release
 archive's `RELEASE.json` records its build identity and validation provenance.
 
 Russet also includes native ports of 12 primary-repository processors and one

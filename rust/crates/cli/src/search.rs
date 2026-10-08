@@ -317,7 +317,7 @@ pub fn run(args: &[String]) -> Result<i32, String> {
             "-t" | "--use-token" => use_token = true,
             "-h" | "--help" => {
                 autopkg_platform::text_println!(
-                    "Usage: autopkg-rs search [--path-only] [--user ORG] search_term"
+                    "Usage: russet search [--path-only] [--user ORG] search_term"
                 );
                 return Ok(0);
             }

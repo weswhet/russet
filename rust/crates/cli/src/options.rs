@@ -13,10 +13,12 @@ fn program() -> String {
                 .file_name()
                 .map(|p| p.to_string_lossy().into_owned())
         })
-        .unwrap_or_else(|| "autopkg".into())
+        .unwrap_or_else(|| "russet".into())
 }
 fn render(text: &str) -> String {
-    text.replace("Usage: autopkg ", &format!("Usage: {} ", program()))
+    let program = program();
+    text.replace("Usage: autopkg ", &format!("Usage: {program} "))
+        .replace("Example: 'autopkg ", &format!("Example: '{program} "))
 }
 fn error(spec: &Value, message: &str) -> Parsed {
     autopkg_platform::text_eprintln!(

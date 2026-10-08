@@ -1,15 +1,15 @@
 ---
-title: autopkg list-recipes
+title: russet list-recipes
 description: List the recipes in your search and override folders.
 ---
 
-`autopkg list-recipes` lists the recipes that Russet finds in your recipe
+`russet list-recipes` lists the recipes that Russet finds in your recipe
 search folders and override folders.
 
 ## Syntax
 
 ```sh
-autopkg list-recipes [OPTIONS]
+russet list-recipes [OPTIONS]
 ```
 
 Replace `OPTIONS` with any of the options in the following table.
@@ -27,7 +27,7 @@ and shows your home folder as `~`. With `--plist`, Russet prints an XML
 property list array that contains every recipe's contents plus `Name`, `Path`,
 and `IsOverride` keys.
 
-`autopkg list-recipes` doesn't accept recipe arguments.
+`russet list-recipes` doesn't accept recipe arguments.
 
 ## Options
 
@@ -54,13 +54,13 @@ and `IsOverride` keys.
 To list recipe names, run the following command:
 
 ```sh
-autopkg list-recipes
+russet list-recipes
 ```
 
 To list recipe names with their identifiers, run the following command:
 
 ```sh
-autopkg list-recipes --with-identifiers
+russet list-recipes --with-identifiers
 ```
 
 The output looks like the following:
@@ -73,6 +73,6 @@ Adium.munki                           com.github.autopkg.munki.Adium
 
 ## Related pages
 
-- [`autopkg info`](/reference/cli/autopkg-info/)
-- [`autopkg search`](/reference/cli/autopkg-search/)
+- [`russet info`](/reference/cli/russet-info/)
+- [`russet search`](/reference/cli/russet-search/)
 - [Add recipe repositories](/guides/add-recipe-repositories/)

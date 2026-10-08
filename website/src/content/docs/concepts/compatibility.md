@@ -10,11 +10,12 @@ doesn't support, and how the project tests it.
 
 ## What stays the same
 
-Russet keeps the parts of AutoPkg that your recipes, scripts, and schedules
-depend on:
+Russet keeps the parts of AutoPkg that your recipes, preferences, and
+schedules depend on:
 
-- **The command:** the installed command is `autopkg`, with the same verbs and
-  options.
+- **The command:** the `russet` command accepts the same verbs and options as
+  the `autopkg` command. Only the command name differs, so scripts and
+  scheduled jobs that run `autopkg` need to run `russet` instead.
 - **Recipes:** Russet reads property list recipes, with the `.recipe` or
   `.recipe.plist` extension, and YAML recipes, with the `.recipe.yaml`
   extension. Recipes keep the same
@@ -28,8 +29,11 @@ depend on:
   locations.
 - **Results:** receipts, report property lists, and the run results file keep
   their formats.
-- **Installation layout:** on macOS, the command, helper services, launchd
-  jobs, and sockets use Python AutoPkg's paths and names.
+
+Russet's installation is separate from Python AutoPkg's. It installs in
+`/opt/russet`, links `/usr/local/bin/russet`, and runs its helper services
+under its own launchd jobs and sockets, so you can install both tools on the
+same Mac.
 
 ## What Russet doesn't support
 

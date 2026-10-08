@@ -1,21 +1,21 @@
 ---
-title: autopkg processor-info
+title: russet processor-info
 description: Show a processor's description, input variables, and output variables.
 ---
 
-`autopkg processor-info` prints the description, input variables, and output
+`russet processor-info` prints the description, input variables, and output
 variables of one processor.
 
 ## Syntax
 
 ```sh
-autopkg processor-info [OPTIONS] PROCESSOR
+russet processor-info [OPTIONS] PROCESSOR
 ```
 
 Replace the following:
 
 - `OPTIONS`: any of the options in the following table.
-- `PROCESSOR`: a processor name from `autopkg list-processors`, such as
+- `PROCESSOR`: a processor name from `russet list-processors`, such as
   `URLDownloader`.
 
 ## Description
@@ -54,7 +54,7 @@ Some defaults depend on the platform:
 To show the variables of `URLDownloader`, run the following command:
 
 ```sh
-autopkg processor-info URLDownloader
+russet processor-info URLDownloader
 ```
 
 The output starts like the following:
@@ -70,4 +70,4 @@ Input variables:
 ## Related pages
 
 - [Processors](/reference/processors/)
-- [`autopkg list-processors`](/reference/cli/autopkg-list-processors/)
+- [`russet list-processors`](/reference/cli/russet-list-processors/)

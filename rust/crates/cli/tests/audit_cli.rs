@@ -13,7 +13,7 @@ fn audit_inheritance_filters_and_machine_reports_do_not_execute_custom_code() {
     let pref:Value=serde_json::from_value(json!({"RECIPE_SEARCH_DIRS":[root],"RECIPE_OVERRIDE_DIRS":[root],"DISABLE_RECIPE_MAP":true})).unwrap();
     pref.to_file_xml(&prefs).unwrap();
     let invoke = |args: &[&str]| {
-        Command::new(env!("CARGO_BIN_EXE_autopkg-rs"))
+        Command::new(env!("CARGO_BIN_EXE_russet"))
             .env("HOME", root)
             .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
             .args(["audit", "--prefs", prefs.to_str().unwrap()])

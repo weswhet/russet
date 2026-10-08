@@ -1,15 +1,15 @@
 ---
-title: autopkg verify-trust-info
+title: russet verify-trust-info
 description: Check that a recipe override's parent recipes haven't changed since you trusted them.
 ---
 
-`autopkg verify-trust-info` checks the trust information in recipe overrides
+`russet verify-trust-info` checks the trust information in recipe overrides
 against their parent recipes and reports any differences.
 
 ## Syntax
 
 ```sh
-autopkg verify-trust-info [OPTIONS] OVERRIDE [OVERRIDE ...]
+russet verify-trust-info [OPTIONS] OVERRIDE [OVERRIDE ...]
 ```
 
 Replace the following:
@@ -60,7 +60,7 @@ To verify an override and print the reason if it fails, run the following
 command:
 
 ```sh
-autopkg verify-trust-info -v TheUnarchiver.download
+russet verify-trust-info -v TheUnarchiver.download
 ```
 
 When the parent recipes haven't changed, the output is the following:
@@ -72,5 +72,5 @@ TheUnarchiver.download: OK
 ## Related pages
 
 - [Recipe trust](/concepts/recipe-trust/)
-- [`autopkg update-trust-info`](/reference/cli/autopkg-update-trust-info/)
+- [`russet update-trust-info`](/reference/cli/russet-update-trust-info/)
 - [Create recipe overrides](/guides/create-overrides/)

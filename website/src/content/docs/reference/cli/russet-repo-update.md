@@ -1,15 +1,15 @@
 ---
-title: autopkg repo-update
+title: russet repo-update
 description: Update recipe repositories with Git.
 ---
 
-`autopkg repo-update` updates one or more recipe repositories by running
+`russet repo-update` updates one or more recipe repositories by running
 `git pull` in each one.
 
 ## Syntax
 
 ```sh
-autopkg repo-update [OPTIONS] REPOSITORY [REPOSITORY ...]
+russet repo-update [OPTIONS] REPOSITORY [REPOSITORY ...]
 ```
 
 Replace the following:
@@ -54,7 +54,7 @@ verification until you review the changes. For details, see
 To update every recipe repository that you added, run the following command:
 
 ```sh
-autopkg repo-update all
+russet repo-update all
 ```
 
 When a recipe repository has no changes, the output looks like the
@@ -67,6 +67,6 @@ Already up to date.
 
 ## Related pages
 
-- [`autopkg repo-add`](/reference/cli/autopkg-repo-add/)
-- [`autopkg verify-trust-info`](/reference/cli/autopkg-verify-trust-info/)
+- [`russet repo-add`](/reference/cli/russet-repo-add/)
+- [`russet verify-trust-info`](/reference/cli/russet-verify-trust-info/)
 - [Add recipe repositories](/guides/add-recipe-repositories/)

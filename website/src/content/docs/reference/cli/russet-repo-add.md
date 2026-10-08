@@ -1,15 +1,15 @@
 ---
-title: autopkg repo-add
+title: russet repo-add
 description: Clone recipe repositories and add them to your recipe search path.
 ---
 
-`autopkg repo-add` clones one or more recipe repositories with Git and adds
+`russet repo-add` clones one or more recipe repositories with Git and adds
 them to your recipe search folders.
 
 ## Syntax
 
 ```sh
-autopkg repo-add [OPTIONS] REPOSITORY [REPOSITORY ...]
+russet repo-add [OPTIONS] REPOSITORY [REPOSITORY ...]
 ```
 
 Replace the following:
@@ -67,7 +67,7 @@ To add the AutoPkg project's main recipe repository, run the following
 command:
 
 ```sh
-autopkg repo-add recipes
+russet repo-add recipes
 ```
 
 The output looks like the following:
@@ -87,7 +87,7 @@ To add a recipe repository from another GitHub account, run the following
 command:
 
 ```sh
-autopkg repo-add OWNER/NAME
+russet repo-add OWNER/NAME
 ```
 
 Replace the following:
@@ -98,5 +98,5 @@ Replace the following:
 ## Related pages
 
 - [Add recipe repositories](/guides/add-recipe-repositories/)
-- [`autopkg repo-update`](/reference/cli/autopkg-repo-update/)
-- [`autopkg repo-delete`](/reference/cli/autopkg-repo-delete/)
+- [`russet repo-update`](/reference/cli/russet-repo-update/)
+- [`russet repo-delete`](/reference/cli/russet-repo-delete/)

@@ -1,15 +1,15 @@
 ---
-title: autopkg run
+title: russet run
 description: Run one or more recipes.
 ---
 
-`autopkg run` runs one or more recipes and prints a summary of what they
+`russet run` runs one or more recipes and prints a summary of what they
 downloaded, built, and imported.
 
 ## Syntax
 
 ```sh
-autopkg run [OPTIONS] [RECIPE ...]
+russet run [OPTIONS] [RECIPE ...]
 ```
 
 Replace the following:
@@ -20,7 +20,7 @@ Replace the following:
 
 ## Description
 
-`autopkg run` works in two stages:
+`russet run` works in two stages:
 
 1. **Validation:** Russet finds every recipe that you named, loads its parent
    recipes, verifies trust information for recipe overrides, and checks
@@ -160,28 +160,28 @@ To run a recipe override named `TheUnarchiver.download` and print each
 processor's messages, run the following command:
 
 ```sh
-autopkg run -v TheUnarchiver.download
+russet run -v TheUnarchiver.download
 ```
 
 To run a recipe from a recipe repository by its identifier, run the following
 command:
 
 ```sh
-autopkg run com.github.autopkg.download.TheUnarchiver
+russet run com.github.autopkg.download.TheUnarchiver
 ```
 
 To check the recipes in a recipe list for new downloads and save a report,
 run the following command:
 
 ```sh
-autopkg run --check --recipe-list ~/recipe-list.txt --report-plist ~/autopkg-report.plist
+russet run --check --recipe-list ~/recipe-list.txt --report-plist ~/autopkg-report.plist
 ```
 
 To set a variable for every recipe in a run, such as the Munki repository
 path for a recipe override named `Firefox.munki`, run the following command:
 
 ```sh
-autopkg run -k MUNKI_REPO=/Users/Shared/munki_repo Firefox.munki
+russet run -k MUNKI_REPO=/Users/Shared/munki_repo Firefox.munki
 ```
 
 ## Related pages
@@ -189,5 +189,5 @@ autopkg run -k MUNKI_REPO=/Users/Shared/munki_repo Firefox.munki
 - [Run recipes](/guides/run-recipes/)
 - [Create recipe overrides](/guides/create-overrides/)
 - [Recipe trust](/concepts/recipe-trust/)
-- [`autopkg install`](/reference/cli/autopkg-install/)
+- [`russet install`](/reference/cli/russet-install/)
 - [Exit codes](/reference/exit-codes/)

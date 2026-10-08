@@ -496,7 +496,7 @@ pub fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let options = parse(verb, args)?;
     if options.help {
         autopkg_platform::text_println!(
-            "Usage: autopkg-rs {verb} [--prefs FILE] [-d DIRECTORY] [--override-dir DIRECTORY]{}",
+            "Usage: russet {verb} [--prefs FILE] [-d DIRECTORY] [--override-dir DIRECTORY]{}",
             if verb == "info" {
                 " [-q] [RECIPE]"
             } else {

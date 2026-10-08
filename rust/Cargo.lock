@@ -142,24 +142,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "autopkg-rs"
-version = "0.1.0"
-dependencies = [
- "autopkg-engine",
- "autopkg-platform",
- "autopkg-processors",
- "autopkg-value",
- "chrono",
- "core-foundation-sys",
- "libc",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "tempfile",
-]
-
-[[package]]
 name = "autopkg-value"
 version = "0.1.0"
 dependencies = [
@@ -931,6 +913,25 @@ name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
+
+[[package]]
+name = "russet"
+version = "0.1.0"
+dependencies = [
+ "autopkg-engine",
+ "autopkg-helpers",
+ "autopkg-platform",
+ "autopkg-processors",
+ "autopkg-value",
+ "chrono",
+ "core-foundation-sys",
+ "libc",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "tempfile",
+]
 
 [[package]]
 name = "rustix"

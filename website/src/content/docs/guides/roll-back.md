@@ -1,10 +1,10 @@
 ---
 title: Roll back or remove Russet
-description: Restore the installation that Russet replaced, recover from an interrupted installation, and remove Russet.
+description: Restore the previous Russet installation, recover from an interrupted installation, and remove Russet.
 ---
 
-This page shows you how to restore the installation that Russet replaced, how
-to recover from an interrupted installation on Windows, and how to remove
+This page shows you how to restore the previous Russet installation, how to
+recover from an interrupted installation on Windows, and how to remove
 Russet from a computer.
 
 ## Before you begin
@@ -23,35 +23,24 @@ twice, the first rollback restores the earlier Russet installation, and a
 second rollback restores what was there before that. Rollback doesn't change
 your preferences, recipes, or cache.
 
-## Roll back on macOS
+## Roll back on macOS or Linux
 
-To restore the previous installation on macOS, run the following command:
-
-```sh
-sudo /Library/AutoPkg/install.sh rollback
-```
-
-The installer stops the helper services, restores the previous `autopkg`
-command, helper services, and launchd jobs, and starts the services again.
-When it finishes, it prints where it kept the Russet files:
-
-```text
-Restored previous installation; retired native files retained in /Library/AutoPkg-Rollbacks/generation.XXXXXXXX/retired
-```
-
-If the previous installation was Python AutoPkg, the restored installation
-has no rollback record, so you can't roll back further from it. To return to
-Russet, install it again.
-
-## Roll back on Linux
-
-To restore the previous installation on Linux, run the following command:
+To restore the previous installation, run the following command:
 
 ```sh
-sudo /usr/local/lib/autopkg/install.sh rollback
+sudo /opt/russet/install.sh rollback
 ```
 
 You can also run `install.sh rollback` from the extracted archive folder.
+
+On macOS, the installer stops the Russet helper services, restores the
+previous installation, command link, and launchd jobs, and starts the services
+again. Rollback doesn't change Python AutoPkg. When it finishes, it prints
+where it kept the Russet files:
+
+```text
+Restored previous installation; retired native files retained in /opt/russet-rollbacks/generation.XXXXXXXX/retired
+```
 
 ## Roll back on Windows
 
@@ -63,7 +52,7 @@ the installation folder:
 ```
 
 Replace `DESTINATION` with the installation folder, such as
-`C:\Tools\AutoPkg`. Use an elevated PowerShell session if the folder needs
+`C:\Tools\Russet`. Use an elevated PowerShell session if the folder needs
 administrator access.
 
 ## Recover an interrupted installation on Windows
@@ -79,7 +68,7 @@ interrupted change, run the `recover` action from the extracted archive:
 Replace the following:
 
 - `ARCHIVE_FOLDER`: the extracted archive folder, such as
-  `autopkg-rs-development-x86_64-pc-windows-msvc`.
+  `russet-development-x86_64-pc-windows-msvc`.
 - `DESTINATION`: the installation folder.
 
 On macOS and Linux, if an installation or rollback stops because of an error
@@ -88,27 +77,27 @@ before it exits.
 
 ## Remove Russet
 
-Russet doesn't have an uninstaller. On a computer that didn't have AutoPkg
-before you installed Russet, rolling back each Russet installation removes
-the `autopkg` command. On macOS, it also removes the helper services and
-their launchd jobs.
+Russet doesn't have an uninstaller. Rolling back each Russet installation
+removes `/opt/russet` and the `russet` command. On macOS, it also removes the
+Russet helper services and their launchd jobs. Removing Russet doesn't change
+Python AutoPkg.
 
 The rollback history stays on disk so that you can inspect it. After you
 confirm that you don't need it, delete it:
 
-- **macOS:** `/Library/AutoPkg-Rollbacks`
-- **Linux:** `/usr/local/lib/autopkg-rollbacks`
+- **macOS and Linux:** `/opt/russet-rollbacks`
 - **Windows:** the `-rollbacks` folder next to the installation folder
 
 Rollback doesn't remove your preferences, recipe repositories, overrides, or
-cache. To remove them, delete the folders listed in
+cache. Python AutoPkg uses the same ones, so keep them if you still use Python
+AutoPkg. To remove them, delete the folders listed in
 [Files and paths](/reference/files-and-paths/#working-folders), and your
 preferences. For preference locations, see
 [Preferences](/reference/preferences/#preference-locations).
 
 :::danger
-Deleting the rollback history removes the only copy of the installations that
-Russet replaced. You can't roll back after you delete it.
+Deleting the rollback history removes the only copy of the earlier Russet
+installations. You can't roll back after you delete it.
 :::
 
 ## What's next

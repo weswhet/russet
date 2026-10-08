@@ -36,7 +36,7 @@ defaults write com.github.autopkg RECIPE_OVERRIDE_DIRS -array ~/Library/AutoPkg/
 
 Replace `FOLDER_PATH` with the path of another folder.
 
-To see your current preferences as Russet reads them, run `autopkg info`
+To see your current preferences as Russet reads them, run `russet info`
 without a recipe name.
 
 ## Set preferences on Linux
@@ -44,7 +44,7 @@ without a recipe name.
 On Linux, Russet reads `config.plist` or `config.json` in
 `~/.config/Autopkg`, or in `$XDG_CONFIG_HOME/Autopkg` if you set
 `XDG_CONFIG_HOME`. Russet saves preference changes, such as the repositories
-that `autopkg repo-add` adds, only to a file that it loaded, and it ignores a
+that `russet repo-add` adds, only to a file that it loaded, and it ignores a
 file with no keys.
 
 To create a preference file, follow these steps:
@@ -56,7 +56,7 @@ To create a preference file, follow these steps:
    ```
 
 1. Create `config.json` with at least one key. For example, the following
-   command sets an empty `RECIPE_REPOS` dictionary, which `autopkg repo-add`
+   command sets an empty `RECIPE_REPOS` dictionary, which `russet repo-add`
    fills in later:
 
    ```sh
@@ -66,7 +66,7 @@ To create a preference file, follow these steps:
 1. Confirm that Russet reads the file:
 
    ```sh
-   autopkg info
+   russet info
    ```
 
    The output starts with `Current preferences:` and lists the keys in the
@@ -95,7 +95,7 @@ To use a different set of preferences for one command, such as a test
 configuration, pass a preference file with `--prefs`:
 
 ```sh
-autopkg run --prefs PREFERENCE_FILE RECIPE
+russet run --prefs PREFERENCE_FILE RECIPE
 ```
 
 Replace the following:

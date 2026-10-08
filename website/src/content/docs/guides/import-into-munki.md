@@ -37,7 +37,7 @@ Replace `MUNKI_REPO_PATH` with the absolute path to the repository, such as
 `/Users/Shared/munki_repo`.
 
 To use a different repository for one run, add `-k MUNKI_REPO=MUNKI_REPO_PATH`
-to `autopkg run` instead.
+to `russet run` instead.
 
 :::caution
 Don't set `MUNKI_REPO_PLUGIN` to a backend other than `FileRepo`, and don't
@@ -62,7 +62,7 @@ To run a Munki recipe and rebuild the catalogs, run the recipe and the
 `MakeCatalogs.munki` recipe in the same command:
 
 ```sh
-autopkg run RECIPE MakeCatalogs.munki
+russet run RECIPE MakeCatalogs.munki
 ```
 
 Replace `RECIPE` with the name of your Munki recipe's override, such as

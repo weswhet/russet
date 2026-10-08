@@ -169,7 +169,8 @@ mod shell {
         command: PathBuf,
         daemons: [PathBuf; 2],
         managed: Vec<PathBuf>,
-        unrelated: PathBuf,
+        /// Preferences and a Python AutoPkg installation, which Russet never touches.
+        unrelated: Vec<PathBuf>,
     }
 
     impl Staging {
@@ -179,22 +180,25 @@ mod shell {
             let source = temp.join("archive source");
             fs::create_dir(&source).unwrap();
             fs::copy(distribution().join("install.sh"), source.join("install.sh")).unwrap();
-            let destination = root.join(if platform == "Darwin" {
-                "Library/AutoPkg"
-            } else {
-                "usr/local/lib/autopkg"
-            });
-            let command = root.join("usr/local/bin/autopkg");
-            let daemons = ["autopkgserver", "autopkginstalld"].map(|name| {
+            let destination = root.join("opt/russet");
+            let command = root.join("usr/local/bin/russet");
+            let daemons = ["server", "installd"].map(|name| {
                 root.join(format!(
-                    "Library/LaunchDaemons/com.github.autopkg.{name}.plist"
+                    "Library/LaunchDaemons/com.github.weswhet.russet.{name}.plist"
                 ))
             });
             let mut managed = vec![destination.clone(), command.clone()];
             if platform == "Darwin" {
                 managed.extend(daemons.iter().cloned());
             }
-            let unrelated = root.join("Library/Preferences/com.github.autopkg.plist");
+            let unrelated = [
+                "Library/Preferences/com.github.autopkg.plist",
+                "Library/AutoPkg/autopkg",
+                "Library/LaunchDaemons/com.github.autopkg.autopkgserver.plist",
+                "usr/local/bin/autopkg",
+            ]
+            .map(|path| root.join(path))
+            .to_vec();
             let stage = Self {
                 temp: temp.to_owned(),
                 platform,
@@ -207,16 +211,18 @@ mod shell {
                 unrelated,
             };
             stage.payload(b"release one\n");
-            write(&stage.unrelated, b"existing preferences\x00\xff", 0o600);
+            write(&stage.unrelated[0], b"existing preferences\x00\xff", 0o600);
+            write(&stage.unrelated[1], b"python autopkg", 0o755);
+            write(&stage.unrelated[2], b"python autopkg daemon", 0o644);
+            fs::create_dir_all(stage.unrelated[3].parent().unwrap()).unwrap();
+            symlink(Path::new("/Library/AutoPkg/autopkg"), &stage.unrelated[3]);
             stage
         }
 
         fn payload(&self, content: &[u8]) {
-            for name in ["autopkg-rs", "autopkgserver-rs", "autopkginstalld-rs"] {
-                let data = [content, name.as_bytes()].concat();
-                write(&self.source.join("bin").join(name), &data, 0o755);
-            }
-            for name in ["autopkgserver", "autopkginstalld"] {
+            let data = [content, b"russet".as_slice()].concat();
+            write(&self.source.join("bin/russet"), &data, 0o755);
+            for name in ["russet-server", "russet-installd"] {
                 let data = [b"new ".as_slice(), name.as_bytes()].concat();
                 write(
                     &self.source.join("launchd").join(format!("{name}.plist")),
@@ -228,7 +234,7 @@ mod shell {
 
         fn legacy(&self) {
             write(
-                &self.destination.join("autopkg"),
+                &self.destination.join("russet"),
                 b"legacy executable\x00",
                 0o751,
             );
@@ -243,8 +249,7 @@ mod shell {
             );
             symlink(Path::new("absent"), &self.destination.join("broken-link"));
             set_mode(&self.destination, 0o750);
-            fs::create_dir_all(self.command.parent().unwrap()).unwrap();
-            symlink(Path::new("../legacy/autopkg"), &self.command);
+            symlink(Path::new("../legacy/russet"), &self.command);
             if self.platform == "Darwin" {
                 write(&self.daemons[0], b"legacy daemon", 0o600);
                 symlink(Path::new("old-installation.plist"), &self.daemons[1]);
@@ -254,7 +259,7 @@ mod shell {
         fn state(&self) -> Vec<Option<Entry>> {
             self.managed
                 .iter()
-                .chain([&self.unrelated])
+                .chain(&self.unrelated)
                 .map(|path| snapshot(path))
                 .collect()
         }
@@ -344,11 +349,17 @@ exec '{}' "$@"
             let (_directory, temp) = temp();
             let stage = Staging::new(&temp, platform);
             let before = stage.state();
+            let untouched: Vec<_> = stage.unrelated.iter().map(|p| snapshot(p)).collect();
             assert_success(&stage.run("install", NONE));
-            let installed = stage.destination.join("autopkg");
+            let after: Vec<_> = stage.unrelated.iter().map(|p| snapshot(p)).collect();
+            assert_eq!(
+                after, untouched,
+                "{platform}: Python AutoPkg must stay untouched"
+            );
+            let installed = stage.destination.join("russet");
             assert_eq!(
                 fs::read(&installed).unwrap(),
-                fs::read(stage.source.join("bin/autopkg-rs")).unwrap()
+                fs::read(stage.source.join("bin/russet")).unwrap()
             );
             assert_eq!(mode_of(&fs::metadata(&installed).unwrap()), 0o755);
             assert_eq!(
@@ -359,10 +370,6 @@ exec '{}' "$@"
                 for daemon in &stage.daemons {
                     assert_eq!(mode_of(&fs::metadata(daemon).unwrap()), 0o644);
                 }
-                assert!(stage
-                    .destination
-                    .join("autopkgserver/autopkginstalld")
-                    .is_file());
             }
             assert_success(&stage.run("rollback", NONE));
             assert_eq!(stage.state(), before, "{platform}");
@@ -376,7 +383,7 @@ exec '{}' "$@"
             let stage = Staging::new(&temp, platform);
             stage.legacy();
             let original = stage.state();
-            let inode = fs::metadata(stage.destination.join("autopkg"))
+            let inode = fs::metadata(stage.destination.join("russet"))
                 .unwrap()
                 .ino();
             assert_success(&stage.run("install", NONE));
@@ -388,7 +395,7 @@ exec '{}' "$@"
             assert_success(&stage.run("rollback", NONE));
             assert_eq!(stage.state(), original, "{platform}");
             assert_eq!(
-                fs::metadata(stage.destination.join("autopkg"))
+                fs::metadata(stage.destination.join("russet"))
                     .unwrap()
                     .ino(),
                 inode
@@ -400,10 +407,10 @@ exec '{}' "$@"
     fn install_failure_restores_previous_generation() {
         for platform in PLATFORMS {
             let mut cases = vec![
-                ("cp", "autopkg-rs"),
+                ("cp", "russet"),
                 ("mv", "previous-command"),
                 ("mv", "candidate"),
-                ("ln", "autopkg"),
+                ("ln", "russet"),
             ];
             if platform == "Darwin" {
                 cases.extend([
@@ -473,7 +480,7 @@ exec '{}' "$@"
                 let stage = Staging::new(&temp, platform);
                 stage.legacy();
                 assert_success(&stage.run("install", NONE));
-                let marker = stage.destination.join(".autopkg-rust-rollback");
+                let marker = stage.destination.join(".russet-rollback");
                 match tamper {
                     "outside" => {
                         fs::write(
@@ -512,7 +519,7 @@ exec '{}' "$@"
                 }
                 let before = stage.state();
                 let (command, pattern) = if action == "install" {
-                    ("ln", "autopkg")
+                    ("ln", "russet")
                 } else {
                     ("mv", "previous-command")
                 };
@@ -530,7 +537,7 @@ exec '{}' "$@"
             let (_directory, temp) = temp();
             let stage = Staging::new(&temp, platform);
             let external = temp.join("legacy target");
-            write(&external.join("autopkg"), b"original linked release", 0o751);
+            write(&external.join("russet"), b"original linked release", 0o751);
             fs::create_dir_all(stage.destination.parent().unwrap()).unwrap();
             symlink(&external, &stage.destination);
             let before = stage.state();
@@ -550,12 +557,12 @@ exec '{}' "$@"
                 let (_directory, temp) = temp();
                 let stage = Staging::new(&temp, platform);
                 if failure == "missing" {
-                    fs::remove_file(stage.source.join("bin/autopkg-rs")).unwrap();
+                    fs::remove_file(stage.source.join("bin/russet")).unwrap();
                 } else {
                     let external = temp.join("external");
                     fs::create_dir(&external).unwrap();
                     let parent = stage.command.parent().unwrap();
-                    fs::create_dir_all(parent.parent().unwrap()).unwrap();
+                    fs::remove_dir_all(parent).unwrap();
                     symlink(&external, parent);
                 }
                 let before = snapshot(&stage.root);
@@ -678,7 +685,7 @@ function global:Move-Item {
         for (action, pattern) in [("install", "candidate"), ("rollback", "previous")] {
             let fixture = Fixture::new(pwsh.clone());
             write(&fixture.destination.join("autopkg.exe"), b"legacy", 0o644);
-            write(&fixture.source.join("bin/autopkg-rs.exe"), b"native", 0o644);
+            write(&fixture.source.join("bin/russet.exe"), b"native", 0o644);
             if action == "rollback" {
                 fixture.run_ok("install");
             }
@@ -715,7 +722,7 @@ function global:Move-Item {
                 0o644,
             );
             let original = snapshot(&fixture.destination);
-            write(&fixture.source.join("bin/autopkg-rs.exe"), b"native", 0o644);
+            write(&fixture.source.join("bin/russet.exe"), b"native", 0o644);
             if action == "rollback" {
                 fixture.run_ok("install");
             }
@@ -766,7 +773,7 @@ function global:Move-Item {
                         .starts_with("generation.")
                 })
                 .flat_map(|generation| fs::read_dir(generation.path()).unwrap())
-                .map(|entry| entry.unwrap().path().join("autopkg.exe"))
+                .map(|entry| entry.unwrap().path().join("russet.exe"))
                 .filter(|path| fs::read(path).is_ok_and(|data| data == b"native"))
                 .count();
             assert_eq!(
@@ -830,20 +837,20 @@ function global:Move-Item {
         );
         let original = snapshot(&fixture.destination);
         write(
-            &fixture.source.join("bin/autopkg-rs.exe"),
+            &fixture.source.join("bin/russet.exe"),
             b"release one",
             0o644,
         );
         fixture.run_ok("install");
         let first = snapshot(&fixture.destination);
         write(
-            &fixture.source.join("bin/autopkg-rs.exe"),
+            &fixture.source.join("bin/russet.exe"),
             b"release two",
             0o644,
         );
         fixture.run_ok("install");
         assert_eq!(
-            fs::read(fixture.destination.join("autopkg.exe")).unwrap(),
+            fs::read(fixture.destination.join("russet.exe")).unwrap(),
             b"release two"
         );
         fixture.run_ok("rollback");

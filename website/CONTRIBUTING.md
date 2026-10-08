@@ -127,7 +127,7 @@ a concept instead of explaining it at length.
 
 | Use | Don't use |
 | --- | --- |
-| the `autopkg` command | the Russet binary, `autopkg-rs` (except in build output) |
+| the `russet` command | the Russet binary, the `autopkg` command (except when you contrast Russet with Python AutoPkg) |
 | AutoPkg, Python AutoPkg (the original project, when you contrast it with Russet) | the old AutoPkg, legacy AutoPkg |
 | recipe, parent recipe, override | script, job |
 | processor, built-in processor | step, plug-in |
@@ -150,7 +150,7 @@ a concept instead of explaining it at length.
   Readers install Russet by building it from source and packaging it with
   `cargo xtask package`. Don't describe prebuilt archives, a Homebrew formula,
   an installer package, or notarized downloads as available.
-- `autopkg version` reports the AutoPkg compatibility version (3.0.0), not the
+- `russet version` reports the AutoPkg compatibility version (3.0.0), not the
   Russet distribution version. Don't confuse the two.
 - Don't document hidden or internal commands, internal environment variables,
   or test-only behavior that a user can't act on.

@@ -8,7 +8,7 @@ persist between runs, use [preferences](/reference/preferences/) instead.
 
 ## Recipe variables
 
-When you run `autopkg run` or `autopkg install`, Russet turns every
+When you run `russet run` or `russet install`, Russet turns every
 environment variable whose name starts with `AUTOPKG_` into a recipe
 variable. The variable name is the part after the prefix. For example,
 `AUTOPKG_MUNKI_REPO` sets the recipe variable `MUNKI_REPO`.

@@ -12,7 +12,7 @@ fi
 [ "$#" = 1 ] || { echo 'Usage: verify_rust_macos_vm.sh EXTRACTED_ARCHIVE_DIRECTORY' >&2; exit 1; }
 archive=$1
 [ -f "$archive/install.sh" ] || exit 1
-[ ! -e /Library/AutoPkg ] || { echo 'Guest already has AutoPkg; refusing to replace it' >&2; exit 1; }
+[ ! -e /opt/russet ] || { echo 'Guest already has Russet; refusing to replace it' >&2; exit 1; }
 fixture=/usr/local/share/autopkg-rust-vm-fixture
 [ ! -e "$fixture" ] || { echo 'Guest already has validation payload' >&2; exit 1; }
 work=$(/usr/bin/mktemp -d /private/tmp/autopkg-rust-validation.XXXXXXXX)
@@ -26,9 +26,11 @@ if [ "${AUTOPKG_DISPOSABLE_CI:-}" != 1 ]; then
     done
 fi
 /bin/sh "$archive/install.sh" install
-/bin/launchctl print system/com.github.autopkgserver > "$work/packaging-launchd.txt"
-/bin/launchctl print system/com.github.autopkg.autopkginstalld > "$work/installation-launchd.txt"
-/usr/bin/env PATH=/nonexistent /usr/local/bin/autopkg version
+/bin/launchctl print system/com.github.weswhet.russet.server > "$work/packaging-launchd.txt"
+/bin/launchctl print system/com.github.weswhet.russet.installd > "$work/installation-launchd.txt"
+/usr/bin/grep -q -- '--server' "$work/packaging-launchd.txt"
+/usr/bin/grep -q -- '--installd' "$work/installation-launchd.txt"
+/usr/bin/env PATH=/nonexistent /usr/local/bin/russet version
 /bin/mkdir -p "$work/cache" "$work/payload/usr/local/share" "$work/home"
 printf 'native helper payload\n' > "$work/payload/usr/local/share/autopkg-rust-vm-fixture"
 printf '<?xml version="1.0"?><plist version="1.0"><dict/></plist>\n' > "$work/preferences.plist"
@@ -48,7 +50,7 @@ EOF
 run_processor() {
     /usr/bin/sudo -u nobody /usr/bin/env PATH=/nonexistent HOME="$work/home" \
         AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
-        /usr/local/bin/autopkg processor-run "$1" < "$2" > "$3"
+        /usr/local/bin/russet processor-run "$1" < "$2" > "$3"
 }
 run_processor PkgCreator "$work/package.input.plist" "$work/package.output.plist"
 [ -f "$work/cache/NativeFixture.pkg" ]
@@ -97,7 +99,7 @@ if run_processor PkgCreator "$work/package.input.plist" "$work/rejected.output.p
 fi
 /usr/bin/grep -q "isn't owned by" "$work/rejected.stderr"
 /usr/sbin/chown nobody:nobody "$work/payload"
-printf 'not a property list' | /usr/bin/nc -w 5 -U /var/run/autopkgserver > "$work/malformed.reply"
+printf 'not a property list' | /usr/bin/nc -w 5 -U /var/run/russet-server > "$work/malformed.reply"
 /usr/bin/grep -q 'ERROR:Malformed request' "$work/malformed.reply"
 
 # Exercise the privileged image copier with an actual mounted disk image.
@@ -114,7 +116,7 @@ cat > "$work/dmg.input.plist" <<EOF
 EOF
 /usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$work/home" \
     AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
-    /usr/local/bin/autopkg processor-run InstallFromDMG < "$work/dmg.input.plist" > "$work/dmg.output.plist"
+    /usr/local/bin/russet processor-run InstallFromDMG < "$work/dmg.input.plist" > "$work/dmg.output.plist"
 [ "$(/usr/bin/plutil -extract install_result raw -o - "$work/dmg.output.plist")" = DONE ]
 /usr/bin/cmp "$work/image-source/copied.txt" "$work/copied/copied.txt"
 
@@ -122,19 +124,19 @@ EOF
 /usr/bin/defaults write com.googlecode.munki.munkiimport default_catalog -string FixtureStable
 /usr/bin/env PATH=/nonexistent HOME="$work/home" \
     AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
-    /usr/local/bin/autopkg processor-run MunkiSetDefaultCatalog < "$work/preferences.plist" > "$work/catalog.output.plist"
+    /usr/local/bin/russet processor-run MunkiSetDefaultCatalog < "$work/preferences.plist" > "$work/catalog.output.plist"
 [ "$(/usr/bin/plutil -extract pkginfo.catalogs.0 raw -o - "$work/catalog.output.plist")" = FixtureStable ]
 /usr/bin/defaults delete com.googlecode.munki.munkiimport default_catalog
 
 # Upgrade and restore the preceding native generation before undoing the clean install.
 /bin/sh "$archive/install.sh" install
-/usr/bin/env PATH=/nonexistent /usr/local/bin/autopkg version
-/bin/sh /Library/AutoPkg/install.sh rollback
-/usr/bin/env PATH=/nonexistent /usr/local/bin/autopkg version
-/bin/sh /Library/AutoPkg/install.sh rollback
-[ ! -e /Library/AutoPkg ] && [ ! -L /usr/local/bin/autopkg ]
-if /bin/launchctl print system/com.github.autopkgserver >/dev/null 2>&1; then exit 1; fi
-if /bin/launchctl print system/com.github.autopkg.autopkginstalld >/dev/null 2>&1; then exit 1; fi
+/usr/bin/env PATH=/nonexistent /usr/local/bin/russet version
+/bin/sh /opt/russet/install.sh rollback
+/usr/bin/env PATH=/nonexistent /usr/local/bin/russet version
+/bin/sh /opt/russet/install.sh rollback
+[ ! -e /opt/russet ] && [ ! -L /usr/local/bin/russet ]
+if /bin/launchctl print system/com.github.weswhet.russet.server >/dev/null 2>&1; then exit 1; fi
+if /bin/launchctl print system/com.github.weswhet.russet.installd >/dev/null 2>&1; then exit 1; fi
 /bin/rm "$fixture"
 /usr/sbin/pkgutil --forget org.autopkg.rust.vmfixture
 echo "PASS: clean install, launchd sockets, non-root package and app packaging, installation, ownership rejection, malformed protocol, DMG copying, Munki catalog preferences, upgrade, and rollback"

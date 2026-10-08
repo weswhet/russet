@@ -59,4 +59,4 @@ result inside Russet's own tests, capture it once and commit it as a fixture.
 See [the release-promotion guide](rust/distribution/RELEASE.md) for the gates
 that promotion checks. Retain license and attribution notices when changing or
 redistributing source. The distribution version is separate from the
-compatibility version reported by `autopkg version`.
+compatibility version reported by `russet version`.

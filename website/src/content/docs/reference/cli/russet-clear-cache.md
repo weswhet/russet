@@ -1,15 +1,15 @@
 ---
-title: autopkg clear-cache
+title: russet clear-cache
 description: Remove cached files for one recipe or for all recipes.
 ---
 
-`autopkg clear-cache` removes a recipe's cache folder, or everything in the
+`russet clear-cache` removes a recipe's cache folder, or everything in the
 cache.
 
 ## Syntax
 
 ```sh
-autopkg clear-cache [OPTIONS] TARGET
+russet clear-cache [OPTIONS] TARGET
 ```
 
 Replace the following:
@@ -54,17 +54,17 @@ Russet removes symbolic links without following them.
 To see what clearing the whole cache would remove, run the following command:
 
 ```sh
-autopkg clear-cache --dry-run all
+russet clear-cache --dry-run all
 ```
 
 To remove the cache of a recipe override in the default override folder, run
 the following command:
 
 ```sh
-autopkg clear-cache --override-dir ~/Library/AutoPkg/RecipeOverrides TheUnarchiver.download
+russet clear-cache --override-dir ~/Library/AutoPkg/RecipeOverrides TheUnarchiver.download
 ```
 
 ## Related pages
 
 - [Files and paths](/reference/files-and-paths/)
-- [`autopkg run`](/reference/cli/autopkg-run/)
+- [`russet run`](/reference/cli/russet-run/)

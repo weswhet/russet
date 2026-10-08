@@ -1,16 +1,16 @@
 ---
-title: autopkg audit
+title: russet audit
 description: Check recipes for risky patterns without running them.
 ---
 
-`autopkg audit` reads recipes and reports patterns that deserve review, such
+`russet audit` reads recipes and reports patterns that deserve review, such
 as insecure downloads or missing code signature checks. It doesn't run any
 processors.
 
 ## Syntax
 
 ```sh
-autopkg audit [OPTIONS] RECIPE [RECIPE ...]
+russet audit [OPTIONS] RECIPE [RECIPE ...]
 ```
 
 Replace the following:
@@ -20,7 +20,7 @@ Replace the following:
 
 ## Description
 
-`autopkg audit` runs the following checks on each recipe:
+`russet audit` runs the following checks on each recipe:
 
 | Check | Severity | What it reports |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ and `severity` keys.
 To audit a recipe, run the following command:
 
 ```sh
-autopkg audit TheUnarchiver.download
+russet audit TheUnarchiver.download
 ```
 
 The output is the following:
@@ -85,7 +85,7 @@ To fail a continuous integration job when any recipe in a list has a
 warning or an error, run the following command:
 
 ```sh
-autopkg audit --json --fail-on warning --recipe-list recipes.txt
+russet audit --json --fail-on warning --recipe-list recipes.txt
 ```
 
 ## Related pages

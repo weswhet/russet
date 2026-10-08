@@ -47,7 +47,7 @@ function Write-Journal([string]$Operation, [string]$Generation) {
 }
 function Assert-Candidate([string]$Path, [string]$Generation) {
     Assert-OrdinaryPath $Path
-    $Record = Join-Path $Path '.autopkg-rust-rollback'
+    $Record = Join-Path $Path '.russet-rollback'
     Assert-OrdinaryPath $Record
     if (-not (Test-Path -LiteralPath $Record -PathType Leaf) -or
         (Get-Content -LiteralPath $Record -Raw).Trim() -ne $Generation) {
@@ -105,7 +105,7 @@ if (Test-Path -LiteralPath $Journal) {
     exit 0
 }
 if ($Action -eq 'recover') { Write-Output 'No interrupted transaction.'; exit 0 }
-$Marker = Join-Path $Destination '.autopkg-rust-rollback'
+$Marker = Join-Path $Destination '.russet-rollback'
 if ($Action -eq 'rollback') {
     if (-not (Test-Path -LiteralPath $Marker -PathType Leaf)) { throw 'No native rollback record.' }
     Assert-OrdinaryPath $Marker
@@ -132,16 +132,16 @@ if ($Action -eq 'rollback') {
     Write-Output "Restored previous installation. Retired native files: $Retired"
     exit 0
 }
-$Binary = Join-Path $PSScriptRoot 'bin/autopkg-rs.exe'
+$Binary = Join-Path $PSScriptRoot 'bin/russet.exe'
 if (-not (Test-Path -LiteralPath $Binary -PathType Leaf)) { throw 'Missing native executable.' }
 Assert-OrdinaryPath $Binary
 New-Item -ItemType Directory -Path $History -Force | Out-Null
 $Generation = Join-Path $History ("generation." + [Guid]::NewGuid().ToString('N'))
 $Candidate = Join-Path $Generation 'candidate'
 New-Item -ItemType Directory -Path $Candidate | Out-Null
-Copy-Item -LiteralPath $Binary -Destination (Join-Path $Candidate 'autopkg.exe')
+Copy-Item -LiteralPath $Binary -Destination (Join-Path $Candidate 'russet.exe')
 Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $Candidate 'install.ps1')
-Set-Content -LiteralPath (Join-Path $Candidate '.autopkg-rust-rollback') -Value $Generation -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $Candidate '.russet-rollback') -Value $Generation -Encoding UTF8
 $Previous = Join-Path $Generation 'previous'
 Write-Journal 'install' $Generation
 $Saved = $false
@@ -163,7 +163,7 @@ try {
     throw
 }
 Remove-Item -LiteralPath $Journal
-Write-Output "Installed $Destination/autopkg.exe. Previous installation retained at $Previous"
+Write-Output "Installed $Destination/russet.exe. Previous installation retained at $Previous"
 Write-Output "Rollback: & '$Destination/install.ps1' rollback -Destination '$Destination'"
 
 } finally { $Lock.Dispose() }

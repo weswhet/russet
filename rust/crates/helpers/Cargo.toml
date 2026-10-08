@@ -12,11 +12,3 @@ tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-
-[[bin]]
-name = "autopkgserver-rs"
-path = "src/bin/autopkgserver.rs"
-
-[[bin]]
-name = "autopkginstalld-rs"
-path = "src/bin/autopkginstalld.rs"

@@ -17,7 +17,7 @@ An audit reads a recipe and its parent recipes without running any
 processors. To audit one or more recipes, run the following command:
 
 ```sh
-autopkg audit RECIPE
+russet audit RECIPE
 ```
 
 Replace `RECIPE` with a recipe's short name, identifier, or path. To audit
@@ -44,7 +44,7 @@ Russet runs the following checks:
 | `modification_processor` | Info | Processors that build packages or disk images, and file-changing processors, such as `Copier`, that run before them. |
 | `non_core_processor` | Info | Processors that aren't among AutoPkg's built-in processors. This check also lists repository processors that Russet implements natively, such as `MozillaURLProvider`. |
 
-To print the check names, run `autopkg audit --list-checks`.
+To print the check names, run `russet audit --list-checks`.
 
 To report only some checks, use `--only-check` with a comma-separated list of
 check names. To leave some checks out, use `--skip-check`. You can't use both
@@ -55,7 +55,7 @@ options in the same command.
 To use an audit in an automated check, add `--fail-on` with a severity:
 
 ```sh
-autopkg audit --fail-on SEVERITY --recipe-list RECIPE_LIST
+russet audit --fail-on SEVERITY --recipe-list RECIPE_LIST
 ```
 
 Replace the following:
@@ -73,4 +73,4 @@ name, details, and severity. You can't use both options in the same command.
 ## What's next
 
 - [Recipe trust](/concepts/recipe-trust/)
-- [`autopkg audit` reference](/reference/cli/autopkg-audit/)
+- [`russet audit` reference](/reference/cli/russet-audit/)

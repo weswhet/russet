@@ -37,21 +37,15 @@ fn licenses_below(
     Ok(())
 }
 
-/// Collect the archive members for `target`: the native executables from
+/// Collect the archive members for `target`: the `russet` executable from
 /// `bin_dir`, the matching installer, launchd jobs on macOS, and every
 /// license and notice the binaries need.
 pub fn entries(root: &Path, target: &str, bin_dir: &Path) -> Result<Entries, String> {
     let suffix = if is_windows(target) { ".exe" } else { "" };
-    let mut names = vec!["autopkg-rs"];
-    if is_apple(target) {
-        names.extend(["autopkgserver-rs", "autopkginstalld-rs"]);
-    }
     let mut entries = Entries::new();
-    for name in names {
-        let data = read(&bin_dir.join(format!("{name}{suffix}")))?;
-        verify_binary(&data, target)?;
-        entries.insert(format!("bin/{name}{suffix}"), (data, 0o755));
-    }
+    let data = read(&bin_dir.join(format!("russet{suffix}")))?;
+    verify_binary(&data, target)?;
+    entries.insert(format!("bin/russet{suffix}"), (data, 0o755));
     entries.insert(
         "LICENSE.txt".into(),
         (read(&root.join("LICENSE.txt"))?, 0o644),
@@ -110,7 +104,7 @@ pub fn entries(root: &Path, target: &str, bin_dir: &Path) -> Result<Entries, Str
         );
     }
     if is_apple(target) {
-        for name in ["autopkgserver.plist", "autopkginstalld.plist"] {
+        for name in ["russet-server.plist", "russet-installd.plist"] {
             entries.insert(
                 format!("launchd/{name}"),
                 (read(&distribution.join("launchd").join(name))?, 0o644),
@@ -120,7 +114,7 @@ pub fn entries(root: &Path, target: &str, bin_dir: &Path) -> Result<Entries, Str
     Ok(entries)
 }
 
-/// Write `autopkg-rs-development-TARGET.tar.gz` (or `.zip` for Windows) to
+/// Write `russet-development-TARGET.tar.gz` (or `.zip` for Windows) to
 /// `output` and return its path.
 pub fn package(
     root: &Path,
@@ -129,7 +123,7 @@ pub fn package(
     output: &Path,
 ) -> Result<PathBuf, String> {
     let entries = entries(root, target, bin_dir)?;
-    let archive_name = format!("autopkg-rs-development-{target}");
+    let archive_name = format!("russet-development-{target}");
     fs::create_dir_all(output).map_err(|error| format!("{}: {error}", output.display()))?;
     let path = output.join(format!(
         "{archive_name}{}",
@@ -180,9 +174,7 @@ pub(crate) mod tests {
             let bins = directory.path().join("bin");
             fs::create_dir(&bins).unwrap();
             let suffix = if is_windows(target) { ".exe" } else { "" };
-            for name in ["autopkg-rs", "autopkgserver-rs", "autopkginstalld-rs"] {
-                fs::write(bins.join(format!("{name}{suffix}")), executable(target)).unwrap();
-            }
+            fs::write(bins.join(format!("russet{suffix}")), executable(target)).unwrap();
             let output = directory.path().join("archives");
             let archive = package(&root, target, &bins, &output).unwrap();
             assert_eq!(fs::read_dir(&output).unwrap().count(), 1, "{target}");
@@ -192,7 +184,7 @@ pub(crate) mod tests {
             } else {
                 read_zip(&data).unwrap()
             };
-            let prefix = format!("autopkg-rs-development-{target}/");
+            let prefix = format!("russet-development-{target}/");
             let entries: Entries = members
                 .into_iter()
                 .map(|m| {
@@ -218,23 +210,22 @@ pub(crate) mod tests {
                 if suffix.is_empty() { 0o755 } else { 0o644 }
             );
             assert_eq!(
-                entries[&format!("bin/autopkg-rs{suffix}")],
+                entries[&format!("bin/russet{suffix}")],
                 (executable(target), 0o755)
             );
             assert!(entries.contains_key("INSTALL.md"));
             assert!(entries.keys().any(|name| name.starts_with("licenses/tls/")));
             if is_apple(target) {
                 for name in [
-                    "bin/autopkgserver-rs",
-                    "bin/autopkginstalld-rs",
-                    "launchd/autopkgserver.plist",
-                    "launchd/autopkginstalld.plist",
+                    "launchd/russet-server.plist",
+                    "launchd/russet-installd.plist",
                 ] {
                     assert!(entries.contains_key(name), "{target}: {name}");
                 }
+                assert!(!entries.keys().any(|name| name.starts_with("bin/autopkg")));
             } else {
                 assert!(!entries.keys().any(|name| name.starts_with("launchd/")));
-                assert!(!entries.keys().any(|name| name.contains("autopkgserver")));
+                assert!(!entries.keys().any(|name| name.contains("russet-server")));
             }
         }
     }
@@ -243,7 +234,7 @@ pub(crate) mod tests {
     fn rejects_an_executable_for_another_target() {
         let directory = tempfile::tempdir().unwrap();
         fs::write(
-            directory.path().join("autopkg-rs"),
+            directory.path().join("russet"),
             executable("x86_64-apple-darwin"),
         )
         .unwrap();

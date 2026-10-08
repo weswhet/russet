@@ -3,19 +3,20 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>com.github.autopkg.autopkginstalld</string>
+	<string>com.github.weswhet.russet.server</string>
 	<key>KeepAlive</key>
 	<false/>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Library/AutoPkg/autopkgserver/autopkginstalld</string>
+		<string>/opt/russet/russet</string>
+		<string>--server</string>
 	</array>
 	<key>Sockets</key>
 	<dict>
-		<key>autopkginstalld</key>
+		<key>russet-server</key>
 		<dict>
 			<key>SockPathName</key>
-			<string>/var/run/autopkginstalld</string>
+			<string>/var/run/russet-server</string>
 			<key>SockPathMode</key>
 			<integer>438</integer>
 		</dict>

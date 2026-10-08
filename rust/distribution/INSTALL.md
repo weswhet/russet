@@ -15,26 +15,30 @@ Extract the archive, then run its `install.sh`. System installation requires roo
 sudo ./install.sh install
 ```
 
-On macOS, the installer uses `/Library/AutoPkg` and the original launchd labels,
-socket paths, and `/Library/LaunchDaemons` filenames. It reloads both helpers.
-On Linux, it uses `/usr/local/lib/autopkg`. Both install
-`/usr/local/bin/autopkg` as a symlink to the native executable.
+On macOS and Linux, the installer uses `/opt/russet` and installs
+`/usr/local/bin/russet` as a symlink to the native executable. On macOS, it
+also installs the `com.github.weswhet.russet.server` and
+`com.github.weswhet.russet.installd` launchd jobs, which run `russet --server`
+and `russet --installd` on the `/var/run/russet-server` and
+`/var/run/russet-installd` sockets, and reloads both. The installer doesn't
+change an existing Python AutoPkg installation, its `autopkg` command, or its
+launchd jobs.
 
-The prior installation, executable/symlink, and macOS launchd files are moved
-into a uniquely named rollback generation. They are not deleted. Each upgrade
-retains another generation, so rollback can restore earlier native or Python
-installations. Preferences, recipe repositories, and caches are untouched.
+The prior Russet installation, the `russet` symlink, and the Russet launchd
+files are moved into a uniquely named rollback generation in
+`/opt/russet-rollbacks`. They are not deleted. Each upgrade retains another
+generation, so rollback can restore earlier native installations. Preferences,
+recipe repositories, and caches are untouched.
 
-To roll back on macOS:
+To roll back:
 
 ```sh
-sudo /Library/AutoPkg/install.sh rollback
+sudo /opt/russet/install.sh rollback
 ```
 
-On Linux, use `/usr/local/lib/autopkg/install.sh rollback`. The retired native
-installation is retained in the rollback generation for inspection. A failed
-installation attempts to restore the original files and services before exiting
-with an error. Do not delete rollback generations until they are no longer needed.
+The retired native installation is retained in the rollback generation for
+inspection. A failed installation attempts to restore the original files and
+services before exiting with an error. Do not delete rollback generations until they are no longer needed.
 
 For an unprivileged filesystem test, create an empty directory and pass
 `--root /absolute/staging/path`. No launchd service is changed when a staging root
@@ -47,32 +51,32 @@ behavior or system installation.
 Extract the archive and run its PowerShell installer with an explicit destination:
 
 ```powershell
-./install.ps1 install -Destination 'C:\Program Files\AutoPkg'
+./install.ps1 install -Destination 'C:\Program Files\Russet'
 ```
 
 Use an elevated shell when the destination requires administrator access. The
 parent directory must already exist. The native command is
-`C:\Program Files\AutoPkg\autopkg.exe`; use its full path or add that directory
+`C:\Program Files\Russet\russet.exe`; use its full path or add that directory
 to PATH. The installer does not alter PATH or change existing Chocolatey shims.
 
 Rollback restores the previous directory, including its original permissions:
 
 ```powershell
-& 'C:\Program Files\AutoPkg\install.ps1' rollback -Destination 'C:\Program Files\AutoPkg'
+& 'C:\Program Files\Russet\install.ps1' rollback -Destination 'C:\Program Files\Russet'
 ```
 
 Each prior version remains in a separate sibling rollback generation. No Python
 runtime is needed to install, upgrade, run, or roll back the native archive.
 
 If PowerShell is forcibly terminated during an install or rollback, keep the
-extracted archive. A journal in the sibling `AutoPkg-rollbacks` directory records
+extracted archive. A journal in the sibling `Russet-rollbacks` directory records
 the pending transaction before either directory is moved. Further install and
 rollback commands refuse to proceed until recovery finishes. Run recovery from
 the **extracted archive**, because the destination directory may be temporarily
 absent:
 
 ```powershell
-& 'C:\Downloads\autopkg-rs-development-x86_64-pc-windows-msvc\install.ps1' recover -Destination 'C:\Program Files\AutoPkg'
+& 'C:\Downloads\russet-development-x86_64-pc-windows-msvc\install.ps1' recover -Destination 'C:\Program Files\Russet'
 ```
 
 Recovery restores the prior installation for an uncommitted install, keeps an

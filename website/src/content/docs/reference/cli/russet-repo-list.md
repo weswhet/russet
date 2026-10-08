@@ -1,15 +1,15 @@
 ---
-title: autopkg repo-list
+title: russet repo-list
 description: List the recipe repositories that you added.
 ---
 
-`autopkg repo-list` lists the recipe repositories that you added with
-`autopkg repo-add`. The alias `autopkg list-repos` does the same thing.
+`russet repo-list` lists the recipe repositories that you added with
+`russet repo-add`. The alias `russet list-repos` does the same thing.
 
 ## Syntax
 
 ```sh
-autopkg repo-list [OPTIONS]
+russet repo-list [OPTIONS]
 ```
 
 Replace `OPTIONS` with any of the options in the following table.
@@ -39,7 +39,7 @@ added any recipe repositories, Russet prints `No recipe repos.`
 To list your recipe repositories, run the following command:
 
 ```sh
-autopkg repo-list
+russet repo-list
 ```
 
 The output looks like the following:
@@ -50,6 +50,6 @@ The output looks like the following:
 
 ## Related pages
 
-- [`autopkg repo-add`](/reference/cli/autopkg-repo-add/)
-- [`autopkg repo-update`](/reference/cli/autopkg-repo-update/)
-- [`autopkg repo-delete`](/reference/cli/autopkg-repo-delete/)
+- [`russet repo-add`](/reference/cli/russet-repo-add/)
+- [`russet repo-update`](/reference/cli/russet-repo-update/)
+- [`russet repo-delete`](/reference/cli/russet-repo-delete/)

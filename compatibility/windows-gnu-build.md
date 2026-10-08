@@ -6,7 +6,7 @@ changes to processor receipts, Chocolatey null handling, and default cache resol
 
 | Item | Observed value |
 | --- | --- |
-| Artifact | `rust/dist/windows-gnu/autopkg-rs.exe` |
+| Artifact | `rust/dist/windows-gnu/russet.exe` |
 | SHA-256 | `25692293ca99354230ffd391c538317afb28b6650c30c23aa16c7afd3f0c0042` |
 | Format | PE32+, x86-64, Windows console executable |
 | Rust host | `aarch64-unknown-linux-gnu` |
@@ -20,7 +20,7 @@ changes to processor receipts, Chocolatey null handling, and default cache resol
 The build used the locked dependencies and normal release optimization:
 
 ```sh
-cargo build --locked --release --target x86_64-pc-windows-gnu -p autopkg-rs
+cargo build --locked --release --target x86_64-pc-windows-gnu -p russet
 ```
 
 The container installed `gcc-mingw-w64-x86-64` and the Rust Windows GNU target.
@@ -43,7 +43,7 @@ cargo check --workspace --all-targets --target x86_64-pc-windows-gnu --locked
 ```
 
 The packaging script, which `cargo xtask package` has since replaced, produced
-`rust/dist/autopkg-rs-development-x86_64-pc-windows-gnu.zip`. ZIP integrity
+`rust/dist/russet-development-x86_64-pc-windows-gnu.zip`. ZIP integrity
 and equality of its executable bytes to the built artifact were verified.
 The archive SHA-256 is
 `baa7c6675e38019fd45cb46ef126011defcab677f8c33202006a575be7e0c33e`.

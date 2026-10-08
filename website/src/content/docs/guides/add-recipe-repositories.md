@@ -18,11 +18,11 @@ repositories.
 
 ## Search for recipes
 
-`autopkg search` searches an index of the recipes in the AutoPkg organization
+`russet search` searches an index of the recipes in the AutoPkg organization
 on GitHub. To search for recipes, run the following command:
 
 ```sh
-autopkg search SEARCH_TERM
+russet search SEARCH_TERM
 ```
 
 Replace `SEARCH_TERM` with part of an app name, recipe name, or path, such as
@@ -35,11 +35,11 @@ token if you configured one. For details, see
 
 ## Add a recipe repository
 
-To add a recipe repository, run `autopkg repo-add` with the repository's
+To add a recipe repository, run `russet repo-add` with the repository's
 location:
 
 ```sh
-autopkg repo-add REPOSITORY
+russet repo-add REPOSITORY
 ```
 
 Replace `REPOSITORY` with one of the following forms:
@@ -56,7 +56,7 @@ the repository is already present, Russet updates it with `git pull` instead.
 
 :::caution
 If Git can't clone the repository, Russet prints the error from Git and
-still exits with status `0`. Check the output, or run `autopkg repo-list` to
+still exits with status `0`. Check the output, or run `russet repo-list` to
 confirm that Russet added the repository.
 :::
 
@@ -67,7 +67,7 @@ Russet doesn't accept `file://` URLs.
 To list the recipe repositories that you added, run the following command:
 
 ```sh
-autopkg repo-list
+russet repo-list
 ```
 
 Each line shows the local path and the URL of one repository.
@@ -75,7 +75,7 @@ Each line shows the local path and the URL of one repository.
 To list the recipes that Russet can find, run the following command:
 
 ```sh
-autopkg list-recipes
+russet list-recipes
 ```
 
 To include identifiers and paths, add `--with-identifiers` and
@@ -86,7 +86,7 @@ To see a recipe's description, input variables, and parent recipes, run the
 following command:
 
 ```sh
-autopkg info RECIPE
+russet info RECIPE
 ```
 
 Replace `RECIPE` with a recipe's short name, identifier, or path.
@@ -97,7 +97,7 @@ Recipe authors fix and improve recipes over time. To update every recipe
 repository that you added, run the following command:
 
 ```sh
-autopkg repo-update all
+russet repo-update all
 ```
 
 To update one repository, replace `all` with the repository's name, URL, or
@@ -110,7 +110,7 @@ your overrides. For details, see
 To remove a recipe repository, run the following command:
 
 ```sh
-autopkg repo-delete REPOSITORY
+russet repo-delete REPOSITORY
 ```
 
 Replace `REPOSITORY` with the form that you used to add it, such as
@@ -118,7 +118,7 @@ Replace `REPOSITORY` with the form that you used to add it, such as
 preferences and then deletes its folder.
 
 :::caution
-`autopkg repo-delete` deletes the repository's local folder, including any
+`russet repo-delete` deletes the repository's local folder, including any
 changes that you made in it.
 :::
 
