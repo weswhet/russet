@@ -40,18 +40,29 @@ fn decode(name: &str) -> String {
         .replace("%25", "%")
 }
 
+/// Whether `path` is a folder, without following a symlink.
+fn real_dir(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir())
+}
+
 /// The sidecar folder holding `path`'s refused attributes, if any extraction
-/// above it kept some.
+/// above it kept some. Symlinks are never followed, so an extracted tree
+/// can't point the sidecar at other files.
 fn sidecar_for(path: &Path) -> Option<PathBuf> {
-    for ancestor in path.ancestors().skip(1) {
+    'ancestors: for ancestor in path.ancestors().skip(1) {
         let sidecar = ancestor.join(SIDECAR);
-        if sidecar.is_dir() {
-            let relative = path.strip_prefix(ancestor).ok()?;
-            let folder = sidecar.join(relative);
-            if folder.is_dir() {
-                return Some(folder);
+        if !real_dir(&sidecar) {
+            continue;
+        }
+        let relative = path.strip_prefix(ancestor).ok()?;
+        let mut folder = sidecar;
+        for part in relative.components() {
+            folder.push(part);
+            if !real_dir(&folder) {
+                continue 'ancestors;
             }
         }
+        return Some(folder);
     }
     None
 }
@@ -67,13 +78,15 @@ pub fn get_xattr(path: &Path, name: &str) -> io::Result<Option<Vec<u8>>> {
         Err(e) if e.raw_os_error() == Some(1) => {}
         Err(e) => return Err(e),
     }
-    match sidecar_for(path) {
-        Some(folder) => match std::fs::read(folder.join(encode(name))) {
-            Ok(value) => Ok(Some(value)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(e),
-        },
-        None => Ok(None),
+    let Some(folder) = sidecar_for(path) else {
+        return Ok(None);
+    };
+    let file = folder.join(encode(name));
+    match std::fs::symlink_metadata(&file) {
+        Ok(metadata) if metadata.is_file() => std::fs::read(&file).map(Some),
+        Ok(_) => Ok(None),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
     }
 }
 
@@ -162,7 +175,35 @@ mod tests {
         assert!(writer
             .write_file(&Path::new(SIDECAR).join("x"), &b""[..], 0o644)
             .is_err());
+        // The name is reserved at every depth, so an archive can't point a
+        // nested sidecar elsewhere.
+        assert!(writer
+            .symlink(&Path::new("App.app").join(SIDECAR), "/".as_ref())
+            .is_err());
         assert!(!root.join(SIDECAR).exists());
         assert_eq!(get_xattr(&link, "com.apple.FinderInfo").unwrap(), None);
+    }
+
+    /// A sidecar, or a folder in it, that is a symlink is ignored.
+    #[test]
+    fn never_follows_symlinks_into_or_inside_the_sidecar() {
+        let victim = tempfile::tempdir().unwrap();
+        std::fs::create_dir(victim.path().join("file")).unwrap();
+        std::fs::write(victim.path().join("file/com.example"), b"host").unwrap();
+        std::fs::write(victim.path().join("com.example"), b"host").unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        std::fs::write(root.join("file"), b"data").unwrap();
+        std::os::unix::fs::symlink(victim.path(), root.join(SIDECAR)).unwrap();
+        assert_eq!(get_xattr(&root.join("file"), "com.example").unwrap(), None);
+        assert!(!list_xattrs(&root.join("file"))
+            .unwrap()
+            .contains(&"com.example".to_owned()));
+
+        std::fs::remove_file(root.join(SIDECAR)).unwrap();
+        std::fs::create_dir(root.join(SIDECAR)).unwrap();
+        std::os::unix::fs::symlink(victim.path().join("file"), root.join(SIDECAR).join("file"))
+            .unwrap();
+        assert_eq!(get_xattr(&root.join("file"), "com.example").unwrap(), None);
     }
 }

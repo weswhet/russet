@@ -203,11 +203,7 @@ impl TreeWriter {
     /// reported by [`TreeWriter::finish`] instead of failing the extraction.
     pub fn set_xattr(&mut self, path: &Path, name: &str, value: &[u8]) -> io::Result<()> {
         let rel = clean_relative(path)?;
-        if rel
-            .components()
-            .next()
-            .is_some_and(|c| c.as_os_str() == SIDECAR)
-        {
+        if rel.components().any(|c| c.as_os_str() == SIDECAR) {
             return Err(invalid(format!("'{}' is reserved", rel.display())));
         }
         let remaining = self.limits.max_total_bytes - self.written;
@@ -284,11 +280,7 @@ impl TreeWriter {
 
     fn admit(&mut self, path: &Path) -> io::Result<PathBuf> {
         let rel = clean_relative(path)?;
-        if rel
-            .components()
-            .next()
-            .is_some_and(|c| c.as_os_str() == SIDECAR)
-        {
+        if rel.components().any(|c| c.as_os_str() == SIDECAR) {
             return Err(invalid(format!(
                 "Archive path '{}' uses the reserved name {SIDECAR}",
                 rel.display()

@@ -84,35 +84,37 @@ fn run(command: &mut Command) {
 }
 
 /// A universal binary whose x86_64 slice keeps the developer's signature
-/// and whose arm64 slice is re-signed ad hoc with the same identifier: each
-/// architecture must satisfy the requirement on its own, as `codesign`
-/// checks them.
+/// and whose arm64 slice comes from an ad-hoc re-signing of the same bundle,
+/// which seals the same resources: each architecture must satisfy the
+/// requirement on its own, as `codesign` checks them.
 #[test]
 fn every_architecture_must_satisfy_the_requirement() {
     let temp = tempfile::tempdir().unwrap();
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/MSCDockTilePlugin.docktileplugin");
     let plugin = temp.path().join("Mixed.docktileplugin");
-    run(Command::new("/usr/bin/ditto").arg(&fixture).arg(&plugin));
-    let binary = plugin.join("Contents/MacOS/MSCDockTilePlugin");
+    let adhoc = temp.path().join("AdHoc.docktileplugin");
+    for copy in [&plugin, &adhoc] {
+        run(Command::new("/usr/bin/ditto").arg(&fixture).arg(copy));
+    }
+    run(Command::new("/usr/bin/codesign")
+        .args(["--force", "--sign", "-"])
+        .arg(&adhoc));
+    let executable = "Contents/MacOS/MSCDockTilePlugin";
     let arm64 = temp.path().join("arm64");
     let x86_64 = temp.path().join("x86_64");
-    for (arch, path) in [("arm64", &arm64), ("x86_64", &x86_64)] {
+    for (source, arch, path) in [(&adhoc, "arm64", &arm64), (&plugin, "x86_64", &x86_64)] {
         run(Command::new("/usr/bin/lipo")
-            .arg(&binary)
+            .arg(source.join(executable))
             .args(["-thin", arch, "-output"])
             .arg(path));
     }
-    run(Command::new("/usr/bin/codesign")
-        .args(["--force", "--sign", "-", "--identifier"])
-        .arg("com.googlecode.munki.MSCDockTilePlugin")
-        .arg(&arm64));
     run(Command::new("/usr/bin/lipo")
         .arg("-create")
         .arg(&x86_64)
         .arg(&arm64)
         .arg("-output")
-        .arg(&binary));
+        .arg(plugin.join(executable)));
     let requirement = REQUIREMENTS[8];
     assert!(native(&fixture, requirement));
     assert!(!apple(&plugin, requirement));
