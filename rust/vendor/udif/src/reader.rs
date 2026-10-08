@@ -86,6 +86,62 @@ pub struct DmgReader<R> {
     partitions: Vec<PartitionEntry>,
 }
 
+/// Largest resource plist read. Russet patch.
+const MAX_PLIST_LENGTH: u64 = 64 << 20;
+/// Largest block run held in memory, compressed or decoded. hdiutil writes
+/// runs of 1 MiB. Russet patch.
+const MAX_RUN_BYTES: u64 = 64 << 20;
+
+/// Checks every block run against the file before anything is allocated
+/// from it: stored data must lie inside the data fork, and runs that are
+/// read into memory must be bounded. Zero-fill runs may be any size; their
+/// zeros are written in pieces. Russet patch.
+fn validate_block_maps(
+    koly: &KolyHeader,
+    partitions: &[PartitionEntry],
+    file_length: u64,
+) -> Result<()> {
+    let bad = |message: &str| Err(DppError::InvalidBlockMap(message.into()));
+    let fork_end = koly.data_fork_offset.checked_add(koly.data_fork_length);
+    if fork_end.is_none_or(|end| end > file_length) {
+        return bad("data fork is out of range");
+    }
+    for partition in partitions {
+        for run in &partition.block_map.block_runs {
+            let decoded = run.sector_count.checked_mul(SECTOR_SIZE);
+            let Some(decoded) = decoded else {
+                return bad("block run is too large");
+            };
+            match run.block_type {
+                BlockType::ZeroFill | BlockType::Comment | BlockType::End => continue,
+                BlockType::Ignore if run.compressed_length == 0 => continue,
+                BlockType::Raw | BlockType::Ignore => {}
+                _ if decoded > MAX_RUN_BYTES => return bad("block run is too large"),
+                _ => {}
+            }
+            if run.compressed_length > MAX_RUN_BYTES {
+                return bad("block run is too large");
+            }
+            let end = run.compressed_offset.checked_add(run.compressed_length);
+            if end.is_none_or(|end| end > koly.data_fork_length) {
+                return bad("block run lies outside the data fork");
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Writes `count` zero bytes without allocating them all. Russet patch.
+fn write_zeros<W: Write>(writer: &mut W, mut count: u64) -> Result<()> {
+    let zeros = [0u8; 64 << 10];
+    while count > 0 {
+        let chunk = count.min(zeros.len() as u64) as usize;
+        writer.write_all(&zeros[..chunk])?;
+        count -= chunk as u64;
+    }
+    Ok(())
+}
+
 impl<R: Read + Seek> DmgReader<R> {
     /// Create a new DMG reader with default options (checksum verification enabled)
     pub fn new(reader: R) -> Result<Self> {
@@ -102,12 +158,21 @@ impl<R: Read + Seek> DmgReader<R> {
             Self::verify_data_fork_checksum(&mut reader, &koly)?;
         }
 
-        // Read and parse plist
+        // Read and parse plist. Russet patch: the trailer's offsets are
+        // untrusted, so they're checked against the file before allocating.
+        let file_length = reader.seek(SeekFrom::End(0))?;
+        let plist_end = koly.plist_offset.checked_add(koly.plist_length);
+        if koly.plist_length > MAX_PLIST_LENGTH || plist_end.is_none_or(|end| end > file_length) {
+            return Err(DppError::InvalidKolyHeader(
+                "plist offset or length is out of range".into(),
+            ));
+        }
         reader.seek(SeekFrom::Start(koly.plist_offset))?;
         let mut plist_data = vec![0u8; koly.plist_length as usize];
         reader.read_exact(&mut plist_data)?;
 
         let partitions = parse_plist(&plist_data)?;
+        validate_block_maps(&koly, &partitions, file_length)?;
 
         // Verify master checksum (CRC32 of all mish checksums)
         if options.verify_checksums {
@@ -128,14 +193,31 @@ impl<R: Read + Seek> DmgReader<R> {
             return Ok(());
         }
 
-        // Read the data fork
+        // Russet patch: stream the data fork through the checksum instead of
+        // allocating its untrusted length.
+        let file_length = reader.seek(SeekFrom::End(0))?;
+        let end = koly.data_fork_offset.checked_add(koly.data_fork_length);
+        if end.is_none_or(|end| end > file_length) {
+            return Err(DppError::InvalidKolyHeader(
+                "data fork is out of range".into(),
+            ));
+        }
         reader.seek(SeekFrom::Start(koly.data_fork_offset))?;
-        let mut data_fork = vec![0u8; koly.data_fork_length as usize];
-        reader.read_exact(&mut data_fork)?;
-
-        // Verify checksum
-        verify_crc32(koly.data_checksum_type, &koly.data_checksum, &data_fork)
-            .map_err(|(expected, actual)| DppError::ChecksumMismatch { expected, actual })
+        let mut hasher = crc32fast::Hasher::new();
+        let mut remaining = koly.data_fork_length;
+        let mut buffer = vec![0u8; 1 << 20];
+        while remaining > 0 {
+            let chunk = remaining.min(buffer.len() as u64) as usize;
+            reader.read_exact(&mut buffer[..chunk])?;
+            hasher.update(&buffer[..chunk]);
+            remaining -= chunk as u64;
+        }
+        let actual = hasher.finalize();
+        let expected = crate::checksum::extract_crc32(&koly.data_checksum);
+        if actual != expected {
+            return Err(DppError::ChecksumMismatch { expected, actual });
+        }
+        Ok(())
     }
 
     /// Verify the master checksum (CRC32 of all mish checksums concatenated)
@@ -325,16 +407,14 @@ impl<R: Read + Seek> DmgReader<R> {
 
             // Emit zero padding if there's a gap between the current position and this block
             if out_offset > bytes_written {
-                let gap = (out_offset - bytes_written) as usize;
-                let zeros = vec![0u8; gap];
-                writer.write_all(&zeros)?;
-                bytes_written += gap as u64;
+                let gap = out_offset - bytes_written;
+                write_zeros(writer, gap)?;
+                bytes_written += gap;
             }
 
             match block_run.block_type {
                 BlockType::ZeroFill => {
-                    let zeros = vec![0u8; out_size as usize];
-                    writer.write_all(&zeros)?;
+                    write_zeros(writer, out_size)?;
                     bytes_written += out_size;
                 }
                 BlockType::Raw | BlockType::Ignore => {
@@ -357,13 +437,11 @@ impl<R: Read + Seek> DmgReader<R> {
                                 ))
                             })?;
                         if remaining > 0 {
-                            let zeros = vec![0u8; remaining as usize];
-                            writer.write_all(&zeros)?;
+                            write_zeros(writer, remaining)?;
                             bytes_written += remaining;
                         }
                     } else {
-                        let zeros = vec![0u8; out_size as usize];
-                        writer.write_all(&zeros)?;
+                        write_zeros(writer, out_size)?;
                         bytes_written += out_size;
                     }
                 }
