@@ -25,6 +25,22 @@ enum Token {
     Equals,
 }
 
+/// Parses a dotted OID. Each arc is checked first, because `const-oid`'s
+/// parser overflows on arcs larger than 32 bits.
+fn parse_oid(text: &str) -> Result<ObjectIdentifier, String> {
+    let bad = || format!("Bad OID '{text}' in requirement");
+    let arcs: Vec<&str> = text.split('.').collect();
+    if arcs.len() < 2
+        || arcs.len() > 32
+        || arcs
+            .iter()
+            .any(|arc| arc.is_empty() || arc.len() > 10 || arc.parse::<u32>().is_err())
+    {
+        return Err(bad());
+    }
+    text.parse().map_err(|_| bad())
+}
+
 fn tokenize(text: &str) -> Result<Vec<Token>, String> {
     let chars: Vec<char> = text.chars().collect();
     let mut tokens = Vec::new();
@@ -260,10 +276,7 @@ impl Parser {
                     return Err("Missing ']' in requirement".into());
                 }
                 let field = if let Some(oid) = name.strip_prefix("field.") {
-                    Field::Extension(
-                        oid.parse()
-                            .map_err(|_| format!("Bad OID '{oid}' in requirement"))?,
-                    )
+                    Field::Extension(parse_oid(oid)?)
                 } else if let Some(attribute) = name.strip_prefix("subject.") {
                     Field::Subject(match attribute {
                         "CN" => ObjectIdentifier::new_unwrap("2.5.4.3"),
@@ -455,5 +468,17 @@ mod tests {
         ] {
             assert!(Requirement::parse(text).is_err(), "{text}");
         }
+    }
+
+    /// Inputs the `codesign_requirement` fuzz target found; each must fail
+    /// to parse instead of panicking.
+    #[test]
+    fn fuzz_regression_inputs() {
+        let data = include_bytes!("../tests/fuzz-regressions/requirement-oid-overflow.bin");
+        let text = String::from_utf8_lossy(data);
+        assert!(Requirement::parse(&text).is_err());
+        assert!(Requirement::parse("certificate leaf[field.1.99999999999]").is_err());
+        assert!(Requirement::parse("certificate leaf[field.1..2]").is_err());
+        assert!(Requirement::parse("certificate leaf[field.1.2.840.113635.100.6.1.13]").is_ok());
     }
 }
