@@ -213,6 +213,8 @@ fn matches_apple_pkgbuild() {
 /// receipt and the installed tree. Needs passwordless `sudo`, so it's
 /// ignored locally; macOS CI runs it with
 /// `cargo test -p russet-pkgbuild -- --ignored installs_with_apple_installer`.
+/// With `RUSSET_KEEP_TEST_PACKAGE=DIR`, it copies the package to `DIR` and
+/// stops before installing, for inspection without `sudo`.
 #[cfg(target_os = "macos")]
 #[test]
 #[ignore]
@@ -266,6 +268,10 @@ fn installs_with_apple_installer() {
     )
     .unwrap();
 
+    if let Ok(dir) = std::env::var("RUSSET_KEEP_TEST_PACKAGE") {
+        fs::copy(&package, Path::new(&dir).join("Test.pkg")).unwrap();
+        return;
+    }
     let result = std::panic::catch_unwind(|| {
         sudo(&[
             "/usr/sbin/installer",

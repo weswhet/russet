@@ -169,8 +169,14 @@ pub fn write(entries: &[Entry]) -> Result<Vec<u8>, String> {
         be32(&mut info, id);
         be32(&mut info, record_block);
         blocks.push(info);
-        leaf_entries.push((info_block, name_block));
+        leaf_entries.push(((parent, name.as_bytes()), (info_block, name_block)));
     }
+    // The Paths tree is a B+ tree keyed by parent ID, then name; `lsbom` and
+    // `installer` look entries up by key, so leaves must be in key order.
+    // IDs follow the caller's depth-first order, so parents still come
+    // before their children.
+    leaf_entries.sort_by(|a, b| a.0.cmp(&b.0));
+    let leaf_entries: Vec<(u32, u32)> = leaf_entries.into_iter().map(|(_, e)| e).collect();
 
     // BomInfo: path count (plus one), then bytes per CPU type.
     let mut info = Vec::new();

@@ -182,8 +182,10 @@ pub fn read(bytes: &[u8]) -> Result<Vec<Entry>, String> {
         node = be32(block, 12)?;
     }
     let large = sizes_64(&bom)?;
-    let mut paths: HashMap<u32, String> = HashMap::new();
-    let mut entries = Vec::new();
+    // Each entry's name and record by ID, and each parent's children in key
+    // order, which is name order.
+    let mut nodes: HashMap<u32, (String, Entry)> = HashMap::new();
+    let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
     let mut visited = 0;
     while node != 0 {
         visited += 1;
@@ -201,32 +203,56 @@ pub fn read(bytes: &[u8]) -> Result<Vec<Entry>, String> {
             let id = be32(info, 0)?;
             let parent = be32(name, 0)?;
             let leaf = c_string(&name[4..])?;
-            let path = match parent {
-                0 => String::new(),
-                1 => leaf,
-                parent => format!(
-                    "{}/{leaf}",
-                    paths
-                        .get(&parent)
-                        .ok_or_else(|| invalid("a path's parent comes after it"))?
-                ),
-            };
             let record_block = be32(info, 4)?;
             let (mut kind, mode, uid, gid, mtime) = record(bom.block(record_block)?)?;
             if let (Kind::File { size, .. }, Some(full)) = (&mut kind, large.get(&record_block)) {
                 *size = *full;
             }
-            paths.insert(id, path.clone());
-            entries.push(Entry {
-                path,
+            let entry = Entry {
+                path: String::new(),
                 kind,
                 mode,
                 uid,
                 gid,
                 mtime,
-            });
+            };
+            if nodes.insert(id, (leaf, entry)).is_some() {
+                return Err(invalid("a path ID is listed twice"));
+            }
+            children.entry(parent).or_default().push(id);
         }
         node = be32(block, 4)?;
+    }
+    // List depth first from the root, as `lsbom` does.
+    let mut entries = Vec::with_capacity(nodes.len());
+    let mut stack: Vec<(u32, String)> = children
+        .get(&0)
+        .into_iter()
+        .flatten()
+        .rev()
+        .map(|&id| (id, String::new()))
+        .collect();
+    while let Some((id, path)) = stack.pop() {
+        let (_, mut entry) = nodes
+            .remove(&id)
+            .ok_or_else(|| invalid("a path is reachable twice"))?;
+        entry.path = path.clone();
+        for &child in children.get(&id).into_iter().flatten().rev() {
+            let name = &nodes
+                .get(&child)
+                .ok_or_else(|| invalid("a path is reachable twice"))?
+                .0;
+            let child_path = if path.is_empty() {
+                name.clone()
+            } else {
+                format!("{path}/{name}")
+            };
+            stack.push((child, child_path));
+        }
+        entries.push(entry);
+    }
+    if !nodes.is_empty() {
+        return Err(invalid("a path's parent isn't listed"));
     }
     Ok(entries)
 }
