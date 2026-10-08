@@ -326,3 +326,80 @@ fn hdiutil_accepts_created_images() {
         );
     }
 }
+
+/// Compares native extraction of the images listed in
+/// `RUSSET_COMPARE_IMAGES` (separated by `:`) with the same images mounted
+/// by macOS: `RUSSET_COMPARE_IMAGES=a.dmg:b.dmg cargo test -p russet-hdiutil
+/// -- --ignored compare_downloaded_images`. For checking real downloads. It
+/// compares the root listing, then every visible top-level item; system
+/// folders such as `.Trashes` aren't readable on either side.
+#[test]
+#[ignore]
+fn compare_downloaded_images() {
+    let images = std::env::var("RUSSET_COMPARE_IMAGES").unwrap_or_default();
+    let names = |root: &Path| -> Vec<String> {
+        let mut names: Vec<String> = fs::read_dir(root)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    };
+    for image in images.split(':').filter(|i| !i.is_empty()) {
+        let image = Path::new(image);
+        let out = tempfile::tempdir().unwrap();
+        let extraction = extract(image, out.path(), Limits::default()).unwrap();
+        let mount = tempfile::tempdir().unwrap();
+        // Accept any license agreement, as AutoPkg does.
+        let mut attach = Command::new("/usr/bin/hdiutil")
+            .args([
+                "attach",
+                "-readonly",
+                "-nobrowse",
+                "-noverify",
+                "-mountpoint",
+            ])
+            .arg(mount.path())
+            .arg(image)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        use std::io::Write;
+        let _ = attach.stdin.take().unwrap().write_all(b"Y\n");
+        assert!(attach.wait().unwrap().success(), "{}", image.display());
+        let native = &extraction.volumes[0];
+        let result = std::panic::catch_unwind(|| {
+            assert_eq!(names(native), names(mount.path()), "{}", image.display());
+            for name in names(mount.path()).iter().filter(|n| !n.starts_with('.')) {
+                let (ours, apple) = (native.join(name), mount.path().join(name));
+                if apple.is_dir() && !apple.is_symlink() {
+                    assert_eq!(
+                        manifest(&ours).unwrap(),
+                        manifest(&apple).unwrap(),
+                        "{} {name}",
+                        image.display()
+                    );
+                } else {
+                    let xattrs = |p: &Path| {
+                        let mut names: Vec<_> = xattr::list(p)
+                            .unwrap()
+                            .filter(|n| n != "com.apple.provenance" && n != "com.apple.quarantine")
+                            .collect();
+                        names.sort();
+                        names
+                    };
+                    assert_eq!(fs::read(&ours).ok(), fs::read(&apple).ok(), "{name}");
+                    assert_eq!(xattrs(&ours), xattrs(&apple), "{name}");
+                }
+            }
+        });
+        run(
+            "/usr/bin/hdiutil",
+            &["detach", "-force", mount.path().to_str().unwrap()],
+        );
+        if let Err(panic) = result {
+            std::panic::resume_unwind(panic);
+        }
+    }
+}

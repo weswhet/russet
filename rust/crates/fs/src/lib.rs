@@ -19,12 +19,16 @@ pub use path::clean_relative;
 #[cfg(unix)]
 mod manifest;
 #[cfg(unix)]
+mod sidecar;
+#[cfg(unix)]
 mod writer;
 #[cfg(unix)]
 mod xattr_name;
 
 #[cfg(unix)]
 pub use manifest::{manifest, Entry, EntryKind};
+#[cfg(unix)]
+pub use sidecar::{get_xattr, list_xattrs, SIDECAR};
 #[cfg(unix)]
 pub use writer::{SkippedXattr, TreeWriter};
 #[cfg(unix)]

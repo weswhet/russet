@@ -63,9 +63,16 @@ Apple's tools accept is a compatibility bug.
   because `Distribution` files can choose packages with JavaScript.
 - **Apple Archive:** archives compressed with LZBITMAP aren't supported,
   because the format isn't documented.
-- **Paths outside disk images:** file systems on Linux are case-sensitive,
-  and folder listings aren't sorted, so a glob that matches several items can
-  pick a different one than on macOS.
+- **Paths outside disk images:** file systems on Linux are case-sensitive.
+  When a path in a recipe matches nothing, Russet tries it again ignoring case, as
+  it would resolve on macOS, so `CyberDuck.app` finds `Cyberduck.app`. Folder
+  listings aren't sorted, so a glob that matches several items can pick a
+  different one than on macOS.
+- **Extended attributes:** file systems on Linux limit their size, and Linux
+  doesn't allow them on symbolic links. Russet keeps the ones it can't store
+  in a hidden `.russet-xattrs` folder at the top of the extraction, where its
+  code signature checks find them. Copying a file elsewhere doesn't copy
+  those attributes.
 - **Log text:** messages from the replacements differ from the text
   `codesign`, `pkgutil`, and the other tools print.
 

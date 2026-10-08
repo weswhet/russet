@@ -1294,6 +1294,7 @@ dependencies = [
  "plist",
  "regex",
  "ring",
+ "russet-fs",
  "sha1",
  "sha2 0.10.9",
  "tempfile",
@@ -1323,6 +1324,7 @@ dependencies = [
  "rustix",
  "serde",
  "sha2 0.10.9",
+ "tempfile",
  "xattr",
 ]
 

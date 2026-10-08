@@ -1,3 +1,4 @@
+use crate::sidecar::{encode, SIDECAR};
 use crate::{clean_relative, host_xattr_name, invalid, Limits};
 use rustix::fs::{self as rfs, AtFlags, FileType, Mode, OFlags, XattrFlags};
 use rustix::io::Errno;
@@ -48,6 +49,14 @@ pub struct TreeWriter {
 impl TreeWriter {
     /// Opens `root`, which must be an existing directory.
     pub fn open(root: &Path, limits: Limits) -> io::Result<Self> {
+        // Attributes kept by an earlier extraction into this folder are
+        // stale. remove_dir_all doesn't follow symlinks.
+        let stale = root.join(SIDECAR);
+        match std::fs::symlink_metadata(&stale) {
+            Ok(m) if m.is_dir() => std::fs::remove_dir_all(&stale)?,
+            Ok(_) => std::fs::remove_file(&stale)?,
+            Err(_) => {}
+        }
         let root = rfs::open(
             root,
             OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC,
@@ -62,6 +71,23 @@ impl TreeWriter {
             dir_modes: Vec::new(),
             skipped: Vec::new(),
         })
+    }
+
+    /// Keeps an attribute the host refused in the sidecar folder (see
+    /// [`crate::get_xattr`]).
+    fn keep_in_sidecar(&mut self, rel: &Path, name: &str, value: &[u8]) -> io::Result<()> {
+        let dir = self.open_dir(&Path::new(SIDECAR).join(rel), true)?;
+        let file_name = encode(name);
+        let _ = rfs::unlinkat(&dir, file_name.as_str(), AtFlags::empty());
+        let fd = rfs::openat(
+            &dir,
+            file_name.as_str(),
+            OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::from_raw_mode(0o644),
+        )?;
+        File::from(fd).write_all(value)?;
+        self.written += value.len() as u64;
+        Ok(())
     }
 
     /// Bytes written so far to files and extended attributes.
@@ -177,6 +203,13 @@ impl TreeWriter {
     /// reported by [`TreeWriter::finish`] instead of failing the extraction.
     pub fn set_xattr(&mut self, path: &Path, name: &str, value: &[u8]) -> io::Result<()> {
         let rel = clean_relative(path)?;
+        if rel
+            .components()
+            .next()
+            .is_some_and(|c| c.as_os_str() == SIDECAR)
+        {
+            return Err(invalid(format!("'{}' is reserved", rel.display())));
+        }
         let remaining = self.limits.max_total_bytes - self.written;
         if value.len() as u64 > remaining {
             return Err(invalid("Extraction exceeds the total size limit"));
@@ -187,7 +220,10 @@ impl TreeWriter {
             reason,
         };
         if self.symlinks.iter().any(|(link, _)| *link == rel) {
-            self.skipped.push(skip("symlink".into()));
+            // Symlinks are created last, and Linux refuses their attributes.
+            if let Err(e) = self.keep_in_sidecar(&rel, name, value) {
+                self.skipped.push(skip(format!("symlink: {e}")));
+            }
             return Ok(());
         }
         let fd = if rel.as_os_str().is_empty() {
@@ -215,8 +251,13 @@ impl TreeWriter {
                 self.written += value.len() as u64;
                 Ok(())
             }
-            Err(errno @ (Errno::NOTSUP | Errno::TOOBIG | Errno::NOSPC | Errno::PERM)) => {
-                self.skipped.push(skip(io::Error::from(errno).to_string()));
+            Err(
+                errno @ (Errno::NOTSUP | Errno::TOOBIG | Errno::NOSPC | Errno::PERM | Errno::RANGE),
+            ) => {
+                if let Err(e) = self.keep_in_sidecar(&rel, name, value) {
+                    self.skipped
+                        .push(skip(format!("{}; sidecar: {e}", io::Error::from(errno))));
+                }
                 Ok(())
             }
             Err(errno) => Err(errno.into()),
@@ -243,6 +284,16 @@ impl TreeWriter {
 
     fn admit(&mut self, path: &Path) -> io::Result<PathBuf> {
         let rel = clean_relative(path)?;
+        if rel
+            .components()
+            .next()
+            .is_some_and(|c| c.as_os_str() == SIDECAR)
+        {
+            return Err(invalid(format!(
+                "Archive path '{}' uses the reserved name {SIDECAR}",
+                rel.display()
+            )));
+        }
         self.entries += 1;
         if self.entries > self.limits.max_entries {
             return Err(invalid("Extraction exceeds the entry limit"));

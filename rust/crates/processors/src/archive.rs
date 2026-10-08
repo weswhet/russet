@@ -62,11 +62,11 @@ fn tar_reader(source: &Path) -> Result<Box<dyn Read>> {
     drop(file);
     let file = io(fs::File::open(source))?;
     if count >= 2 && magic[..2] == [0x1f, 0x8b] {
-        Ok(Box::new(flate2::read::GzDecoder::new(file)))
+        Ok(Box::new(flate2::read::MultiGzDecoder::new(file)))
     } else if count >= 3 && &magic[..3] == b"BZh" {
-        Ok(Box::new(bzip2::read::BzDecoder::new(file)))
+        Ok(Box::new(bzip2::read::MultiBzDecoder::new(file)))
     } else if count == 6 && magic == [0xfd, b'7', b'z', b'X', b'Z', 0] {
-        Ok(Box::new(xz2::read::XzDecoder::new(file)))
+        Ok(Box::new(xz2::read::XzDecoder::new_multi_decoder(file)))
     } else {
         Ok(Box::new(file))
     }
@@ -338,6 +338,37 @@ mod tests {
         e.insert("USE_PYTHON_NATIVE_EXTRACTOR".into(), true.into());
         super::super::execute("Unarchiver", &mut e).unwrap();
         assert_eq!(fs::read(t.path("out/file.txt")).unwrap(), b"data");
+    }
+    /// Archives split into several compressed streams, as parallel
+    /// compressors such as pbzip2 write them, decode completely, as they do
+    /// in Python (TextMate's .tbz is one).
+    #[test]
+    fn multi_stream_tar_native() {
+        let t = Temp::new();
+        let mut tar = tar::Builder::new(Vec::new());
+        for (name, data) in [("a.txt", &b"first"[..]), ("b.txt", &b"second"[..])] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            tar.append_data(&mut header, name, data).unwrap();
+        }
+        let bytes = tar.into_inner().unwrap();
+        let (first, second) = bytes.split_at(512);
+        let compress = |part: &[u8]| {
+            let mut encoder = bzip2::write::BzEncoder::new(Vec::new(), bzip2::Compression::best());
+            std::io::Write::write_all(&mut encoder, part).unwrap();
+            encoder.finish().unwrap()
+        };
+        let source = t.path("fixture.tbz");
+        fs::write(&source, [compress(first), compress(second)].concat()).unwrap();
+        let mut e = env(&[
+            ("archive_path", &source),
+            ("destination_path", &t.path("out")),
+        ]);
+        e.insert("USE_PYTHON_NATIVE_EXTRACTOR".into(), true.into());
+        super::super::execute("Unarchiver", &mut e).unwrap();
+        assert_eq!(fs::read(t.path("out/b.txt")).unwrap(), b"second");
     }
     /// The native ditto path keeps what app bundles need: executable modes
     /// and symlinks. This is the Linux default and RUSSET_NATIVE=ditto on macOS.
