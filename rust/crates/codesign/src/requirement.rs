@@ -1,14 +1,17 @@
 //! The code requirement language that `codesign -R` and
 //! `CodeSignatureVerifier`'s `requirement` use.
 //!
-//! Supported: `identifier`, `anchor apple generic`, `certificate`
+//! Supported: `identifier`, `anchor apple`, `anchor apple generic`, `certificate`
 //! (`leaf`, `root`, or a position) with `[subject.*]` or `[field.OID]`,
-//! `cdhash`, `always`, `never`, `and`, `or`, `not`, parentheses, and
+//! `cdhash`, `always`, `never`, `and`, `or`, `!`, parentheses, and
 //! comments. Anything else is an error, so a requirement is never treated
 //! as satisfied when the verifier doesn't understand it.
 
 use crate::trust::{Cert, Chain};
 use der::asn1::ObjectIdentifier;
+
+const COMMON_NAME: ObjectIdentifier = ObjectIdentifier::new_unwrap("2.5.4.3");
+const ORGANIZATION: ObjectIdentifier = ObjectIdentifier::new_unwrap("2.5.4.10");
 
 #[derive(Clone, Debug, PartialEq)]
 enum Token {
@@ -54,6 +57,10 @@ fn tokenize(text: &str) -> Result<Vec<Token>, String> {
             }
             '=' => {
                 tokens.push(Token::Equals);
+                i += 1;
+            }
+            '!' => {
+                tokens.push(Token::Word("!".into()));
                 i += 1;
             }
             '"' => {
@@ -128,6 +135,7 @@ enum Expr {
     Always(bool),
     Identifier(String),
     AnchorAppleGeneric,
+    AnchorApple,
     Certificate(Slot, Field, Match),
     CdHash(Vec<u8>),
     Not(Box<Expr>),
@@ -194,7 +202,8 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Result<Expr, String> {
-        if self.keyword("not") || matches!(self.peek(), Some(Token::Word(w)) if w == "!") {
+        // Negation is `!`; `codesign` rejects `not` as a syntax error.
+        if matches!(self.peek(), Some(Token::Word(w)) if w == "!") {
             self.at += 1;
             return Ok(Expr::Not(Box::new(self.unary()?)));
         }
@@ -225,6 +234,8 @@ impl Parser {
                 if kind == "apple" && self.keyword("generic") {
                     self.at += 1;
                     Ok(Expr::AnchorAppleGeneric)
+                } else if kind == "apple" {
+                    Ok(Expr::AnchorApple)
                 } else {
                     Err(unsupported(&format!("anchor {kind}")))
                 }
@@ -367,6 +378,17 @@ fn evaluate(expr: &Expr, context: &Context) -> bool {
         Expr::Identifier(id) => context.identifier == id,
         // The chain was validated to one of Apple's roots.
         Expr::AnchorAppleGeneric => context.chain.is_some(),
+        // Apple's own code: the original Apple Root CA, with Apple's code
+        // signing authority directly below it.
+        Expr::AnchorApple => context.chain.is_some_and(|chain| {
+            let subject = |slot, oid: &ObjectIdentifier| {
+                certificate(chain, slot).map(|c| c.subject_values(oid))
+            };
+            subject(Slot::FromRoot(1), &COMMON_NAME) == Some(vec!["Apple Root CA".to_owned()])
+                && subject(Slot::FromRoot(2), &COMMON_NAME)
+                    == Some(vec!["Apple Code Signing Certification Authority".to_owned()])
+                && subject(Slot::FromRoot(2), &ORGANIZATION) == Some(vec!["Apple Inc.".to_owned()])
+        }),
         Expr::Certificate(slot, field, matcher) => {
             let Some(cert) = context.chain.and_then(|c| certificate(c, *slot)) else {
                 return false;
@@ -423,7 +445,8 @@ mod tests {
     #[test]
     fn rejects_unsupported_clauses() {
         for text in [
-            "anchor apple",
+            "anchor trusted",
+            "not anchor apple",
             "notarized",
             "info [CFBundleVersion] = 1",
             "entitlement [a] exists",

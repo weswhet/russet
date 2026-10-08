@@ -59,3 +59,16 @@ known difference.
 Notarization, stapled tickets, revocation (OCSP and CRLs), and Gatekeeper
 policy. Signatures from before macOS 10.9 (without `rules2`) and
 resource-only bundles aren't supported.
+
+## Requirement language
+
+Observed with `codesign --verify -R` on macOS 27.0:
+
+- Negation is `!`. `codesign` rejects `not` as a syntax error (exit 1), so the
+  native parser rejects it too.
+- `anchor apple` is satisfied by code Apple signs itself, such as
+  `/usr/bin/true`: the chain ends at Apple Root CA, and the certificate
+  directly below it is "Apple Code Signing Certification Authority" from
+  "Apple Inc.". Developer ID code doesn't satisfy it. The native verifier
+  checks exactly that, and `rust/crates/codesign/tests/apple_requirements.rs`
+  compares its decisions with `codesign` on macOS CI.
