@@ -1,10 +1,10 @@
+use super::download_transport::{self, Headers};
 use super::{io, json_value, string, Result};
 use autopkg_platform::processor_output as output;
 use plist::{Dictionary, Value};
 use serde_json::{json, Value as Json};
 use sha2::Digest;
 use std::{
-    collections::BTreeMap,
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -12,13 +12,6 @@ use std::{
 };
 #[path = "download_trust.rs"]
 pub(super) mod trust;
-type Headers = BTreeMap<String, String>;
-fn curl_stderr(bytes: &[u8]) -> String {
-    // Python subprocess text=True applies universal newline decoding before
-    // Processor.output writes through the platform's text stream. Keeping raw
-    // CRLF here would turn it into CRCRLF when Windows output translates LF.
-    super::download::text(bytes)
-}
 fn repr(value: &Json) -> String {
     plist::python_repr(&json_value(value).unwrap_or(Value::Null))
 }
@@ -141,130 +134,6 @@ fn command(
         trust::native_curl(&mut c)?
     };
     Ok((c, bundle))
-}
-fn parse_headers(text: &str) -> Headers {
-    let mut headers = Headers::new();
-    let mut redirected = None;
-    for line in text.lines() {
-        let line = line.trim_end_matches('\r');
-        if line.starts_with("HTTP/") {
-            headers.clear();
-            if let Some(code) = line.split_whitespace().nth(1) {
-                headers.insert("http_result_code".into(), code.into());
-            }
-            if let Some(reason) = line.splitn(3, ' ').nth(2) {
-                headers.insert("http_result_description".into(), reason.into());
-            }
-        } else if let Some((name, value)) = line.split_once(':') {
-            headers.insert(name.to_lowercase(), value.trim().into());
-        } else if line.is_empty()
-            && headers
-                .get("http_result_code")
-                .is_some_and(|s| ["301", "302", "303", "307", "308"].contains(&s.as_str()))
-        {
-            redirected = headers.get("location").cloned();
-        }
-    }
-    if let Some(url) = redirected {
-        headers.insert("http_redirected".into(), url);
-    }
-    headers
-}
-#[derive(Debug)]
-struct TransportFailure {
-    failure: super::ExecutionFailure,
-    incomplete: Option<Headers>,
-}
-impl From<String> for TransportFailure {
-    fn from(message: String) -> Self {
-        Self {
-            failure: message.into(),
-            incomplete: None,
-        }
-    }
-}
-impl From<TransportFailure> for super::ExecutionFailure {
-    fn from(error: TransportFailure) -> Self {
-        error.failure
-    }
-}
-fn curl(
-    mut command: Command,
-    python: bool,
-) -> std::result::Result<(Headers, String), TransportFailure> {
-    let arguments = std::iter::once(command.get_program())
-        .chain(command.get_args())
-        .map(|s| Value::String(s.to_string_lossy().into_owned()))
-        .collect::<Vec<_>>();
-    let output = command
-        .output()
-        .map_err(|e| format!("Unable to execute curl: {e}"))?;
-    let response_headers = parse_headers(&String::from_utf8_lossy(&output.stdout));
-    let chunked = response_headers
-        .get("transfer-encoding")
-        .is_some_and(|s| s.to_ascii_lowercase().contains("chunked"));
-    if python && output.status.code() == Some(18) && chunked {
-        return Err(TransportFailure {
-            failure: super::ExecutionFailure::unexpected(
-                "IncompleteRead: incomplete chunked response",
-            ),
-            incomplete: Some(response_headers),
-        });
-    }
-    // urllib's fixed-size read loop accepts EOF before Content-Length, but
-    // incomplete chunk framing raises IncompleteRead. curl uses exit 18 for both.
-    let accepted_short_body = python
-        && output.status.code() == Some(18)
-        && !chunked
-        && response_headers.contains_key("content-length");
-    if !output.status.success() && !accepted_short_body {
-        if python && output.status.code() == Some(22) {
-            let headers = parse_headers(&String::from_utf8_lossy(&output.stdout));
-            if let Some(code) = headers.get("http_result_code") {
-                return Err(TransportFailure {
-                    failure: super::ExecutionFailure::unexpected(format!(
-                        "HTTP Error {code}: {}",
-                        headers
-                            .get("http_result_description")
-                            .map(String::as_str)
-                            .unwrap_or("")
-                    )),
-                    incomplete: None,
-                });
-            }
-        }
-        let message = curl_stderr(&output.stderr);
-        if python {
-            // urllib propagates transport exceptions (including TLS verification
-            // failures) rather than wrapping them in AutoPkg's ProcessorError.
-            return Err(TransportFailure {
-                failure: super::ExecutionFailure::unexpected(message),
-                incomplete: None,
-            });
-        }
-        autopkg_platform::processor_output(
-            1,
-            format!(
-                "ERROR: {}",
-                message.strip_prefix("curl: ").unwrap_or(&message)
-            ),
-        );
-        return Err(message.into());
-    }
-    if !python {
-        autopkg_platform::processor_output(
-            4,
-            format!(
-                "Curl command: {}",
-                plist::python_repr(&Value::Array(arguments))
-            ),
-        );
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
-    let (headers, effective) = text
-        .rsplit_once("\nAUTOPKG_EFFECTIVE_URL:")
-        .unwrap_or((&text, ""));
-    Ok((parse_headers(headers), effective.trim().into()))
 }
 fn info_path(path: &Path) -> PathBuf {
     PathBuf::from(format!("{}.info.json", path.display()))
@@ -758,7 +627,7 @@ pub(super) fn execute_typed(
     let mut filename = None;
     if boolean(env, "prefetch_filename", false)? {
         let (command, _trust) = command(env, false, &["--head".into()])?;
-        let (headers, _) = curl(command, false)?;
+        let (headers, _) = download_transport::run(command, false)?;
         if let Some(disposition) = headers
             .get("content-disposition")
             .filter(|s| s.contains("filename="))
@@ -855,7 +724,7 @@ pub(super) fn execute_typed(
     if python {
         command.args(["--write-out", "\nAUTOPKG_EFFECTIVE_URL:%{url_effective}"]);
     }
-    let (headers, effective) = match curl(command, python) {
+    let (headers, effective) = match download_transport::run(command, python) {
         Ok(result) => result,
         Err(error) => {
             if let Some(headers) = error.incomplete.as_ref().filter(|_| python) {
@@ -950,8 +819,76 @@ pub(super) fn execute_typed(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use super::super::download_transport::curl_stderr;
     use super::*;
     use crate::tests::{env, Temp};
+    use std::collections::BTreeMap;
+    /// Phase 1 baseline: the exact arguments a native download runs. Any
+    /// backend that replaces curl for a recipe must reproduce these, or the
+    /// recipe stays on curl.
+    #[test]
+    fn generated_curl_arguments_are_stable() {
+        use plist::Value;
+        let curl = "/usr/bin/curl";
+        if !std::path::Path::new(curl).is_file() {
+            return;
+        }
+        let url = "https://example.com/app.pkg";
+        let args = |e: &Dictionary, operation: &[&str]| -> Vec<String> {
+            let operation: Vec<std::ffi::OsString> = operation.iter().map(Into::into).collect();
+            let (command, _) = super::command(e, false, &operation).unwrap();
+            command
+                .get_args()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect()
+        };
+        let base = [
+            "--silent",
+            "--show-error",
+            "--no-buffer",
+            "--dump-header",
+            "-",
+            "--speed-time",
+            "30",
+            "--location",
+            "--url",
+            url,
+        ];
+        let plain = env(&[("url", url), ("CURL_PATH", curl)]);
+        assert_eq!(args(&plain, &[]), base);
+        assert_eq!(args(&plain, &["--head"]), [&base[..], &["--head"]].concat());
+
+        let mut full = plain.clone();
+        let mut headers = Dictionary::new();
+        headers.insert("User-Agent".into(), "Tester/1.0".into());
+        full.insert("request_headers".into(), headers.into());
+        full.insert(
+            "curl_opts".into(),
+            Value::Array(vec![
+                Value::String("--insecure".into()),
+                Value::String("--user-agent".into()),
+                Value::String("Agent/2.0".into()),
+            ]),
+        );
+        // Operation arguments come first, then request headers, then recipe
+        // curl_opts, each in the order the recipe gives them.
+        assert_eq!(
+            args(&full, &["--head"]),
+            [
+                &base[..],
+                &[
+                    "--head",
+                    "--header",
+                    "User-Agent: Tester/1.0",
+                    "--insecure",
+                    "--user-agent",
+                    "Agent/2.0",
+                ],
+            ]
+            .concat()
+        );
+    }
+
     #[test]
     fn curl_errors_decode_text_newlines_without_losing_blank_lines() {
         assert_eq!(

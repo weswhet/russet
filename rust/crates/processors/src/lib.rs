@@ -10,6 +10,7 @@ pub use registry::{
 };
 mod dmg;
 mod download;
+mod download_transport;
 mod downloader;
 mod package;
 #[cfg(any(not(target_os = "macos"), test))]
