@@ -152,6 +152,75 @@ fn attributes(file: &[u8], header: &[u8], out: &mut Vec<(String, Vec<u8>)>) -> R
     Ok(())
 }
 
+/// Encodes extended attributes as an AppleDouble file, in the layout
+/// `pkgbuild` writes next to a payload file: Finder info and the attribute
+/// block in entry 9, then the resource fork in entry 2. Attributes are
+/// stored in the order given; an empty value is recorded at offset 0.
+pub fn encode(xattrs: &[(String, Vec<u8>)]) -> Vec<u8> {
+    const HEADER: usize = 26 + 2 * 12;
+    const ATTR_AT: usize = HEADER + FINDER_INFO_LEN + 2;
+    const ENTRIES_AT: usize = ATTR_AT + 36;
+    let mut finder = [0u8; FINDER_INFO_LEN];
+    let mut fork: &[u8] = &[];
+    let mut attrs = Vec::new();
+    for (name, value) in xattrs {
+        match name.as_str() {
+            "com.apple.FinderInfo" => {
+                let n = value.len().min(FINDER_INFO_LEN);
+                finder[..n].copy_from_slice(&value[..n]);
+            }
+            "com.apple.ResourceFork" => fork = value,
+            _ => attrs.push((name.as_bytes(), value.as_slice())),
+        }
+    }
+    let entry_len = |name: &[u8]| (11 + name.len() + 1 + 3) & !3;
+    let data_start = ENTRIES_AT + attrs.iter().map(|(n, _)| entry_len(n)).sum::<usize>();
+    let data_length: usize = attrs.iter().map(|(_, v)| v.len()).sum();
+    let total = data_start + data_length;
+    let be32 = |out: &mut Vec<u8>, n: usize| out.extend_from_slice(&(n as u32).to_be_bytes());
+    let mut out = Vec::with_capacity(total + fork.len());
+    out.extend_from_slice(&MAGIC.to_be_bytes());
+    out.extend_from_slice(&0x0002_0000u32.to_be_bytes());
+    out.extend_from_slice(b"Mac OS X        ");
+    out.extend_from_slice(&2u16.to_be_bytes());
+    for (id, offset, length) in [
+        (FINDER_INFO as usize, HEADER, total - HEADER),
+        (RESOURCE_FORK as usize, total, fork.len()),
+    ] {
+        be32(&mut out, id);
+        be32(&mut out, offset);
+        be32(&mut out, length);
+    }
+    out.extend_from_slice(&finder);
+    out.extend_from_slice(&[0, 0]);
+    out.extend_from_slice(b"ATTR");
+    be32(&mut out, 0);
+    be32(&mut out, total);
+    be32(&mut out, data_start);
+    be32(&mut out, data_length);
+    out.extend_from_slice(&[0; 12]);
+    out.extend_from_slice(&0u16.to_be_bytes());
+    out.extend_from_slice(&(attrs.len() as u16).to_be_bytes());
+    let mut at = data_start;
+    for (name, value) in &attrs {
+        be32(&mut out, if value.is_empty() { 0 } else { at });
+        be32(&mut out, value.len());
+        out.extend_from_slice(&0u16.to_be_bytes());
+        out.push((name.len() + 1) as u8);
+        out.extend_from_slice(name);
+        out.push(0);
+        while !out.len().is_multiple_of(4) {
+            out.push(0);
+        }
+        at += value.len();
+    }
+    for (_, value) in &attrs {
+        out.extend_from_slice(value);
+    }
+    out.extend_from_slice(fork);
+    out
+}
+
 fn read_u16(bytes: &[u8], at: usize) -> Option<u16> {
     Some(u16::from_be_bytes(bytes.get(at..at + 2)?.try_into().ok()?))
 }
@@ -230,6 +299,24 @@ pub(crate) mod tests {
                 ("com.apple.ResourceFork".to_string(), b"RSRC".to_vec()),
             ]
         );
+    }
+
+    /// `encode` writes the same bytes `pkgbuild` did for an ad-hoc signed
+    /// script, and they decode back to the same attributes.
+    #[test]
+    fn encodes_like_pkgbuild() {
+        let apple = include_bytes!("../tests/fixtures/pkgbuild-appledouble.bin");
+        let decoded = parse(apple).unwrap().xattrs;
+        assert_eq!(decoded.len(), 4);
+        assert_eq!(encode(&decoded), apple.to_vec());
+        let mut finder = vec![0; 32];
+        finder[8] = 4;
+        let attrs = vec![
+            ("com.apple.FinderInfo".to_owned(), finder),
+            ("com.example.test".to_owned(), b"hello".to_vec()),
+            ("com.apple.ResourceFork".to_owned(), b"RSRC".to_vec()),
+        ];
+        assert_eq!(parse(&encode(&attrs)).unwrap().xattrs, attrs);
     }
 
     #[test]

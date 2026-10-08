@@ -74,18 +74,20 @@ fn builds_a_component_package() {
         Some("com.example.tool")
     );
     assert_eq!(root_element.attribute("install-location"), Some("/"));
+    assert!(info.contains(r#"<bundle path="./Applications/Tool.app" id="com.example.tool" CFBundleShortVersionString="1.2" CFBundleVersion="12"/>"#));
+    assert!(info.contains(r#"<postinstall file="./postinstall" timeout="600"/>"#));
+
+    let bom = russet_mkbom::read(&archive.read("Bom", 1 << 20).unwrap()).unwrap();
+    // Every BOM entry counts, including `._name` members for any extended
+    // attributes the host added to the files.
     assert_eq!(
         document
             .descendants()
             .find(|n| n.has_tag_name("payload"))
             .unwrap()
             .attribute("numberOfFiles"),
-        Some(nodes.len().to_string().as_str())
+        Some(bom.len().to_string().as_str())
     );
-    assert!(info.contains(r#"<bundle path="./Applications/Tool.app" id="com.example.tool" CFBundleShortVersionString="1.2" CFBundleVersion="12"/>"#));
-    assert!(info.contains(r#"<postinstall file="./postinstall" timeout="600"/>"#));
-
-    let bom = russet_mkbom::read(&archive.read("Bom", 1 << 20).unwrap()).unwrap();
     let listing: Vec<String> = bom.iter().map(|e| e.lsbom_line()).collect();
     assert_eq!(listing[0], ".\t41775\t0/80");
     assert!(listing
@@ -116,6 +118,74 @@ fn builds_a_component_package() {
         Path::new("MacOS/Tool")
     );
     assert!(nodes.iter().any(|n| matches!(n.kind, NodeKind::Symlink(_))));
+}
+
+/// Extended attributes, including ones too large for ext4 that an
+/// extraction kept in its sidecar, travel in `._name` members and come back
+/// when the payload is extracted.
+#[test]
+fn keeps_extended_attributes() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("root");
+    let large = vec![7u8; 64 << 10];
+    fs::create_dir(&root).unwrap();
+    let mut writer = russet_fs::TreeWriter::open(&root, russet_fs::Limits::default()).unwrap();
+    writer.create_dir(Path::new("bin"), Some(0o755)).unwrap();
+    writer
+        .write_file(Path::new("bin/tool"), &b"#!/bin/sh\n"[..], 0o755)
+        .unwrap();
+    writer
+        .set_xattr(Path::new("bin/tool"), "com.apple.cs.CodeDirectory", b"cd")
+        .unwrap();
+    writer
+        .set_xattr(Path::new("bin/tool"), "com.apple.cs.CodeSignature", &large)
+        .unwrap();
+    assert!(writer.finish().unwrap().is_empty());
+
+    let nodes = nodes_as_root(&root);
+    let out = temp.path().join("tool.pkg");
+    let options = Options {
+        identifier: "com.example.tool",
+        version: "1",
+        install_location: Some("/"),
+        min_os_version: None,
+        scripts: None,
+        info_template: None,
+        components: &[],
+    };
+    build(&nodes, &options, &out).unwrap();
+    let mut archive = russet_xar::Archive::open(&out).unwrap();
+    let bom = russet_mkbom::read(&archive.read("Bom", 1 << 20).unwrap()).unwrap();
+    let listing: Vec<String> = bom.iter().map(|e| e.lsbom_line()).collect();
+    assert!(
+        listing.contains(&"./bin/._tool\t100755\t0/0\t0\t0".to_owned()),
+        "{listing:?}"
+    );
+
+    let expanded = temp.path().join("expanded");
+    fs::create_dir(&expanded).unwrap();
+    archive
+        .extract(&expanded, russet_fs::Limits::default(), |_| false)
+        .unwrap();
+    let payload = temp.path().join("payload");
+    russet_ditto::extract_cpio(
+        &expanded.join("Payload"),
+        &payload,
+        russet_fs::Limits::default(),
+    )
+    .unwrap();
+    let tool = payload.join("bin/tool");
+    assert_eq!(
+        russet_fs::get_xattr(&tool, "com.apple.cs.CodeDirectory")
+            .unwrap()
+            .as_deref(),
+        Some(&b"cd"[..])
+    );
+    assert_eq!(
+        russet_fs::get_xattr(&tool, "com.apple.cs.CodeSignature").unwrap(),
+        Some(large)
+    );
+    assert!(!payload.join("bin/._tool").exists());
 }
 
 /// Compares with Apple's `pkgbuild` on the same root, and checks that

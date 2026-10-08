@@ -25,6 +25,7 @@ mod tests;
 mod zip;
 
 #[cfg(unix)]
+pub use appledouble::encode as encode_apple_double;
 pub use cpio_write::{write_tree, CpioWriter, Header};
 #[cfg(unix)]
 pub use imp::*;
