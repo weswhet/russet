@@ -69,7 +69,12 @@ pub fn collect(root: &Path, filters: &[regex::Regex]) -> io::Result<Vec<Node>> {
                 } else {
                     format!("{relative}/{name}")
                 };
-                if EXCLUDED.contains(&name.as_str()) || filters.iter().any(|f| f.is_match(&child)) {
+                // An extraction's attribute sidecar isn't content; its
+                // attributes travel with the files they belong to.
+                if EXCLUDED.contains(&name.as_str())
+                    || name == russet_fs::SIDECAR
+                    || filters.iter().any(|f| f.is_match(&child))
+                {
                     continue;
                 }
                 names.push(child);

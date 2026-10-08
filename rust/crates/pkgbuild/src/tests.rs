@@ -143,6 +143,7 @@ fn keeps_extended_attributes() {
     assert!(writer.finish().unwrap().is_empty());
 
     let nodes = nodes_as_root(&root);
+    assert!(nodes.iter().all(|n| !n.path.contains(russet_fs::SIDECAR)));
     let out = temp.path().join("tool.pkg");
     let options = Options {
         identifier: "com.example.tool",
