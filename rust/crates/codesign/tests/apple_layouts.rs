@@ -9,6 +9,7 @@
 
 use russet_codesign::bundle::{verify, Options};
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
@@ -228,4 +229,81 @@ fn rejects_bundle_whose_executable_seals_no_resources() {
     assert!(!apple_accepts(&app));
     let error = verify(&app, OPTIONS, SystemTime::now()).unwrap_err();
     assert!(error.contains("no resources"), "{error}");
+}
+
+/// A flat framework keeps its Info.plist in Resources, as Firefox's
+/// ChannelPrefs.framework does, and codesign accepts it.
+#[test]
+fn accepts_flat_framework_with_info_plist_in_resources() {
+    let temp = tempfile::tempdir().unwrap();
+    let app = temp.path().join("Flat.app");
+    let contents = app.join("Contents");
+    fs::create_dir_all(contents.join("MacOS")).unwrap();
+    fs::copy("/usr/bin/true", contents.join("MacOS/Flat")).unwrap();
+    plist(
+        &contents.join("Info.plist"),
+        "com.example.flat",
+        Some("Flat"),
+    );
+    let framework = contents.join("Frameworks/Flat.framework");
+    fs::create_dir_all(framework.join("Resources")).unwrap();
+    fs::copy("/usr/bin/true", framework.join("Flat")).unwrap();
+    plist(
+        &framework.join("Resources/Info.plist"),
+        "com.example.flatframework",
+        Some("Flat"),
+    );
+    for target in [framework.as_path(), &app] {
+        run(Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(target));
+    }
+    assert!(apple_accepts(&app));
+    verify(&app, OPTIONS, SystemTime::now()).unwrap();
+}
+
+/// An app whose main executable is a shell script. `codesign` signs it with
+/// separate files in `_CodeSignature`, as in OpenShot.
+fn script_app(root: &Path) -> std::path::PathBuf {
+    let app = root.join("Script.app");
+    let contents = app.join("Contents");
+    fs::create_dir_all(contents.join("MacOS")).unwrap();
+    fs::write(contents.join("MacOS/Script"), "#!/bin/sh\necho hi\n").unwrap();
+    fs::set_permissions(
+        contents.join("MacOS/Script"),
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+    )
+    .unwrap();
+    plist(
+        &contents.join("Info.plist"),
+        "com.example.script",
+        Some("Script"),
+    );
+    run(Command::new("/usr/bin/codesign")
+        .args(["--force", "--sign", "-"])
+        .arg(&app));
+    app
+}
+
+#[test]
+fn accepts_script_main_executable_with_detached_signature() {
+    let temp = tempfile::tempdir().unwrap();
+    let app = script_app(temp.path());
+    assert!(app.join("Contents/_CodeSignature/CodeDirectory").is_file());
+    assert!(apple_accepts(&app));
+    verify(&app, OPTIONS, SystemTime::now()).unwrap();
+}
+
+#[test]
+fn rejects_script_main_executable_with_appended_bytes() {
+    let temp = tempfile::tempdir().unwrap();
+    let app = script_app(temp.path());
+    fs::OpenOptions::new()
+        .append(true)
+        .open(app.join("Contents/MacOS/Script"))
+        .unwrap()
+        .write_all(b"echo injected\n")
+        .unwrap();
+    assert!(!apple_accepts(&app));
+    assert!(verify(&app, OPTIONS, SystemTime::now()).is_err());
 }

@@ -314,11 +314,16 @@ impl<'a> CodeDirectory<'a> {
         let code = image
             .get(..limit)
             .ok_or_else(|| error("code limit beyond the file"))?;
+        // A file with no page size is one page, unless it is empty, which
+        // codesign signs with no pages.
         let pages = if self.page_size == 0 {
-            1
+            usize::from(!code.is_empty())
         } else {
             code.len().div_ceil(self.page_size)
         };
+        if pages == 0 && !image.is_empty() {
+            return Err(error("code limit covers none of the file"));
+        }
         if pages != self.code_slots as usize {
             return Err(error("page count doesn't match the code directory"));
         }

@@ -173,6 +173,42 @@ fn verify_slice(
     )
 }
 
+/// Verifies a main executable whose signature `codesign` stored as separate
+/// files in `_CodeSignature`, because it isn't a Mach-O file. The code pages
+/// cover the executable, and the Info.plist is sealed by its special slot.
+pub fn verify_detached_code(
+    image: &[u8],
+    signature_dir: &std::path::Path,
+    sealed: &Sealed,
+    now: SystemTime,
+) -> Result<CodeSignature, String> {
+    // Such a file has no signature inside it, so its code directories must
+    // cover all of it. Otherwise bytes appended after the covered part would
+    // go unchecked.
+    for entry in std::fs::read_dir(signature_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("CodeDirectory")
+        {
+            continue;
+        }
+        let bytes = std::fs::read(entry.path()).map_err(|e| e.to_string())?;
+        let directory = macho::CodeDirectory::parse(&bytes)?;
+        if directory.code_limit != image.len() as u64 {
+            return Err("signature doesn't cover the whole executable".into());
+        }
+    }
+    verify_named(
+        image,
+        |name| std::fs::read(signature_dir.join(name)).ok(),
+        sealed,
+        false,
+        now,
+    )
+}
+
 /// Verifies a bundle without a main executable, whose signature is stored
 /// as separate files in `_CodeSignature` and whose code pages cover its
 /// Info.plist, as `codesign` signs such bundles.
@@ -363,7 +399,10 @@ fn verify_components(
                 .filter(|c| c.der != verified.signer.der)
                 .cloned()
                 .collect();
-            let time = verified.timestamp.unwrap_or(now);
+            // Apple checks the chain at the trusted timestamp, or else at the
+            // signed signing time, which is how a Developer ID signature from
+            // before its certificate expired stays valid.
+            let time = verified.timestamp.or(verified.signing_time).unwrap_or(now);
             let chain = trust::validate(&verified.signer, &others, time, Purpose::CodeSigning)?;
             (Some(chain), verified.timestamp)
         }

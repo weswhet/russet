@@ -46,9 +46,12 @@ struct Layout {
     /// The folder `CodeResources` paths are relative to.
     root: PathBuf,
     info: PathBuf,
-    /// The main executable, or `None` for a bundle without one, which
-    /// `codesign` signs with separate files in `_CodeSignature`.
+    /// The main executable, or `None` for a bundle without one.
     executable: Option<PathBuf>,
+    /// Whether `codesign` stored the signature as separate files in
+    /// `_CodeSignature`, as it does for a main executable that isn't a
+    /// Mach-O file, such as a shell script.
+    detached: bool,
 }
 
 /// Verifies a bundle's main code signature: its executable's, or for a
@@ -62,7 +65,12 @@ fn main_signature(
     match &layout.executable {
         Some(executable) => {
             let bytes = fs::read(executable).map_err(|e| failure(executable, e))?;
-            code::verify_binary(&bytes, sealed, now).map_err(|e| failure(bundle, e))
+            let signature = if layout.detached {
+                code::verify_detached_code(&bytes, &layout.root.join("_CodeSignature"), sealed, now)
+            } else {
+                code::verify_binary(&bytes, sealed, now)
+            };
+            signature.map_err(|e| failure(bundle, e))
         }
         None => code::verify_detached(&layout.root.join("_CodeSignature"), sealed, now)
             .map_err(|e| failure(bundle, e)),
@@ -87,8 +95,12 @@ fn layout(bundle: &Path) -> Result<Layout, String> {
         }
         let info = root.join("Resources/Info.plist");
         (root, info)
-    } else {
+    } else if bundle.join("Info.plist").is_file() {
         (bundle.to_path_buf(), bundle.join("Info.plist"))
+    } else {
+        // A flat framework, such as one that ships in Firefox, keeps its
+        // Info.plist in Resources, where codesign looks for it.
+        (bundle.to_path_buf(), bundle.join("Resources/Info.plist"))
     };
     // Without CFBundleExecutable, the executable is named after the bundle.
     let executable = info_dictionary(&info)?
@@ -105,19 +117,16 @@ fn layout(bundle: &Path) -> Result<Layout, String> {
     if executable.contains('/') {
         return Err(failure(bundle, "CFBundleExecutable isn't a file name"));
     }
-    // codesign signs a bundle whose executable it can't find with separate
-    // files in _CodeSignature; a CodeDirectory file there marks that.
-    let executable = if root.join("_CodeSignature/CodeDirectory").is_file() {
-        None
-    } else {
-        [root.join("MacOS").join(&executable), root.join(&executable)]
-            .into_iter()
-            .find(|p| p.is_file())
-    };
+    // A CodeDirectory file in _CodeSignature marks a detached signature.
+    let detached = root.join("_CodeSignature/CodeDirectory").is_file();
+    let executable = [root.join("MacOS").join(&executable), root.join(&executable)]
+        .into_iter()
+        .find(|p| p.is_file());
     Ok(Layout {
         root,
         info,
         executable,
+        detached,
     })
 }
 
@@ -442,9 +451,15 @@ fn normalize(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for part in path.components() {
         match part {
-            std::path::Component::ParentDir => {
-                out.pop();
-            }
+            // A leading `..` in a relative path must stay, or the path would
+            // compare equal to one that is inside the bundle.
+            std::path::Component::ParentDir => match out.components().next_back() {
+                Some(std::path::Component::Normal(_)) => {
+                    out.pop();
+                }
+                Some(std::path::Component::RootDir) => {}
+                _ => out.push(".."),
+            },
             std::path::Component::CurDir => {}
             other => out.push(other),
         }
@@ -454,7 +469,10 @@ fn normalize(path: &Path) -> PathBuf {
 
 /// Verifies a bundle or a single Mach-O file at time `now`.
 pub fn verify(path: &Path, options: Options, now: SystemTime) -> Result<CodeSignature, String> {
-    verify_at_depth(path, options, now, 0)
+    // Paths below the bundle are absolute, so the symlink check must compare
+    // against an absolute bundle path too.
+    let path = fs::canonicalize(path).map_err(|e| failure(path, e))?;
+    verify_at_depth(&path, options, now, 0)
 }
 
 /// Verifies a single file's signature: a Mach-O binary's embedded one, or
