@@ -199,3 +199,33 @@ fn detritus_matches_codesign() {
         assert_eq!(native, apple, "{name}");
     }
 }
+
+/// A bundle whose executable is a validly signed standalone tool, here
+/// Apple's own `/usr/bin/true`, whose signature seals no resources or
+/// Info.plist. Whatever else the bundle ships is unchecked, so `codesign`
+/// rejects it, and so must the native verifier, even though the tool's own
+/// signature would satisfy `anchor apple`.
+#[test]
+fn rejects_bundle_whose_executable_seals_no_resources() {
+    let temp = tempfile::tempdir().unwrap();
+    let app = temp.path().join("Trojan.app");
+    let contents = app.join("Contents");
+    fs::create_dir_all(contents.join("MacOS")).unwrap();
+    fs::create_dir_all(contents.join("Resources")).unwrap();
+    fs::create_dir_all(contents.join("_CodeSignature")).unwrap();
+    fs::copy("/usr/bin/true", contents.join("MacOS/Trojan")).unwrap();
+    plist(
+        &contents.join("Info.plist"),
+        "com.apple.true",
+        Some("Trojan"),
+    );
+    fs::write(contents.join("Resources/payload.sh"), "#!/bin/sh\n").unwrap();
+    fs::write(
+        contents.join("_CodeSignature/CodeResources"),
+        r#"<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>files</key><dict/><key>files2</key><dict/><key>rules</key><dict/><key>rules2</key><dict/></dict></plist>"#,
+    )
+    .unwrap();
+    assert!(!apple_accepts(&app));
+    let error = verify(&app, OPTIONS, SystemTime::now()).unwrap_err();
+    assert!(error.contains("no resources"), "{error}");
+}

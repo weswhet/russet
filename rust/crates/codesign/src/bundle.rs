@@ -372,6 +372,7 @@ impl Seal<'_> {
                 &Sealed {
                     info_plist: Some(&info),
                     resources: resources.as_deref(),
+                    bundle: true,
                 },
                 self.now,
             )?
@@ -502,6 +503,7 @@ fn verify_at_depth(
         &Sealed {
             info_plist: Some(&info),
             resources: resources.as_deref(),
+            bundle: true,
         },
         now,
     )?;

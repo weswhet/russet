@@ -63,6 +63,11 @@ pub struct Sealed<'a> {
     pub info_plist: Option<&'a [u8]>,
     /// The bundle's `_CodeSignature/CodeResources` (special slot 3).
     pub resources: Option<&'a [u8]>,
+    /// The code is a bundle's own, so its code directories must seal the
+    /// bundle's resources and Info.plist. Without that, `CodeResources` and
+    /// Info.plist are whatever the bundle ships, and a standalone signed
+    /// tool dropped into any bundle would vouch for it.
+    pub bundle: bool,
 }
 
 fn check_special(
@@ -138,6 +143,9 @@ struct Components<'a> {
     limit: usize,
     /// The Info.plist a standalone binary embeds.
     embedded_info: Option<&'a [u8]>,
+    /// The code pages cover the bundle's Info.plist, so no special slot
+    /// needs to.
+    info_in_pages: bool,
 }
 
 fn verify_slice(
@@ -158,6 +166,7 @@ fn verify_slice(
             image: slice.image,
             limit: slice.signature_offset,
             embedded_info: slice.info_plist,
+            info_in_pages: false,
         },
         sealed,
         now,
@@ -179,6 +188,7 @@ pub fn verify_detached(
         info,
         |name| std::fs::read(signature_dir.join(name)).ok(),
         sealed,
+        true,
         now,
     )
 }
@@ -194,7 +204,7 @@ pub fn verify_components_from(
     if read("CodeDirectory").is_none() {
         return Err("code object is not signed at all".into());
     }
-    verify_named(image, read, &Sealed::default(), now)
+    verify_named(image, read, &Sealed::default(), false, now)
 }
 
 /// Verifies a signature whose components are stored by name rather than in
@@ -203,6 +213,7 @@ fn verify_named(
     image: &[u8],
     read: impl Fn(&str) -> Option<Vec<u8>>,
     sealed: &Sealed,
+    info_in_pages: bool,
     now: SystemTime,
 ) -> Result<CodeSignature, String> {
     let mut owned: Vec<(u32, Vec<u8>)> = Vec::new();
@@ -231,6 +242,7 @@ fn verify_named(
             image,
             limit: image.len(),
             embedded_info: None,
+            info_in_pages,
         },
         sealed,
         now,
@@ -262,6 +274,16 @@ fn verify_components(
             return Err("Code directory covers the signature itself".into());
         }
         directory.verify_pages(components.image)?;
+        if sealed.bundle {
+            if directory.special(3).is_none() {
+                return Err(
+                    "code has no resources but signature indicates they must be present".into(),
+                );
+            }
+            if directory.special(1).is_none() && !components.info_in_pages {
+                return Err("Info.plist isn't bound to the signature".into());
+            }
+        }
         check_special(
             directory,
             1,
