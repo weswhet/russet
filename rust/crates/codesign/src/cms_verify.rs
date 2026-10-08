@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const SIGNED_DATA: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.7.2");
 const MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
+const SIGNING_TIME: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.5");
 const TIMESTAMP_TOKEN: ObjectIdentifier =
     ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.14");
 const TST_INFO: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.1.4");
@@ -21,6 +22,10 @@ pub struct VerifiedCms {
     pub certificates: Vec<Cert>,
     /// The time from a verified timestamp, if the signature has one.
     pub timestamp: Option<SystemTime>,
+    /// The signed `signingTime` attribute, if the signature has one. Without
+    /// a timestamp, it is the time the signer claims, which is covered by the
+    /// signature.
+    pub signing_time: Option<SystemTime>,
     /// Signed attributes, as attribute type and DER values.
     pub signed_attributes: Vec<(ObjectIdentifier, Vec<Vec<u8>>)>,
 }
@@ -185,10 +190,19 @@ pub fn verify_detached(bytes: &[u8], content: &[u8]) -> Result<VerifiedCms, Stri
             (a.oid, values)
         })
         .collect();
+    let signing_time = info
+        .signed_attrs
+        .iter()
+        .flat_map(|a| a.iter())
+        .find(|a| a.oid == SIGNING_TIME)
+        .and_then(|a| a.values.get(0))
+        .and_then(|v| v.decode_as::<der::asn1::UtcTime>().ok())
+        .map(|t| UNIX_EPOCH + t.to_unix_duration());
     Ok(VerifiedCms {
         signer,
         certificates,
         timestamp,
+        signing_time,
         signed_attributes,
     })
 }
