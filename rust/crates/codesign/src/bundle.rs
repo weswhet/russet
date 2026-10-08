@@ -103,10 +103,12 @@ fn layout(bundle: &Path) -> Result<Layout, String> {
         (bundle.to_path_buf(), bundle.join("Resources/Info.plist"))
     };
     // Without CFBundleExecutable, the executable is named after the bundle.
-    let executable = info_dictionary(&info)?
+    let declared = info_dictionary(&info)?
         .get("CFBundleExecutable")
         .and_then(plist::Value::as_string)
-        .map(str::to_owned)
+        .map(str::to_owned);
+    let executable = declared
+        .clone()
         .or_else(|| {
             bundle
                 .file_stem()
@@ -119,9 +121,16 @@ fn layout(bundle: &Path) -> Result<Layout, String> {
     }
     // A CodeDirectory file in _CodeSignature marks a detached signature.
     let detached = root.join("_CodeSignature/CodeDirectory").is_file();
-    let executable = [root.join("MacOS").join(&executable), root.join(&executable)]
-        .into_iter()
-        .find(|p| p.is_file());
+    // A detached signature covers a main executable only when the bundle
+    // declares one. A file that only shares the bundle's name, such as in
+    // Adium's framework, isn't covered by it.
+    let executable = if detached && declared.is_none() {
+        None
+    } else {
+        [root.join("MacOS").join(&executable), root.join(&executable)]
+            .into_iter()
+            .find(|p| p.is_file())
+    };
     Ok(Layout {
         root,
         info,
