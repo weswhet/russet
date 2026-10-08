@@ -1,4 +1,3 @@
-use crate::apple_xattr_name;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -70,6 +69,10 @@ fn walk(
     let mut children: Vec<_> = fs::read_dir(dir)?.collect::<io::Result<_>>()?;
     children.sort_by_key(|c| c.file_name());
     for child in children {
+        // Attributes the host refused are folded into their files' entries.
+        if dir == root && child.file_name() == crate::SIDECAR {
+            continue;
+        }
         let path = child.path();
         let meta = fs::symlink_metadata(&path)?;
         let relative = path
@@ -121,19 +124,22 @@ fn walk(
 
 fn xattrs(path: &Path) -> io::Result<BTreeMap<String, String>> {
     let mut values = BTreeMap::new();
-    let names = match xattr::list(path) {
+    let names = match crate::list_xattrs(path) {
         Ok(names) => names,
         Err(e) if e.kind() == io::ErrorKind::Unsupported => return Ok(values),
         Err(e) => return Err(e),
     };
     for name in names {
-        let host = name.to_string_lossy().into_owned();
-        let apple = apple_xattr_name(&host).to_owned();
-        if HOST_XATTRS.contains(&apple.as_str()) || host == apple && cfg!(target_os = "linux") {
+        // Linux's own namespaces, such as security.selinux, aren't Apple's.
+        let host_only = cfg!(target_os = "linux")
+            && ["security.", "trusted.", "system."]
+                .iter()
+                .any(|ns| name.starts_with(ns));
+        if HOST_XATTRS.contains(&name.as_str()) || host_only {
             continue;
         }
-        if let Some(value) = xattr::get(path, &name)? {
-            values.insert(apple, hex(&Sha256::digest(value)));
+        if let Some(value) = crate::get_xattr(path, &name)? {
+            values.insert(name, hex(&Sha256::digest(value)));
         }
     }
     Ok(values)

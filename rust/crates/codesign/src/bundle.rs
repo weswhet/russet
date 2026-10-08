@@ -46,7 +46,27 @@ struct Layout {
     /// The folder `CodeResources` paths are relative to.
     root: PathBuf,
     info: PathBuf,
-    executable: PathBuf,
+    /// The main executable, or `None` for a bundle without one, which
+    /// `codesign` signs with separate files in `_CodeSignature`.
+    executable: Option<PathBuf>,
+}
+
+/// Verifies a bundle's main code signature: its executable's, or for a
+/// bundle without one, the separate files in `_CodeSignature`.
+fn main_signature(
+    bundle: &Path,
+    layout: &Layout,
+    sealed: &Sealed,
+    now: SystemTime,
+) -> Result<CodeSignature, String> {
+    match &layout.executable {
+        Some(executable) => {
+            let bytes = fs::read(executable).map_err(|e| failure(executable, e))?;
+            code::verify_binary(&bytes, sealed, now).map_err(|e| failure(bundle, e))
+        }
+        None => code::verify_detached(&layout.root.join("_CodeSignature"), sealed, now)
+            .map_err(|e| failure(bundle, e)),
+    }
 }
 
 fn info_dictionary(path: &Path) -> Result<plist::Dictionary, String> {
@@ -85,10 +105,14 @@ fn layout(bundle: &Path) -> Result<Layout, String> {
     if executable.contains('/') {
         return Err(failure(bundle, "CFBundleExecutable isn't a file name"));
     }
-    let executable = if root.join("MacOS").join(&executable).is_file() {
-        root.join("MacOS").join(&executable)
+    // codesign signs a bundle whose executable it can't find with separate
+    // files in _CodeSignature; a CodeDirectory file there marks that.
+    let executable = if root.join("_CodeSignature/CodeDirectory").is_file() {
+        None
     } else {
-        root.join(&executable)
+        [root.join("MacOS").join(&executable), root.join(&executable)]
+            .into_iter()
+            .find(|p| p.is_file())
     };
     Ok(Layout {
         root,
@@ -171,7 +195,9 @@ fn is_bundle(path: &Path) -> bool {
 struct Seal<'a> {
     bundle: &'a Path,
     root: &'a Path,
-    executable: &'a Path,
+    executable: Option<&'a Path>,
+    /// The bundle's own Info.plist, which the code directory seals.
+    info: &'a Path,
     rules: Vec<Rule>,
     files: &'a plist::Dictionary,
     seen: Vec<String>,
@@ -182,6 +208,14 @@ struct Seal<'a> {
 }
 
 impl Seal<'_> {
+    /// Whether the seal records `key` by code directory hash.
+    fn sealed_as_code(&self, key: &str) -> bool {
+        self.files
+            .get(key)
+            .and_then(plist::Value::as_dictionary)
+            .is_some_and(|e| e.contains_key("cdhash"))
+    }
+
     fn entry(&self, key: &str) -> Result<&plist::Dictionary, String> {
         self.files
             .get(key)
@@ -212,9 +246,15 @@ impl Seal<'_> {
                 .to_str()
                 .ok_or_else(|| failure(&path, "name isn't UTF-8"))?
                 .to_owned();
-            // The signature itself, the legacy top-level link to it, and the
-            // main executable aren't resources.
-            if key == "_CodeSignature" || key == "CodeResources" || path == self.executable {
+            // The signature itself and the legacy top-level link to it
+            // aren't resources. The main executable and the Info.plist are
+            // sealed by the code directory, and are resources only when an
+            // older signature lists them.
+            let own = Some(path.as_path()) == self.executable || path == self.info;
+            if key == "_CodeSignature"
+                || key == "CodeResources"
+                || (own && !self.files.contains_key(&key))
+            {
                 continue;
             }
             let Some(rule) = best_rule(&self.rules, &key) else {
@@ -230,12 +270,16 @@ impl Seal<'_> {
             if metadata.file_type().is_symlink() {
                 self.symlink(&path, &key)?;
             } else if metadata.is_dir() {
-                if rule.nested && is_bundle(&path) {
+                // A folder is nested code when the seal records it by code
+                // directory hash, whatever its extension.
+                if rule.nested && (self.sealed_as_code(&key) || is_bundle(&path)) {
                     self.nested(&path, &key)?;
                 } else {
                     self.walk(&path)?;
                 }
-            } else if rule.nested && is_macho(&path) {
+            } else if rule.nested && (is_macho(&path) || self.sealed_as_code(&key)) {
+                // Non-Mach-O files in nested-code locations are signed as
+                // code, with the signature in com.apple.cs.* attributes.
                 self.nested(&path, &key)?;
             } else {
                 let entry = self.entry(&key)?;
@@ -305,9 +349,7 @@ impl Seal<'_> {
             if path.is_dir() {
                 verify_at_depth(path, self.options, self.now, self.depth + 1)?
             } else {
-                let bytes = fs::read(path).map_err(|e| failure(path, e))?;
-                code::verify_binary(&bytes, &Sealed::default(), self.now)
-                    .map_err(|e| failure(path, e))?
+                verify_file(path, self.now)?
             }
         } else {
             // Without --deep, only the nested executable's signature is
@@ -315,16 +357,15 @@ impl Seal<'_> {
             let inner = layout(path)?;
             let info = fs::read(&inner.info).map_err(|e| failure(&inner.info, e))?;
             let resources = fs::read(inner.root.join("_CodeSignature/CodeResources")).ok();
-            let bytes = fs::read(&inner.executable).map_err(|e| failure(&inner.executable, e))?;
-            code::verify_binary(
-                &bytes,
+            main_signature(
+                path,
+                &inner,
                 &Sealed {
                     info_plist: Some(&info),
                     resources: resources.as_deref(),
                 },
                 self.now,
-            )
-            .map_err(|e| failure(path, e))?
+            )?
         };
         if !signature.cdhashes.contains(&cdhash) {
             return Err(failure(
@@ -350,15 +391,10 @@ impl Seal<'_> {
     }
 }
 
-/// Attributes `codesign --strict` calls detritus. On Linux, Russet's
-/// extractors store them in the `user.` namespace.
+/// Attributes `codesign --strict` calls detritus, by Apple name; Russet's
+/// extractors may store them in the `user.` namespace or the sidecar.
 #[cfg(unix)]
-const DETRITUS: [&str; 4] = [
-    "com.apple.FinderInfo",
-    "com.apple.ResourceFork",
-    "user.com.apple.FinderInfo",
-    "user.com.apple.ResourceFork",
-];
+const DETRITUS: [&str; 2] = ["com.apple.FinderInfo", "com.apple.ResourceFork"];
 
 /// Fails when anything in the bundle, including the bundle itself, has a
 /// resource fork or Finder info, which `codesign --strict` rejects.
@@ -372,7 +408,7 @@ fn check_detritus(bundle: &Path) -> Result<(), String> {
             return Err(failure(bundle, "too many files to verify"));
         }
         for name in DETRITUS {
-            if xattr::get(&path, name).ok().flatten().is_some() {
+            if russet_fs::get_xattr(&path, name).ok().flatten().is_some() {
                 return Err(failure(
                     bundle,
                     "resource fork, Finder information, or similar detritus not allowed",
@@ -414,6 +450,27 @@ pub fn verify(path: &Path, options: Options, now: SystemTime) -> Result<CodeSign
     verify_at_depth(path, options, now, 0)
 }
 
+/// Verifies a single file's signature: a Mach-O binary's embedded one, or
+/// for any other file, the one `codesign` stores in its `com.apple.cs.*`
+/// extended attributes.
+fn verify_file(path: &Path, now: SystemTime) -> Result<CodeSignature, String> {
+    let bytes = fs::read(path).map_err(|e| failure(path, e))?;
+    if is_macho(path) {
+        return code::verify_binary(&bytes, &Sealed::default(), now).map_err(|e| failure(path, e));
+    }
+    #[cfg(unix)]
+    {
+        let read = |name: &str| {
+            russet_fs::get_xattr(path, &format!("com.apple.cs.{name}"))
+                .ok()
+                .flatten()
+        };
+        code::verify_components_from(&bytes, read, now).map_err(|e| failure(path, e))
+    }
+    #[cfg(not(unix))]
+    Err(failure(path, "code object is not signed at all"))
+}
+
 fn verify_at_depth(
     path: &Path,
     options: Options,
@@ -424,8 +481,7 @@ fn verify_at_depth(
         return Err(failure(path, "nested code is too deep"));
     }
     if !path.is_dir() {
-        let bytes = fs::read(path).map_err(|e| failure(path, e))?;
-        return code::verify_binary(&bytes, &Sealed::default(), now).map_err(|e| failure(path, e));
+        return verify_file(path, now);
     }
     if options.strict && depth == 0 {
         check_detritus(path)?;
@@ -434,16 +490,15 @@ fn verify_at_depth(
     let info = fs::read(&layout.info).map_err(|e| failure(&layout.info, e))?;
     let resources_path = layout.root.join("_CodeSignature/CodeResources");
     let resources = fs::read(&resources_path).ok();
-    let executable = fs::read(&layout.executable).map_err(|e| failure(&layout.executable, e))?;
-    let signature = code::verify_binary(
-        &executable,
+    let signature = main_signature(
+        path,
+        &layout,
         &Sealed {
             info_plist: Some(&info),
             resources: resources.as_deref(),
         },
         now,
-    )
-    .map_err(|e| failure(path, e))?;
+    )?;
     let Some(resources) = resources else {
         return Err(failure(
             path,
@@ -459,7 +514,8 @@ fn verify_at_depth(
     let mut walker = Seal {
         bundle: path,
         root: &layout.root,
-        executable: &layout.executable,
+        executable: layout.executable.as_deref(),
+        info: &layout.info,
         rules: rules(&seal)?,
         files,
         seen: Vec::new(),

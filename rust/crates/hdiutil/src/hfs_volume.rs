@@ -25,6 +25,9 @@ const HIDDEN_ROOT: [&str; 4] = [
 ];
 const FILE_HARD_LINK: (&[u8], &[u8]) = (b"hlnk", b"hfs+");
 const DIRECTORY_HARD_LINK: (&[u8], &[u8]) = (b"fdrp", b"MACS");
+/// `kHFSHasLinkChainMask`: set on hard links, and not on Finder aliases,
+/// which can have the same type and creator.
+const HAS_LINK_CHAIN: u16 = 0x20;
 const S_IFMT: u16 = 0o170000;
 const S_IFLNK: u16 = 0o120000;
 const MAX_LINK_BYTES: u64 = 4096;
@@ -135,7 +138,8 @@ impl<R: Read + Seek> Walk<'_, R> {
     fn file(&mut self, file: &CatalogFile, destination: &Path) -> io::Result<()> {
         let info = &file.finder_info;
         let link = file.permissions.special;
-        if (&info[0..4], &info[4..8]) == FILE_HARD_LINK {
+        let linked = file.flags & HAS_LINK_CHAIN != 0;
+        if linked && (&info[0..4], &info[4..8]) == FILE_HARD_LINK {
             if let Some(first) = self.written.get(&link) {
                 return self.writer.hard_link(destination, &first.clone());
             }
@@ -148,7 +152,7 @@ impl<R: Read + Seek> Walk<'_, R> {
             self.written.insert(link, destination.to_path_buf());
             return Ok(());
         }
-        if (&info[0..4], &info[4..8]) == DIRECTORY_HARD_LINK {
+        if linked && (&info[0..4], &info[4..8]) == DIRECTORY_HARD_LINK {
             let target = self
                 .directory_targets
                 .get(&format!("dir_{link}"))

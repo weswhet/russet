@@ -44,6 +44,12 @@ compatibility version 3.0.0.
 - On Linux, MunkiImporter's `extract_icon` reads app icons from packages and
   disk images and converts them to PNG, choosing the same image as macOS.
   `RUSSET_NATIVE=icons` uses the same code on macOS.
+- On Linux, when a recipe's path matches nothing, Russet tries it again
+  ignoring case, the way it resolves on case-insensitive macOS volumes.
+  Extended attributes that Linux file systems refuse, such as large resource
+  forks and the signatures of non-Mach-O files, are kept in a
+  `.russet-xattrs` folder at the top of the extraction for code signature
+  checks.
 - On Linux, PkgPayloadUnpacker and `extract_icon` read Apple Archive payloads
   with a built-in replacement for `aa extract`. It reads archives compressed
   with LZFSE, zlib, LZMA, or LZ4, or stored uncompressed, and rejects

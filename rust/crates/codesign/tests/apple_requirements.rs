@@ -9,7 +9,11 @@ use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
 
-const REQUIREMENTS: [&str; 6] = [
+const REQUIREMENTS: [&str; 9] = [
+    // SHA-1 of Apple Root CA, then of something else.
+    "certificate root = H\"611e5b662c593a08ff58d14ae22452d198df6c60\"",
+    "certificate root = H\"0000000000000000000000000000000000000000\"",
+    "identifier com.apple.true and (anchor apple generic and certificate leaf[subject.OU] = X or certificate root = H\"611e5b662c593a08ff58d14ae22452d198df6c60\")",
     "anchor apple",
     "anchor apple generic",
     "anchor apple and identifier com.apple.true",

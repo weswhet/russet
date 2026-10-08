@@ -41,6 +41,17 @@ fn parse_oid(text: &str) -> Result<ObjectIdentifier, String> {
     text.parse().map_err(|_| bad())
 }
 
+/// Decodes hexadecimal text.
+fn hex_bytes(hex: &str) -> Option<Vec<u8>> {
+    if !hex.len().is_multiple_of(2) {
+        return None;
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(hex.get(i..i + 2)?, 16).ok())
+        .collect()
+}
+
 fn tokenize(text: &str) -> Result<Vec<Token>, String> {
     let chars: Vec<char> = text.chars().collect();
     let mut tokens = Vec::new();
@@ -153,6 +164,8 @@ enum Expr {
     AnchorAppleGeneric,
     AnchorApple,
     Certificate(Slot, Field, Match),
+    /// `certificate <slot> = H"..."`: the certificate's SHA-1 hash.
+    CertificateHash(Slot, Vec<u8>),
     CdHash(Vec<u8>),
     Not(Box<Expr>),
     And(Box<Expr>, Box<Expr>),
@@ -268,6 +281,16 @@ impl Parser {
                         }
                     },
                 };
+                if self.peek() == Some(&Token::Equals) {
+                    self.at += 1;
+                    let Some(Token::Hash(hex)) = self.next() else {
+                        return Err(unsupported("certificate compared with anything but a hash"));
+                    };
+                    let bytes = hex_bytes(&hex)
+                        .filter(|b| b.len() == 20)
+                        .ok_or_else(|| "Bad certificate hash in requirement".to_string())?;
+                    return Ok(Expr::CertificateHash(slot, bytes));
+                }
                 if self.next() != Some(Token::BracketOpen) {
                     return Err(unsupported("certificate without a [field]"));
                 }
@@ -317,11 +340,8 @@ impl Parser {
                         return Err(format!("Expected a hash in requirement, found {other:?}"))
                     }
                 };
-                let bytes = (0..hex.len())
-                    .step_by(2)
-                    .map(|i| u8::from_str_radix(hex.get(i..i + 2).unwrap_or("zz"), 16))
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|_| "Bad cdhash in requirement".to_string())?;
+                let bytes =
+                    hex_bytes(&hex).ok_or_else(|| "Bad cdhash in requirement".to_string())?;
                 Ok(Expr::CdHash(bytes))
             }
             other => Err(unsupported(other)),
@@ -421,6 +441,13 @@ fn evaluate(expr: &Expr, context: &Context) -> bool {
             }
         }
         Expr::CdHash(hash) => context.cdhashes.iter().any(|h| h == hash),
+        Expr::CertificateHash(slot, hash) => context
+            .chain
+            .and_then(|c| certificate(c, *slot))
+            .is_some_and(|cert| {
+                use sha1::Digest;
+                sha1::Sha1::digest(&cert.der).as_slice() == hash.as_slice()
+            }),
         Expr::Not(inner) => !evaluate(inner, context),
         Expr::And(a, b) => evaluate(a, context) && evaluate(b, context),
         Expr::Or(a, b) => evaluate(a, context) || evaluate(b, context),

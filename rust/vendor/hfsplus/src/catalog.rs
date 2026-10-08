@@ -37,6 +37,9 @@ pub struct HfsPlusBsdInfo {
 /// Catalog file record
 #[derive(Debug, Clone)]
 pub struct CatalogFile {
+    /// Record flags, such as `kHFSHasLinkChainMask` (0x20) on hard links.
+    /// (Russet patch.)
+    pub flags: u16,
     pub file_id: u32,
     pub create_date: u32,
     pub content_mod_date: u32,
@@ -212,7 +215,7 @@ fn parse_catalog_record(data: &[u8]) -> Result<CatalogRecord> {
             }))
         }
         RECORD_TYPE_FILE => {
-            let _flags = cursor.read_u16::<BigEndian>()?;
+            let flags = cursor.read_u16::<BigEndian>()?;
             let _reserved = cursor.read_u32::<BigEndian>()?;
             let file_id = cursor.read_u32::<BigEndian>()?;
             let create_date = cursor.read_u32::<BigEndian>()?;
@@ -229,6 +232,7 @@ fn parse_catalog_record(data: &[u8]) -> Result<CatalogRecord> {
             let resource_fork = parse_fork_data(&mut cursor)?;
 
             Ok(CatalogRecord::File(CatalogFile {
+                flags,
                 file_id,
                 create_date,
                 content_mod_date,

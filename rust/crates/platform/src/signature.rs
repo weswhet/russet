@@ -197,10 +197,14 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
     };
     let extra = strings(env, "codesign_additional_arguments")?;
     let authorities = strings(env, "expected_authority_names")?;
-    let matches = glob::glob(input(env)?)
+    let mut matches = glob::glob(input(env)?)
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
+    if matches.is_empty() && cfg!(target_os = "linux") {
+        // Recipes are written for case-insensitive macOS volumes.
+        matches = crate::case_fold::glob(input(env)?);
+    }
     let path = matches.first().ok_or_else(|| {
         format!(
             "Error processing path '{}' with glob.",

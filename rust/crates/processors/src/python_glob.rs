@@ -157,7 +157,14 @@ pub(super) fn paths(pattern: &str) -> Result<Vec<PathBuf>> {
     paths_with_recursion(pattern, true)
 }
 pub(super) fn paths_with_recursion(pattern: &str, recursive: bool) -> Result<Vec<PathBuf>> {
-    let paths = expand(pattern, false, 0, recursive)?;
+    let mut paths = expand(pattern, false, 0, recursive)?;
+    if paths.is_empty() && cfg!(target_os = "linux") {
+        // Recipes are written for case-insensitive macOS volumes.
+        paths = autopkg_platform::case_fold::glob(pattern)
+            .into_iter()
+            .filter_map(|p| p.into_os_string().into_string().ok())
+            .collect();
+    }
     // Python removes the empty first result for a bare recursive ** pattern.
     Ok(paths
         .into_iter()

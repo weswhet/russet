@@ -27,3 +27,6 @@ Linux. Each change is marked `Russet patch` in the source:
 Validation: `russet-hdiutil` compares its extraction of HFS+ and HFSX images,
 with hard links, resource forks, Finder info, extended attributes, and
 transparently compressed files, against the same images mounted by macOS.
+- **Record flags.** `CatalogFile::flags` exposes the catalog file record's
+  flags, so callers can tell hard links (`kHFSHasLinkChainMask`, 0x20) from
+  Finder aliases, which share their `fdrp`/`MACS` and `hlnk`/`hfs+` types.

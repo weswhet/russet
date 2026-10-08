@@ -97,18 +97,129 @@ pub fn verify_binary(
     result.ok_or_else(|| "code object is not signed at all".into())
 }
 
+/// The parts of one signature, from a Mach-O slice or from the separate
+/// files in a bundle's `_CodeSignature` folder.
+struct Components<'a> {
+    /// Signature blobs by slot, other than the CMS signature.
+    blobs: Vec<(u32, &'a [u8])>,
+    /// The CMS signature, without any blob header.
+    cms: Option<&'a [u8]>,
+    /// What the code pages cover, and how far they may reach.
+    image: &'a [u8],
+    limit: usize,
+    /// The Info.plist a standalone binary embeds.
+    embedded_info: Option<&'a [u8]>,
+}
+
 fn verify_slice(
     slice: &macho::Slice,
     sealed: &Sealed,
     now: SystemTime,
 ) -> Result<CodeSignature, String> {
     let blobs = macho::blobs(slice.signature)?;
+    let cms = blobs
+        .iter()
+        .find(|(s, _)| *s == macho::SLOT_SIGNATURE)
+        .map(|(_, b)| b.get(8..).unwrap_or_default())
+        .filter(|b| !b.is_empty());
+    verify_components(
+        &Components {
+            blobs: blobs.clone(),
+            cms,
+            image: slice.image,
+            limit: slice.signature_offset,
+            embedded_info: slice.info_plist,
+        },
+        sealed,
+        now,
+    )
+}
+
+/// Verifies a bundle without a main executable, whose signature is stored
+/// as separate files in `_CodeSignature` and whose code pages cover its
+/// Info.plist, as `codesign` signs such bundles.
+pub fn verify_detached(
+    signature_dir: &std::path::Path,
+    sealed: &Sealed,
+    now: SystemTime,
+) -> Result<CodeSignature, String> {
+    let info = sealed
+        .info_plist
+        .ok_or("A bundle without an executable has no Info.plist")?;
+    verify_named(
+        info,
+        |name| std::fs::read(signature_dir.join(name)).ok(),
+        sealed,
+        now,
+    )
+}
+
+/// Verifies a non-Mach-O file signed as code, from its signature components
+/// by name (`CodeDirectory`, `CodeSignature`, and so on), which `codesign`
+/// stores in the file's `com.apple.cs.*` extended attributes.
+pub fn verify_components_from(
+    image: &[u8],
+    read: impl Fn(&str) -> Option<Vec<u8>>,
+    now: SystemTime,
+) -> Result<CodeSignature, String> {
+    if read("CodeDirectory").is_none() {
+        return Err("code object is not signed at all".into());
+    }
+    verify_named(image, read, &Sealed::default(), now)
+}
+
+/// Verifies a signature whose components are stored by name rather than in
+/// a Mach-O superblob; the code pages cover `image`.
+fn verify_named(
+    image: &[u8],
+    read: impl Fn(&str) -> Option<Vec<u8>>,
+    sealed: &Sealed,
+    now: SystemTime,
+) -> Result<CodeSignature, String> {
+    let mut owned: Vec<(u32, Vec<u8>)> = Vec::new();
+    for (name, slot) in [
+        ("CodeDirectory", macho::SLOT_CODE_DIRECTORY),
+        ("CodeRequirements", macho::SLOT_REQUIREMENTS),
+        ("CodeEntitlements", macho::SLOT_ENTITLEMENTS),
+        ("CodeEntitlementsDER", macho::SLOT_DER_ENTITLEMENTS),
+    ] {
+        if let Some(bytes) = read(name) {
+            owned.push((slot, bytes));
+        }
+    }
+    // codesign stores alternate code directories as CodeRequirements-1,
+    // CodeRequirements-2, and so on.
+    for index in 0..5 {
+        if let Some(bytes) = read(&format!("CodeRequirements-{}", index + 1)) {
+            owned.push((macho::SLOT_ALTERNATE_DIRECTORIES + index, bytes));
+        }
+    }
+    let cms = read("CodeSignature").filter(|b| !b.is_empty());
+    verify_components(
+        &Components {
+            blobs: owned.iter().map(|(s, b)| (*s, b.as_slice())).collect(),
+            cms: cms.as_deref(),
+            image,
+            limit: image.len(),
+            embedded_info: None,
+        },
+        sealed,
+        now,
+    )
+}
+
+fn verify_components(
+    components: &Components,
+    sealed: &Sealed,
+    now: SystemTime,
+) -> Result<CodeSignature, String> {
+    let blobs = &components.blobs;
     let blob = |slot: u32| blobs.iter().find(|(s, _)| *s == slot).map(|(_, b)| *b);
     let primary = CodeDirectory::parse(
         blob(macho::SLOT_CODE_DIRECTORY).ok_or("Code signature has no code directory")?,
     )?;
     let mut directories = vec![primary.clone()];
-    for (slot, bytes) in &blobs {
+    for (slot, bytes) in blobs {
         if (macho::SLOT_ALTERNATE_DIRECTORIES..macho::SLOT_ALTERNATE_DIRECTORIES + 5).contains(slot)
         {
             directories.push(CodeDirectory::parse(bytes)?);
@@ -118,14 +229,14 @@ fn verify_slice(
         if directory.identifier != primary.identifier {
             return Err("Code directories disagree about the identifier".into());
         }
-        if directory.code_limit as usize > slice.signature_offset {
+        if directory.code_limit as usize > components.limit {
             return Err("Code directory covers the signature itself".into());
         }
-        directory.verify_pages(slice.image)?;
+        directory.verify_pages(components.image)?;
         check_special(
             directory,
             1,
-            sealed.info_plist.or(slice.info_plist),
+            sealed.info_plist.or(components.embedded_info),
             "Info.plist",
         )?;
         check_special(
@@ -170,9 +281,7 @@ fn verify_slice(
         .map(|(_, h)| h.clone())
         .unwrap();
 
-    let cms = blob(macho::SLOT_SIGNATURE)
-        .map(|b| b.get(8..).unwrap_or_default())
-        .filter(|b| !b.is_empty());
+    let cms = components.cms;
     let adhoc = primary.flags & CS_ADHOC != 0;
     let (chain, timestamp) = match (cms, adhoc) {
         (None, true) => (None, None),
