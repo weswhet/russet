@@ -119,7 +119,13 @@ fn decode(codec: Codec, stored: &[u8], size: usize) -> io::Result<Vec<u8>> {
     let mut out = Vec::with_capacity(size);
     match codec {
         Codec::Lzfse => {
-            lzfse_rust::decode_bytes(stored, &mut out)
+            // Stream, so a chunk that expands past its declared size stops
+            // one byte over instead of being decoded in full.
+            let mut decoder = lzfse_rust::LzfseRingDecoder::default();
+            decoder
+                .reader_bytes(stored)
+                .take(size as u64 + 1)
+                .read_to_end(&mut out)
                 .map_err(|e| invalid(format!("Invalid LZFSE chunk: {e}")))?;
         }
         Codec::Zlib => {

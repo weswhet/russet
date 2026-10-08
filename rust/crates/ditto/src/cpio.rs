@@ -1,7 +1,7 @@
 //! `ditto -x` for cpio archives: the portable `odc` format (`070707`) used by
 //! macOS package payloads, and the `newc` format (`070701`).
 
-use crate::appledouble::{self, read_bounded, sibling, MAX_METADATA_BYTES};
+use crate::appledouble::{self, read_bounded, sibling, MAX_LINK_BYTES, MAX_METADATA_BYTES};
 use russet_fs::{clean_relative, Limits, SkippedXattr, TreeWriter};
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -159,7 +159,7 @@ pub(crate) fn extract(
     // waiting for data (newc stores the data with the last link).
     let mut written: HashMap<(u64, u64), PathBuf> = HashMap::new();
     let mut waiting: HashMap<(u64, u64), Vec<PathBuf>> = HashMap::new();
-    let mut metadata = Vec::new();
+    let mut metadata = appledouble::Pending::default();
     loop {
         let header = header(&mut reader)?;
         if header.name_size == 0 || header.name_size > MAX_NAME_BYTES {
@@ -191,8 +191,7 @@ pub(crate) fn extract(
             }
             S_IFDIR => writer.create_dir(&path, Some(mode))?,
             S_IFLNK => {
-                let mut target = Vec::new();
-                data.read_to_end(&mut target)?;
+                let target = read_bounded(&mut data, MAX_LINK_BYTES)?;
                 writer.symlink(&path, &OsString::from_vec(target))?;
             }
             S_IFREG => {
@@ -203,7 +202,7 @@ pub(crate) fn extract(
                 if let Some(target) = sibling(&path).filter(|_| apple_double) {
                     let bytes = read_bounded(&mut data, MAX_METADATA_BYTES)?;
                     if appledouble::is_apple_double(&bytes) {
-                        metadata.push((target, bytes));
+                        metadata.add(&mut writer, target, bytes)?;
                         continue_after(data, header.format, header.file_size)?;
                         continue;
                     }
@@ -243,6 +242,6 @@ pub(crate) fn extract(
             }
         }
     }
-    appledouble::apply(&mut writer, metadata)?;
+    metadata.finish(&mut writer)?;
     writer.finish()
 }

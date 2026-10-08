@@ -17,6 +17,8 @@ const DROPPED_XATTRS: [&str; 2] = ["com.apple.quarantine", "com.apple.provenance
 /// AppleDouble members carry resource forks, so allow them to be large, but
 /// not unbounded, since they're read into memory.
 pub(crate) const MAX_METADATA_BYTES: u64 = 256 << 20;
+/// Symlink targets longer than this aren't valid on macOS or Linux.
+pub(crate) const MAX_LINK_BYTES: u64 = 4096;
 
 /// Maps `dir/._name` to `dir/name`.
 pub(crate) fn sibling(path: &std::path::Path) -> Option<std::path::PathBuf> {
@@ -44,27 +46,69 @@ pub(crate) fn read_bounded(
     Ok(bytes)
 }
 
-/// Applies collected AppleDouble files to the entries they describe.
-/// Metadata for an entry that isn't in the archive, or that doesn't parse,
-/// is ignored, as `ditto` does.
-pub(crate) fn apply(
+/// Applies one AppleDouble file to the entry it describes. Returns false
+/// when that entry doesn't exist (yet). Metadata that doesn't parse is
+/// ignored, as `ditto` does.
+fn apply_one(
     writer: &mut russet_fs::TreeWriter,
-    metadata: Vec<(std::path::PathBuf, Vec<u8>)>,
-) -> std::io::Result<()> {
-    for (target, bytes) in metadata {
-        let Ok(decoded) = parse(&bytes) else { continue };
-        for (name, value) in decoded.xattrs {
-            if DROPPED_XATTRS.contains(&name.as_str()) {
-                continue;
-            }
-            match writer.set_xattr(&target, &name, &value) {
-                Ok(()) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
-                Err(e) => return Err(e),
-            }
+    target: &std::path::Path,
+    bytes: &[u8],
+) -> std::io::Result<bool> {
+    let Ok(decoded) = parse(bytes) else {
+        return Ok(true);
+    };
+    for (name, value) in decoded.xattrs {
+        if DROPPED_XATTRS.contains(&name.as_str()) {
+            continue;
+        }
+        match writer.set_xattr(target, &name, &value) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+            Err(e) => return Err(e),
         }
     }
-    Ok(())
+    Ok(true)
+}
+
+/// AppleDouble files waiting for the entries they describe. Each is applied
+/// as soon as its entry exists, which is the usual order (`ditto -c` and
+/// `pkgbuild` write `._name` after `name`); the rest are held until the end,
+/// bounded in total so an archive can't make extraction hold any amount.
+#[derive(Default)]
+pub(crate) struct Pending {
+    items: Vec<(std::path::PathBuf, Vec<u8>)>,
+    bytes: u64,
+}
+
+impl Pending {
+    pub(crate) fn add(
+        &mut self,
+        writer: &mut russet_fs::TreeWriter,
+        target: std::path::PathBuf,
+        bytes: Vec<u8>,
+    ) -> std::io::Result<()> {
+        if apply_one(writer, &target, &bytes)? {
+            return Ok(());
+        }
+        self.bytes += bytes.len() as u64;
+        if self.bytes > MAX_METADATA_BYTES {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "AppleDouble metadata waiting for its files exceeds the metadata size limit",
+            ));
+        }
+        self.items.push((target, bytes));
+        Ok(())
+    }
+
+    /// Applies what's still waiting; metadata for an entry that isn't in
+    /// the archive is ignored, as `ditto` does.
+    pub(crate) fn finish(self, writer: &mut russet_fs::TreeWriter) -> std::io::Result<()> {
+        for (target, bytes) in self.items {
+            apply_one(writer, &target, &bytes)?;
+        }
+        Ok(())
+    }
 }
 
 /// Metadata decoded from one AppleDouble file.

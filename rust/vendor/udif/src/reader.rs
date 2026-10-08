@@ -51,10 +51,17 @@ pub(crate) fn decode_exact<R: Read>(reader: &mut R, buf: &mut [u8], format: &str
 ///
 /// PROVISIONAL(anomaly-channel): should become a reported partial recovery.
 fn decode_lzfse_exact(compressed: &[u8], buf: &mut [u8]) -> Result<()> {
+    // Russet patch: stream with a cap, so a block that expands past its
+    // declared size stops one byte over instead of being decoded in full.
+    use std::io::Read;
     let mut decoded = Vec::with_capacity(buf.len());
-    let n = lzfse_rust::decode_bytes(compressed, &mut decoded)
+    let mut decoder = lzfse_rust::LzfseRingDecoder::default();
+    let n = decoder
+        .reader_bytes(compressed)
+        .take(buf.len() as u64 + 1)
+        .read_to_end(&mut decoded)
         .map_err(|e| DppError::Decompression(format!("LZFSE: {e:?}")))?;
-    if n as usize != buf.len() {
+    if n != buf.len() {
         return Err(DppError::Decompression(format!(
             "lzfse decoded {n} bytes, expected {}",
             buf.len()
