@@ -216,10 +216,19 @@ impl Seal<'_> {
             .is_some_and(|e| e.contains_key("cdhash"))
     }
 
-    fn entry(&self, key: &str) -> Result<&plist::Dictionary, String> {
+    /// The seal's entry for `key`. Older seals record a plain file as its
+    /// SHA-1 hash alone, which is read as `{hash: ...}`.
+    fn entry(&self, key: &str) -> Result<plist::Dictionary, String> {
         self.files
             .get(key)
-            .and_then(plist::Value::as_dictionary)
+            .and_then(|value| match value {
+                plist::Value::Dictionary(entry) => Some(entry.clone()),
+                plist::Value::Data(hash) => Some(plist::Dictionary::from_iter([(
+                    "hash".to_owned(),
+                    plist::Value::Data(hash.clone()),
+                )])),
+                _ => None,
+            })
             .ok_or_else(|| {
                 failure(
                     self.bundle,
@@ -396,8 +405,9 @@ impl Seal<'_> {
 #[cfg(unix)]
 const DETRITUS: [&str; 2] = ["com.apple.FinderInfo", "com.apple.ResourceFork"];
 
-/// Fails when anything in the bundle, including the bundle itself, has a
-/// resource fork or Finder info, which `codesign --strict` rejects.
+/// Fails when the bundle itself or any file in it has a resource fork or
+/// Finder info, which `codesign --strict` rejects. Folders inside the
+/// bundle, such as document packages, may have them.
 #[cfg(unix)]
 fn check_detritus(bundle: &Path) -> Result<(), String> {
     let mut stack = vec![bundle.to_path_buf()];
@@ -407,7 +417,9 @@ fn check_detritus(bundle: &Path) -> Result<(), String> {
         if count > MAX_FILES {
             return Err(failure(bundle, "too many files to verify"));
         }
-        for name in DETRITUS {
+        let metadata = fs::symlink_metadata(&path).map_err(|e| failure(&path, e))?;
+        let checked = path == bundle || !metadata.is_dir();
+        for name in DETRITUS.iter().filter(|_| checked) {
             if russet_fs::get_xattr(&path, name).ok().flatten().is_some() {
                 return Err(failure(
                     bundle,
@@ -415,7 +427,6 @@ fn check_detritus(bundle: &Path) -> Result<(), String> {
                 ));
             }
         }
-        let metadata = fs::symlink_metadata(&path).map_err(|e| failure(&path, e))?;
         if metadata.is_dir() {
             for entry in fs::read_dir(&path).map_err(|e| failure(&path, e))? {
                 stack.push(entry.map_err(|e| failure(&path, e))?.path());

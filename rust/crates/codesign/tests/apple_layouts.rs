@@ -141,3 +141,61 @@ fn matches_codesign_on_attribute_and_detached_signatures() {
         );
     }
 }
+
+/// `codesign --strict` rejects Finder info or a resource fork on the bundle
+/// or on a file in it, but not on a folder inside it (OmniOutliner's
+/// document templates).
+#[test]
+fn detritus_matches_codesign() {
+    let finder_info = {
+        let mut info = vec![0u8; 32];
+        info[8] = 0x40;
+        info
+    };
+    let cases: [(&str, &str, &str); 5] = [
+        (
+            "folder",
+            "Contents/Resources/Doc.pkgdir",
+            "com.apple.FinderInfo",
+        ),
+        ("Contents", "Contents", "com.apple.FinderInfo"),
+        (
+            "file",
+            "Contents/Resources/file.txt",
+            "com.apple.FinderInfo",
+        ),
+        ("bundle", "", "com.apple.FinderInfo"),
+        (
+            "resource fork",
+            "Contents/Resources/file.txt",
+            "com.apple.ResourceFork",
+        ),
+    ];
+    for (name, path, attribute) in cases {
+        let temp = tempfile::tempdir().unwrap();
+        let app = temp.path().join("Detritus.app");
+        let contents = app.join("Contents");
+        fs::create_dir_all(contents.join("MacOS")).unwrap();
+        fs::create_dir_all(contents.join("Resources/Doc.pkgdir")).unwrap();
+        fs::copy("/usr/bin/true", contents.join("MacOS/Detritus")).unwrap();
+        plist(
+            &contents.join("Info.plist"),
+            "com.example.detritus",
+            Some("Detritus"),
+        );
+        fs::write(contents.join("Resources/file.txt"), "a\n").unwrap();
+        fs::write(contents.join("Resources/Doc.pkgdir/inner"), "b\n").unwrap();
+        run(Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(&app));
+        let value: &[u8] = if attribute == "com.apple.FinderInfo" {
+            &finder_info
+        } else {
+            b"fork"
+        };
+        xattr::set(app.join(path), attribute, value).unwrap();
+        let apple = apple_accepts(&app);
+        let native = verify(&app, OPTIONS, SystemTime::now()).is_ok();
+        assert_eq!(native, apple, "{name}");
+    }
+}
