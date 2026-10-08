@@ -3,7 +3,7 @@
 ## 0.1.0 (unreleased)
 
 The first Russet release. Release archives are named `russet-VERSION-TARGET`.
-The installed command is `autopkg`, and `autopkg version` reports AutoPkg
+The installed command is `russet`, and `russet version` reports AutoPkg
 compatibility version 3.0.0.
 
 - Native Rust recipe engine, CLI, 46 built-in processors, macOS helpers, and
@@ -15,8 +15,16 @@ compatibility version 3.0.0.
   folder and one folder below it, like Python AutoPkg. Identifier lookup covers
   the same two levels.
 - Only `RECIPE_REPO_DIR` and the repositories in `RECIPE_REPOS` count as recipe
-  repositories for trust records, so overrides verify when `autopkg` runs from
+  repositories for trust records, so overrides verify when `russet` runs from
   any folder, including the home folder or `/`.
+- The command is `russet`, and it accepts the same verbs and options as
+  `autopkg`. On macOS, launchd runs the helper services as `russet --server`
+  and `russet --installd`; there are no separate helper executables.
+- Russet installs in `/opt/russet`, links `/usr/local/bin/russet`, and on macOS
+  uses its own launchd jobs (`com.github.weswhet.russet.server` and
+  `com.github.weswhet.russet.installd`), sockets, and logs. It doesn't change
+  a Python AutoPkg installation, and it still reads the `com.github.autopkg`
+  preferences and the same working folders.
 - The repository contains no Python. Packaging, installer tests, and release
   promotion run as `cargo xtask` commands, and the comparisons with Python
   AutoPkg run in [russet-compat](https://github.com/weswhet/russet-compat).

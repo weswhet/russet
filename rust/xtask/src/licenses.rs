@@ -8,8 +8,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// The packages whose binaries ship.
-const ROOTS: [&str; 2] = ["autopkg-rs", "autopkg-helpers"];
+/// The package whose binary ships. Its dependencies, such as the helper services, are included.
+const ROOTS: [&str; 1] = ["russet"];
 
 /// One third-party crate in the shipped binaries.
 struct Crate {
