@@ -107,11 +107,21 @@ fn validate_block_maps(
         return bad("data fork is out of range");
     }
     for partition in partitions {
+        let Some(size) = partition.block_map.sector_count.checked_mul(SECTOR_SIZE) else {
+            return bad("partition is too large");
+        };
         for run in &partition.block_map.block_runs {
             let decoded = run.sector_count.checked_mul(SECTOR_SIZE);
             let Some(decoded) = decoded else {
                 return bad("block run is too large");
             };
+            let end = run
+                .sector_number
+                .checked_mul(SECTOR_SIZE)
+                .and_then(|start| start.checked_add(decoded));
+            if end.is_none_or(|end| end > size) {
+                return bad("block run lies outside its partition");
+            }
             match run.block_type {
                 BlockType::ZeroFill | BlockType::Comment | BlockType::End => continue,
                 BlockType::Ignore if run.compressed_length == 0 => continue,
@@ -517,11 +527,11 @@ impl<R: Read + Seek> DmgReader<R> {
         }
 
         // Pad to full partition size if needed
+        // Russet patch: in pieces, as the declared size may be large.
         if bytes_written < block_size {
-            let remaining = (block_size - bytes_written) as usize;
-            let zeros = vec![0u8; remaining];
-            writer.write_all(&zeros)?;
-            bytes_written += remaining as u64;
+            let remaining = block_size - bytes_written;
+            write_zeros(writer, remaining)?;
+            bytes_written += remaining;
         }
 
         Ok(bytes_written)

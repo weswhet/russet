@@ -3,7 +3,7 @@
 //! `codesign --verify [--deep] [--strict]` does.
 
 use crate::code::{self, CodeSignature, Sealed};
-use crate::requirement::{Context, Requirement};
+use crate::requirement::Requirement;
 use sha2::Digest;
 use std::collections::BTreeMap;
 use std::fs;
@@ -383,12 +383,7 @@ impl Seal<'_> {
             ));
         }
         if let Some(requirement) = requirement {
-            let context = Context {
-                identifier: &signature.identifier,
-                chain: signature.chain.as_ref(),
-                cdhashes: &signature.cdhashes,
-            };
-            if !requirement.evaluate(&context) {
+            if !signature.satisfies(&requirement) {
                 return Err(failure(
                     self.bundle,
                     format!("nested code {key} doesn't satisfy its sealed requirement"),

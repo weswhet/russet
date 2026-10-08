@@ -4,7 +4,7 @@
 #![cfg(target_os = "macos")]
 
 use russet_codesign::bundle::{verify, Options};
-use russet_codesign::requirement::{Context, Requirement};
+use russet_codesign::requirement::Requirement;
 use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
@@ -43,11 +43,7 @@ fn native(path: &Path, requirement: &str) -> bool {
         SystemTime::now(),
     )
     .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    Requirement::parse(requirement).unwrap().evaluate(&Context {
-        identifier: &signature.identifier,
-        chain: signature.chain.as_ref(),
-        cdhashes: &signature.cdhashes,
-    })
+    signature.satisfies(&Requirement::parse(requirement).unwrap())
 }
 
 #[test]
@@ -76,4 +72,61 @@ fn requirement_decisions_match_codesign() {
     // The fixture is Developer ID signed, so it isn't Apple's own code.
     assert!(!native(&fixture, "anchor apple"));
     assert!(native(Path::new("/usr/bin/true"), "anchor apple"));
+}
+
+fn run(command: &mut Command) {
+    let output = command.output().unwrap();
+    assert!(
+        output.status.success(),
+        "{command:?}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// A universal binary whose x86_64 slice keeps the developer's signature
+/// and whose arm64 slice is re-signed ad hoc with the same identifier: each
+/// architecture must satisfy the requirement on its own, as `codesign`
+/// checks them.
+#[test]
+fn every_architecture_must_satisfy_the_requirement() {
+    let temp = tempfile::tempdir().unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/MSCDockTilePlugin.docktileplugin");
+    let plugin = temp.path().join("Mixed.docktileplugin");
+    run(Command::new("/usr/bin/ditto").arg(&fixture).arg(&plugin));
+    let binary = plugin.join("Contents/MacOS/MSCDockTilePlugin");
+    let arm64 = temp.path().join("arm64");
+    let x86_64 = temp.path().join("x86_64");
+    for (arch, path) in [("arm64", &arm64), ("x86_64", &x86_64)] {
+        run(Command::new("/usr/bin/lipo")
+            .arg(&binary)
+            .args(["-thin", arch, "-output"])
+            .arg(path));
+    }
+    run(Command::new("/usr/bin/codesign")
+        .args(["--force", "--sign", "-", "--identifier"])
+        .arg("com.googlecode.munki.MSCDockTilePlugin")
+        .arg(&arm64));
+    run(Command::new("/usr/bin/lipo")
+        .arg("-create")
+        .arg(&x86_64)
+        .arg(&arm64)
+        .arg("-output")
+        .arg(&binary));
+    let requirement = REQUIREMENTS[8];
+    assert!(native(&fixture, requirement));
+    assert!(!apple(&plugin, requirement));
+    // Each slice is validly signed, so the structure verifies; the
+    // requirement mustn't.
+    let signature = verify(
+        &plugin,
+        Options {
+            deep: false,
+            strict: false,
+        },
+        SystemTime::now(),
+    )
+    .unwrap();
+    assert_eq!(signature.architectures.len(), 2);
+    assert!(!signature.satisfies(&Requirement::parse(requirement).unwrap()));
 }

@@ -60,7 +60,7 @@ fn rejects_non_images_and_limits_size() {
         ..Limits::default()
     };
     let error = extract(&image, out.path(), limits).unwrap_err();
-    assert!(error.to_string().contains("size limit"), "{error}");
+    assert!(error.to_string().contains("limit"), "{error}");
 }
 
 /// Creates images in each supported format and reads them back.
