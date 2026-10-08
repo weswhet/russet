@@ -144,6 +144,7 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, 
         count: 0,
     });
     let mut entries = Vec::with_capacity(nodes.len());
+    let mut next_ino = nodes.len() as u64;
     for (index, node) in nodes.iter().enumerate() {
         let name = if node.path.is_empty() {
             ".".to_owned()
@@ -190,11 +191,67 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, 
             gid: node.gid,
             mtime: node.mtime,
         });
+        if let NodeKind::File(source) = &node.kind {
+            next_ino += 1;
+            apple_double(node, source, &mut writer, header, next_ino, &mut entries)?;
+        }
     }
     let counting = writer.finish()?;
     let size = counting.count;
     counting.inner.finish()?.flush()?;
     Ok((entries, size))
+}
+
+/// Writes a file's extended attributes, including those kept in an
+/// extraction's sidecar, as an AppleDouble `._name` member right after it,
+/// as `pkgbuild` does; installing the package restores them. The BOM lists
+/// the member with the file's mode and no size.
+fn apple_double<W: Write>(
+    node: &Node,
+    source: &Path,
+    writer: &mut russet_ditto::CpioWriter<W>,
+    header: russet_ditto::Header,
+    ino: u64,
+    entries: &mut Vec<russet_mkbom::Entry>,
+) -> io::Result<()> {
+    let mut xattrs = Vec::new();
+    for name in russet_fs::list_xattrs(source)? {
+        if let Some(value) = russet_fs::get_xattr(source, &name)? {
+            xattrs.push((name, value));
+        }
+    }
+    if xattrs.is_empty() {
+        return Ok(());
+    }
+    let bytes = russet_ditto::encode_apple_double(&xattrs);
+    let path = match node.path.rsplit_once('/') {
+        Some((parent, name)) => format!("{parent}/._{name}"),
+        None => format!("._{}", node.path),
+    };
+    let header = russet_ditto::Header {
+        mode: 0o100644,
+        ino,
+        ..header
+    };
+    writer.append(
+        &format!("./{path}"),
+        header,
+        bytes.as_slice(),
+        bytes.len() as u64,
+    )?;
+    entries.push(russet_mkbom::Entry {
+        path,
+        kind: russet_mkbom::Kind::File {
+            size: 0,
+            checksum: 0,
+            archs: Vec::new(),
+        },
+        mode: node.mode,
+        uid: node.uid,
+        gid: node.gid,
+        mtime: node.mtime,
+    });
+    Ok(())
 }
 
 fn escape(text: &str) -> String {
