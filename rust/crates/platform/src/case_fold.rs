@@ -94,7 +94,7 @@ pub fn glob(pattern: &str) -> Vec<PathBuf> {
     candidates
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     #[test]
     fn matches_components_regardless_of_case() {

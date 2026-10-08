@@ -29,3 +29,9 @@ Validation: `russet-hdiutil` extracts a `UDCO` image converted by
 `hdiutil convert` and compares the result with the same image mounted by
 macOS, both at test time on macOS and through the committed fixture on every
 Unix platform.
+- **Untrusted sizes.** `src/reader.rs` checks the trailer's plist and data
+  fork ranges against the file, streams the data-fork checksum, validates
+  every block run when an image opens (stored data inside the data fork,
+  at most 64 MiB per run held in memory), and writes zero-fill runs in
+  pieces. Before, a crafted trailer or block map could make it allocate
+  any amount of memory (found by the `hdiutil_extract` fuzz target).

@@ -133,3 +133,20 @@ fn created_images_round_trip() {
         "{error}"
     );
 }
+
+/// Inputs the `hdiutil_extract` fuzz target found; each must fail cleanly
+/// instead of allocating what a crafted header claims.
+#[test]
+fn fuzz_regression_inputs() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fuzz-regressions");
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let input = entry.unwrap().path();
+        let out = tempfile::tempdir().unwrap();
+        let _ = image_info(&input);
+        assert!(
+            extract(&input, out.path(), Limits::default()).is_err(),
+            "{}",
+            input.display()
+        );
+    }
+}
