@@ -70,7 +70,7 @@ jobs:
         if: runner.os == 'macOS'
         env:
           RUSSET_NATIVE: all
-        run: cargo test --locked --no-fail-fast --target ${{ matrix.target }} -p autopkg-processors -p autopkg-munki -p autopkg-platform -p autopkg-engine -p autopkg-helpers -p autopkg-rs
+        run: cargo test --locked --no-fail-fast --target ${{ matrix.target }} -p autopkg-processors -p autopkg-munki -p autopkg-platform -p autopkg-engine -p autopkg-helpers -p russet
       - name: Install a natively built package with Apple's installer
         if: runner.os == 'macOS'
         run: cargo test -p russet-pkgbuild --locked --target ${{ matrix.target }} -- --ignored installs_with_apple_installer
