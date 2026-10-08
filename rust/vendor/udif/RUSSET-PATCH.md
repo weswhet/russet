@@ -37,4 +37,5 @@ Unix platform.
   any amount of memory (found by the `hdiutil_extract` fuzz target). Each
   partition's size must also fit in 64 bits, every run must lie inside its
   partition, and the padding after the last run is written in pieces; a
-  1,311-byte image declaring 2^54 sectors used to panic.
+  1,311-byte image declaring 2^54 sectors used to panic. LZFSE blocks are decoded
+  as a stream capped one byte past their declared size, instead of in full.

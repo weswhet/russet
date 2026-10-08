@@ -95,7 +95,7 @@ pub fn get_xattr(path: &Path, name: &str) -> io::Result<Option<Vec<u8>>> {
 pub fn list_xattrs(path: &Path) -> io::Result<Vec<String>> {
     let mut names: Vec<String> = match xattr::list(path) {
         Ok(names) => names
-            .filter_map(|n| n.to_str().map(|n| apple_xattr_name(n).to_owned()))
+            .filter_map(|n| n.to_str().and_then(apple_xattr_name).map(str::to_owned))
             .collect(),
         Err(e) if e.raw_os_error() == Some(1) => Vec::new(),
         Err(e) => return Err(e),

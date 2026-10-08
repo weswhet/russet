@@ -1,7 +1,7 @@
 //! `ditto -x -k`: zip extraction that keeps Unix modes, symlinks, and the
 //! metadata macOS stores in AppleDouble (`._name`) members.
 
-use crate::appledouble::{self, read_bounded, sibling, MAX_METADATA_BYTES};
+use crate::appledouble::{self, read_bounded, sibling, MAX_LINK_BYTES, MAX_METADATA_BYTES};
 use russet_fs::{clean_relative, Limits, SkippedXattr, TreeWriter};
 use std::ffi::OsString;
 use std::fs::File;
@@ -12,8 +12,6 @@ use std::path::{Path, PathBuf};
 const S_IFMT: u32 = 0o170000;
 const S_IFDIR: u32 = 0o040000;
 const S_IFLNK: u32 = 0o120000;
-/// Symlink targets longer than this aren't valid on macOS or Linux.
-const MAX_LINK_BYTES: u64 = 4096;
 
 enum Role {
     /// A normal member, extracted to this path.
@@ -55,14 +53,15 @@ pub(crate) fn extract(
         roles.push(role(entry.name())?);
     }
     let mut writer = TreeWriter::open(destination, limits)?;
-    let mut metadata = Vec::new();
+    let mut metadata = appledouble::Pending::default();
     for (index, role) in roles.into_iter().enumerate() {
         let mut entry = archive.by_index(index).map_err(zip_error)?;
         let mode = entry.unix_mode();
         match role {
             Role::Ignored => {}
             Role::Metadata(target) => {
-                metadata.push((target, read_bounded(&mut entry, MAX_METADATA_BYTES)?))
+                let bytes = read_bounded(&mut entry, MAX_METADATA_BYTES)?;
+                metadata.add(&mut writer, target, bytes)?;
             }
             Role::Content(path) => {
                 let is_dir = entry.is_dir() || mode.is_some_and(|m| m & S_IFMT == S_IFDIR);
@@ -76,7 +75,7 @@ pub(crate) fn extract(
                     // really is AppleDouble; otherwise it's an ordinary file.
                     let bytes = read_bounded(&mut entry, MAX_METADATA_BYTES)?;
                     if appledouble::is_apple_double(&bytes) {
-                        metadata.push((target, bytes));
+                        metadata.add(&mut writer, target, bytes)?;
                     } else {
                         writer.write_file(&path, bytes.as_slice(), mode.unwrap_or(0o644))?;
                     }
@@ -86,7 +85,7 @@ pub(crate) fn extract(
             }
         }
     }
-    appledouble::apply(&mut writer, metadata)?;
+    metadata.finish(&mut writer)?;
     writer.finish()
 }
 
