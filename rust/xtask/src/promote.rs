@@ -163,8 +163,10 @@ pub fn development_steps(target: &str) -> Vec<String> {
     required
 }
 
+/// Every job in `.github/workflows/rust.yml`: one test job per target, and
+/// the fuzz job.
 fn expected_jobs() -> BTreeMap<String, Vec<String>> {
-    TARGETS
+    let mut jobs: BTreeMap<_, _> = TARGETS
         .iter()
         .map(|(target, runner)| {
             (
@@ -172,7 +174,12 @@ fn expected_jobs() -> BTreeMap<String, Vec<String>> {
                 development_steps(target),
             )
         })
-        .collect()
+        .collect();
+    jobs.insert(
+        "fuzz".to_owned(),
+        vec!["Run each target for 60 seconds".to_owned()],
+    );
+    jobs
 }
 
 pub fn validate_gates(sha: &str, gates: &Map<String, Value>) -> Result<(), String> {
