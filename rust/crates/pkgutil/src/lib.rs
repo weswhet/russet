@@ -87,7 +87,13 @@ mod imp {
             .map(|e| destination.join(&e.path))
             .collect();
         for archive in scripts {
-            let unpacked = archive.with_file_name(".Scripts.russet");
+            // Unpack into a folder this call creates, never a path the
+            // package could have put a symlink at.
+            let parent = archive.parent().unwrap_or(destination);
+            let private = tempfile::Builder::new()
+                .prefix(".Scripts.")
+                .tempdir_in(parent)?;
+            let unpacked = private.path().join("Scripts");
             russet_ditto::extract_cpio_with(&archive, &unpacked, limits, false)?;
             fs::remove_file(&archive)?;
             fs::rename(&unpacked, &archive)?;
@@ -125,14 +131,14 @@ mod imp {
             let mode = metadata.permissions().mode() & 0o7777;
             let name = name.to_string_lossy();
             if metadata.is_dir() && ARCHIVES.contains(&name.as_ref()) {
-                let archive = scratch.join(format!(
-                    "archive-{}",
-                    child.to_string_lossy().replace('/', "-")
-                ));
-                let encoder = flate2::write::GzEncoder::new(
-                    fs::File::create(&archive)?,
-                    flate2::Compression::default(),
-                );
+                // A unique file per archive: names built from the path can
+                // collide (`a.pkg/b.pkg` and `a.pkg-b.pkg`).
+                let (file, archive) = tempfile::Builder::new()
+                    .prefix("archive-")
+                    .tempfile_in(scratch)?
+                    .keep()
+                    .map_err(|e| e.error)?;
+                let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
                 let mut encoder =
                     russet_ditto::write_tree(&path, encoder, |_, m| russet_ditto::Header {
                         mode: m.mode(),

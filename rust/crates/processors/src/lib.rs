@@ -650,7 +650,13 @@ fn execute_builtin(
         "AutoPkgSourceFinder" | "GenerateRelocatablePython" | "MakeCatalogsProcessor" => community_builders::execute(canonical_name(name), env, preferences),
         "MSOfficeMacURLandUpdateInfoProvider" | "MozillaURLProvider" | "BarebonesURLProvider" => community_modern::execute(canonical_name(name), env, preferences),
         "AdobeAcrobatProUpdateInfoProvider" | "AdobeFlashURLProvider" | "AdobeReaderURLProvider" | "AdobeReaderRepackager" | "PuppetlabsProductsURLProvider" | "SassafrasK2ClientCustomizer" => community_legacy::execute(canonical_name(name), env, preferences),
-        "CodeSignatureVerifier" => autopkg_platform::signature::verify_code_signature(env),
+        "CodeSignatureVerifier" => {
+            let matches = match env.get("input_path") {
+                Some(Value::String(pattern)) => python_glob::paths_with_recursion(pattern, false)?,
+                _ => Vec::new(),
+            };
+            autopkg_platform::signature::verify_code_signature(env, matches)
+        }
         "SignToolVerifier" => autopkg_platform::signature::verify_authenticode(env),
         "GitHubReleasesInfoProvider" => autopkg_platform::github::execute_with_preferences(env, preferences),
         "SparkleUpdateInfoProvider" => sparkle::execute(env),

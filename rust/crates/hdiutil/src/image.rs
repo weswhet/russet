@@ -148,6 +148,18 @@ pub fn extract(image: &Path, destination: &Path, limits: Limits) -> io::Result<E
     check_supported(image)?;
     let mut reader = udif::DmgReader::new(BufReader::new(File::open(image)?))
         .map_err(|e| udif_error(image, e))?;
+    // A partition is decompressed whole before its files are read, so its
+    // declared size counts against the extraction's total.
+    if reader
+        .partitions()
+        .iter()
+        .any(|p| p.block_map.sector_count.saturating_mul(512) > limits.max_total_bytes)
+    {
+        return Err(invalid(format!(
+            "{} declares a volume larger than the extraction limit",
+            image.display()
+        )));
+    }
     let ids: Vec<i32> = reader.partitions().iter().map(|p| p.id).collect();
     let mut extraction = Extraction::default();
     for id in ids {

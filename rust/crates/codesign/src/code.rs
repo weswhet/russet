@@ -2,6 +2,7 @@
 //! of what `codesign --verify` checks for one executable.
 
 use crate::macho::{self, CodeDirectory};
+use crate::requirement::{Context, Requirement};
 use crate::trust::{self, Chain, Purpose};
 use der::asn1::{ObjectIdentifier, OctetStringRef};
 use der::Decode;
@@ -26,6 +27,33 @@ pub struct CodeSignature {
     /// The preferred code directory hash of the first architecture, which a
     /// parent bundle's resource seal records.
     pub cdhash: Vec<u8>,
+    /// Each architecture's own signer. The fields above describe the first.
+    pub architectures: Vec<Signer>,
+}
+
+/// Who signed one architecture of a binary.
+#[derive(Clone, Debug)]
+pub struct Signer {
+    pub identifier: String,
+    pub chain: Option<Chain>,
+    /// This architecture's code directory hashes.
+    pub cdhashes: Vec<Vec<u8>>,
+}
+
+impl CodeSignature {
+    /// Whether every architecture satisfies `requirement`. `codesign` checks
+    /// each architecture against it with its own signer, so one validly
+    /// signed architecture can't vouch for another.
+    pub fn satisfies(&self, requirement: &Requirement) -> bool {
+        !self.architectures.is_empty()
+            && self.architectures.iter().all(|signer| {
+                requirement.evaluate(&Context {
+                    identifier: &signer.identifier,
+                    chain: signer.chain.as_ref(),
+                    cdhashes: &signer.cdhashes,
+                })
+            })
+    }
 }
 
 /// Files outside the binary that its code directories seal.
@@ -91,6 +119,7 @@ pub fn verify_binary(
                     return Err("Architectures are signed with different identifiers".into());
                 }
                 first.cdhashes.extend(signature.cdhashes);
+                first.architectures.extend(signature.architectures);
             }
         }
     }
@@ -317,6 +346,11 @@ fn verify_components(
             (Some(chain), verified.timestamp)
         }
     };
+    let architectures = vec![Signer {
+        identifier: primary.identifier.clone(),
+        chain: chain.clone(),
+        cdhashes: cdhashes.clone(),
+    }];
     Ok(CodeSignature {
         identifier: primary.identifier.clone(),
         team: primary.team.clone(),
@@ -324,5 +358,6 @@ fn verify_components(
         timestamp,
         cdhashes,
         cdhash: preferred,
+        architectures,
     })
 }

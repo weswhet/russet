@@ -34,4 +34,7 @@ Unix platform.
   every block run when an image opens (stored data inside the data fork,
   at most 64 MiB per run held in memory), and writes zero-fill runs in
   pieces. Before, a crafted trailer or block map could make it allocate
-  any amount of memory (found by the `hdiutil_extract` fuzz target).
+  any amount of memory (found by the `hdiutil_extract` fuzz target). Each
+  partition's size must also fit in 64 bits, every run must lie inside its
+  partition, and the padding after the last run is written in pieces; a
+  1,311-byte image declaring 2^54 sectors used to panic.

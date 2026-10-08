@@ -97,7 +97,7 @@ fn native_code_signature(
     deep: bool,
     strict: Option<bool>,
 ) -> Result<(), String> {
-    use russet_codesign::requirement::{Context, Requirement};
+    use russet_codesign::requirement::Requirement;
     super::processor_output(
         1,
         if deep {
@@ -161,12 +161,7 @@ fn native_code_signature(
         };
     super::processor_output(1, format!("{}: valid on disk", path.display()));
     if let Some(requirement) = requirement {
-        let context = Context {
-            identifier: &signature.identifier,
-            chain: signature.chain.as_ref(),
-            cdhashes: &signature.cdhashes,
-        };
-        if !requirement.evaluate(&context) {
+        if !signature.satisfies(&requirement) {
             super::processor_output(
                 1,
                 format!(
@@ -185,7 +180,10 @@ fn native_code_signature(
     Ok(())
 }
 
-pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
+/// `matches` are the paths `input_path` matches, in the order Python's
+/// `glob.glob` returns them; the first is verified, as Copier and the other
+/// processors that glob would pick it.
+pub fn verify_code_signature(env: &Dictionary, matches: Vec<PathBuf>) -> Result<(), String> {
     if enabled(env.get("DISABLE_CODE_SIGNATURE_VERIFICATION")) {
         eprintln!("WARNING: Code signature verification disabled for this recipe run.");
         return Ok(());
@@ -197,14 +195,7 @@ pub fn verify_code_signature(env: &Dictionary) -> Result<(), String> {
     };
     let extra = strings(env, "codesign_additional_arguments")?;
     let authorities = strings(env, "expected_authority_names")?;
-    let mut matches = glob::glob(input(env)?)
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-    if matches.is_empty() && cfg!(target_os = "linux") {
-        // Recipes are written for case-insensitive macOS volumes.
-        matches = crate::case_fold::glob(input(env)?);
-    }
+    input(env)?;
     let path = matches.first().ok_or_else(|| {
         format!(
             "Error processing path '{}' with glob.",
@@ -464,7 +455,7 @@ mod tests {
     fn explicit_disable_short_circuits() {
         let env =
             Dictionary::from_iter([("DISABLE_CODE_SIGNATURE_VERIFICATION", Value::Boolean(true))]);
-        verify_code_signature(&env).unwrap();
+        verify_code_signature(&env, Vec::new()).unwrap();
         verify_authenticode(&env).unwrap();
     }
     #[cfg(target_os = "macos")]
@@ -474,16 +465,17 @@ mod tests {
             ("input_path", Value::String("/usr/bin/true".into())),
             ("requirement", Value::String("anchor apple".into())),
         ]);
-        verify_code_signature(&env).unwrap();
+        let true_path = || vec![PathBuf::from("/usr/bin/true")];
+        verify_code_signature(&env, true_path()).unwrap();
         env.insert(
             "requirement".into(),
             "identifier \"org.autopkg.impossible\"".into(),
         );
-        assert!(verify_code_signature(&env)
+        assert!(verify_code_signature(&env, true_path())
             .unwrap_err()
             .contains("unexpected identity"));
         env.remove("requirement");
-        assert!(verify_code_signature(&env)
+        assert!(verify_code_signature(&env, true_path())
             .unwrap_err()
             .contains("No 'requirement'"));
     }

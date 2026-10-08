@@ -4,7 +4,7 @@
 
 use icns::{IconFamily, IconType, PixelFormat};
 use russet_fs::Limits;
-use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
 
 /// Icon resources and the Info.plist files that name them are small; a
@@ -85,13 +85,75 @@ fn select(representations: &[Representation]) -> Option<Representation> {
         .or_else(|| ascending.last().copied())
 }
 
+/// Real icon files are a few MiB; a larger one isn't read.
+const MAX_ICON_BYTES: u64 = 64 << 20;
+
+fn be32(bytes: &[u8], at: usize) -> Option<usize> {
+    let field = bytes.get(at..at.checked_add(4)?)?;
+    Some(u32::from_be_bytes(field.try_into().ok()?) as usize)
+}
+
+/// Checks that every element the `icns` reader will read fits in the file.
+/// The reader allocates each element's declared length before reading it,
+/// so a short file could otherwise ask for 4 GiB.
+fn check_elements(bytes: &[u8]) -> Result<(), String> {
+    const INVALID: &str = "Cannot read icon image";
+    if bytes.get(..4) != Some(b"icns") {
+        return Err(INVALID.into());
+    }
+    let declared = be32(bytes, 4).ok_or(INVALID)?;
+    let mut position = 8;
+    while position < declared {
+        let length = be32(bytes, position + 4).ok_or(INVALID)?;
+        if length < 8 || length > bytes.len() - position {
+            return Err(INVALID.into());
+        }
+        position += length;
+    }
+    Ok(())
+}
+
+/// Checks that a PNG-encoded element is the size its icon type says before
+/// it's decoded; the `icns` reader decodes first and compares afterward, so
+/// a PNG claiming huge dimensions would allocate their pixels.
+fn check_png_size(family: &IconFamily, kind: IconType) -> Result<(), String> {
+    const PNG: &[u8] = b"\x89PNG\r\n\x1a\n";
+    let Some(element) = family.elements.iter().find(|e| e.ostype == kind.ostype()) else {
+        return Ok(());
+    };
+    let data = &element.data;
+    if !data.starts_with(PNG) {
+        return Ok(());
+    }
+    let size = (be32(data, 16), be32(data, 20));
+    if data.get(12..16) != Some(b"IHDR")
+        || size
+            != (
+                Some(kind.pixel_width() as usize),
+                Some(kind.pixel_height() as usize),
+            )
+    {
+        return Err("Cannot decode icon representation".into());
+    }
+    Ok(())
+}
+
 /// Converts the icon Munki would choose from an `.icns` file to PNG.
 pub(crate) fn convert_to_png(source: &Path, destination: &Path) -> Result<(), String> {
     let file = std::fs::File::open(source).map_err(|e| e.to_string())?;
+    let mut bytes = Vec::new();
+    file.take(MAX_ICON_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| e.to_string())?;
+    if bytes.len() as u64 > MAX_ICON_BYTES {
+        return Err("Icon image is too large".into());
+    }
+    check_elements(&bytes)?;
     let family =
-        IconFamily::read(BufReader::new(file)).map_err(|_| "Cannot read icon image".to_owned())?;
+        IconFamily::read(bytes.as_slice()).map_err(|_| "Cannot read icon image".to_owned())?;
     let chosen =
         select(&representations(&family)).ok_or("Icon image contains no representations")?;
+    check_png_size(&family, chosen.kind)?;
     let image = family
         .get_icon_with_type(chosen.kind)
         .map_err(|_| "Cannot decode icon representation".to_owned())?
@@ -208,7 +270,8 @@ mod tests {
     }
 
     fn pixels(path: &Path) -> (u32, u32, Vec<u8>) {
-        let mut decoder = png::Decoder::new(BufReader::new(std::fs::File::open(path).unwrap()));
+        let mut decoder =
+            png::Decoder::new(std::io::BufReader::new(std::fs::File::open(path).unwrap()));
         decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
         let mut reader = decoder.read_info().unwrap();
         let mut buffer = vec![0; reader.output_buffer_size().unwrap()];
@@ -288,6 +351,48 @@ mod tests {
             differences.is_empty(),
             "{checked} checked:\n{}",
             differences.join("\n")
+        );
+    }
+}
+
+#[cfg(test)]
+mod limits {
+    use super::*;
+
+    fn convert(bytes: &[u8]) -> Result<(), String> {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("in.icns");
+        std::fs::write(&source, bytes).unwrap();
+        convert_to_png(&source, &temp.path().join("out.png"))
+    }
+
+    /// An element claiming 4 GiB in a 16-byte file is refused before the
+    /// `icns` reader allocates it.
+    #[test]
+    fn refuses_element_longer_than_file() {
+        let mut bytes = b"icns\xff\xff\xff\xffic10\xff\xff\xff\xff".to_vec();
+        assert!(check_elements(&bytes).is_err());
+        assert!(convert(&bytes).is_err());
+        bytes.truncate(8);
+        bytes[4..8].copy_from_slice(&8u32.to_be_bytes());
+        assert!(check_elements(&bytes).is_ok());
+    }
+
+    /// A 512-pixel element whose PNG claims 65535x65535 isn't decoded.
+    #[test]
+    fn refuses_png_larger_than_its_icon_type() {
+        let mut png = b"\x89PNG\r\n\x1a\n\0\0\0\x0dIHDR".to_vec();
+        png.extend_from_slice(&65535u32.to_be_bytes());
+        png.extend_from_slice(&65535u32.to_be_bytes());
+        png.extend_from_slice(&[8, 6, 0, 0, 0, 0, 0, 0, 0]);
+        let mut bytes = b"icns".to_vec();
+        bytes.extend_from_slice(&((16 + png.len()) as u32).to_be_bytes());
+        bytes.extend_from_slice(b"ic09");
+        bytes.extend_from_slice(&((8 + png.len()) as u32).to_be_bytes());
+        bytes.extend_from_slice(&png);
+        assert_eq!(
+            convert(&bytes).unwrap_err(),
+            "Cannot decode icon representation"
         );
     }
 }
