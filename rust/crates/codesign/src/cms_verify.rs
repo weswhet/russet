@@ -25,9 +25,19 @@ pub struct VerifiedCms {
     pub signed_attributes: Vec<(ObjectIdentifier, Vec<Vec<u8>>)>,
 }
 
+/// A decoded `SignedData`, with the first signer's signed attributes as
+/// they were encoded.
+struct Parsed {
+    data: SignedData,
+    /// The signed attributes' encoding with the SET tag, which is what the
+    /// signer signed. Re-encoding them would sort them into DER order, which
+    /// some signers don't use.
+    signed_attributes: Option<Vec<u8>>,
+}
+
 /// Decodes a CMS `ContentInfo`, ignoring the zero padding that xar and code
 /// signatures add after it.
-fn signed_data(bytes: &[u8]) -> Result<SignedData, String> {
+fn signed_data(bytes: &[u8]) -> Result<Parsed, String> {
     let (der, used) = crate::ber::to_der(bytes)?;
     if bytes[used..].iter().any(|b| *b != 0) {
         return Err("CMS signature is followed by unexpected data".into());
@@ -36,9 +46,46 @@ fn signed_data(bytes: &[u8]) -> Result<SignedData, String> {
     if info.content_type != SIGNED_DATA {
         return Err("CMS signature isn't SignedData".into());
     }
-    info.content
+    let data = info
+        .content
         .decode_as::<SignedData>()
-        .map_err(|e| format!("Invalid CMS SignedData: {e}"))
+        .map_err(|e| format!("Invalid CMS SignedData: {e}"))?;
+    Ok(Parsed {
+        data,
+        signed_attributes: raw_signed_attributes(&der),
+    })
+}
+
+/// Finds the first SignerInfo's `[0] IMPLICIT` signed attributes in a DER
+/// `ContentInfo` and returns them tagged as a SET.
+fn raw_signed_attributes(der: &[u8]) -> Option<Vec<u8>> {
+    use der::asn1::AnyRef;
+    use der::{Reader, SliceReader, Tag, TagNumber, Tagged};
+    fn children(value: &[u8]) -> Option<Vec<AnyRef<'_>>> {
+        let mut reader = SliceReader::new(value).ok()?;
+        let mut out = Vec::new();
+        while !reader.is_finished() {
+            out.push(reader.decode::<AnyRef>().ok()?);
+        }
+        Some(out)
+    }
+    let content_info = AnyRef::from_der(der).ok()?;
+    let explicit = children(content_info.value())?.into_iter().nth(1)?;
+    let signed_data = children(explicit.value())?.into_iter().next()?;
+    let signer_infos = children(signed_data.value())?
+        .into_iter()
+        .rfind(|c| c.tag() == Tag::Set)?;
+    let signer = children(signer_infos.value())?.into_iter().next()?;
+    let attributes = children(signer.value())?.into_iter().find(|c| {
+        c.tag()
+            == Tag::ContextSpecific {
+                constructed: true,
+                number: TagNumber::N0,
+            }
+    })?;
+    let mut out = attributes.to_der().ok()?;
+    out[0] = 0x31;
+    Some(out)
 }
 
 fn certificates(data: &SignedData) -> Result<Vec<Cert>, String> {
@@ -67,7 +114,12 @@ fn signer_certificate(info: &SignerInfo, certificates: &[Cert]) -> Result<Cert, 
 
 /// Checks one signer: its signed attributes must carry the digest of
 /// `content`, and its signature must cover them.
-fn check_signer(info: &SignerInfo, signer: &Cert, content: &[u8]) -> Result<(), String> {
+fn check_signer(
+    info: &SignerInfo,
+    raw_attributes: Option<&[u8]>,
+    signer: &Cert,
+    content: &[u8],
+) -> Result<(), String> {
     let attributes = info
         .signed_attrs
         .as_ref()
@@ -89,7 +141,10 @@ fn check_signer(info: &SignerInfo, signer: &Cert, content: &[u8]) -> Result<(), 
     if actual.as_bytes() != expected.as_slice() {
         return Err("CMS message digest doesn't match the signed content".into());
     }
-    let signed = attributes.to_der().map_err(|e| e.to_string())?;
+    let signed = match raw_attributes {
+        Some(raw) => raw.to_vec(),
+        None => attributes.to_der().map_err(|e| e.to_string())?,
+    };
     verify_message(
         signer,
         &info.signature_algorithm.oid,
@@ -103,15 +158,16 @@ fn check_signer(info: &SignerInfo, signer: &Cert, content: &[u8]) -> Result<(), 
 /// signature is verified, including its Apple-anchored chain, and its time
 /// returned. The signer's own chain isn't validated here.
 pub fn verify_detached(bytes: &[u8], content: &[u8]) -> Result<VerifiedCms, String> {
-    let data = signed_data(bytes)?;
-    let certificates = certificates(&data)?;
+    let parsed = signed_data(bytes)?;
+    let data = &parsed.data;
+    let certificates = certificates(data)?;
     let mut signers = data.signer_infos.0.iter();
     let info = signers.next().ok_or("CMS signature has no signer")?;
     if signers.next().is_some() {
         return Err("CMS signature has more than one signer".into());
     }
     let signer = signer_certificate(info, &certificates)?;
-    check_signer(info, &signer, content)?;
+    check_signer(info, parsed.signed_attributes.as_deref(), &signer, content)?;
     let mut timestamp = None;
     for attribute in info.unsigned_attrs.iter().flat_map(|a| a.iter()) {
         if attribute.oid == TIMESTAMP_TOKEN {
@@ -140,7 +196,8 @@ pub fn verify_detached(bytes: &[u8], content: &[u8]) -> Result<VerifiedCms, Stri
 /// Verifies an RFC 3161 timestamp token over `signature` and returns its
 /// time.
 fn verify_timestamp(token: &[u8], signature: &[u8]) -> Result<SystemTime, String> {
-    let data = signed_data(token)?;
+    let parsed = signed_data(token)?;
+    let data = &parsed.data;
     if data.encap_content_info.econtent_type != TST_INFO {
         return Err("Timestamp token doesn't hold TSTInfo".into());
     }
@@ -159,14 +216,19 @@ fn verify_timestamp(token: &[u8], signature: &[u8]) -> Result<SystemTime, String
     if imprint_hash != imprint {
         return Err("Timestamp doesn't cover this signature".into());
     }
-    let certificates = certificates(&data)?;
+    let certificates = certificates(data)?;
     let info = data
         .signer_infos
         .0
         .get(0)
         .ok_or("Timestamp token has no signer")?;
     let signer = signer_certificate(info, &certificates)?;
-    check_signer(info, &signer, content.as_bytes())?;
+    check_signer(
+        info,
+        parsed.signed_attributes.as_deref(),
+        &signer,
+        content.as_bytes(),
+    )?;
     let time = UNIX_EPOCH + gen_time.to_unix_duration();
     let others: Vec<Cert> = certificates
         .into_iter()
