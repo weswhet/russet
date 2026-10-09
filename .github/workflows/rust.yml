@@ -1,9 +1,9 @@
 name: Rust development
 on:
   push:
-    paths: ['rust/**', 'compatibility/**', 'Scripts/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'compatibility/**', 'Scripts/**', '.gitattributes', '.github/workflows/rust.yml']
   pull_request:
-    paths: ['rust/**', 'compatibility/**', 'Scripts/**', '.github/workflows/rust.yml']
+    paths: ['rust/**', 'compatibility/**', 'Scripts/**', '.gitattributes', '.github/workflows/rust.yml']
   workflow_dispatch:
 permissions:
   contents: read
