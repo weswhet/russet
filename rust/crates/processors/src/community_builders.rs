@@ -28,15 +28,15 @@ pub(crate) fn truthy(value: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "macos")]
+    use crate::processors::generate_relocatable_python::execute as generate_python;
+    #[cfg(unix)]
+    use crate::processors::generate_relocatable_python::fix_scripts;
     use crate::processors::{
         autopkg_source_finder::execute as source_finder,
         generate_relocatable_python::{install_sitecustomize, relative_path, SITECUSTOMIZE},
         make_catalogs_processor::{execute as make_catalogs, rebuild_catalogs, verify_payload},
     };
-    #[cfg(target_os = "macos")]
-    use crate::processors::generate_relocatable_python::execute as generate_python;
-    #[cfg(unix)]
-    use crate::processors::generate_relocatable_python::fix_scripts;
     use sha2::{Digest, Sha256};
     use std::{fs, path::Path};
     #[test]

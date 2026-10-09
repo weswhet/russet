@@ -26,6 +26,8 @@ pub(crate) fn fetch_common(env: &Dictionary, url: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    use crate::processors::sassafras_k2_client_customizer::execute as sassafras;
     use crate::processors::{
         adobe_acrobat_pro_update_info_provider::acrobat,
         adobe_flash_url_provider::{execute as flash, flash_version},
@@ -33,8 +35,6 @@ mod tests {
         adobe_reader_url_provider::execute_typed as reader,
         puppetlabs_products_url_provider::puppet_candidate,
     };
-    #[cfg(unix)]
-    use crate::processors::sassafras_k2_client_customizer::execute as sassafras;
     use std::fs;
     #[test]
     fn runtime_errors_are_typed_without_reclassifying_processor_failures() {
