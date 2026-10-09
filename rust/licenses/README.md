@@ -11,6 +11,7 @@ folder holds the license and notice files the crate publishes.
 | `aho-corasick` | 1.1.5 | Unlicense OR MIT | https://github.com/BurntSushi/aho-corasick |
 | `apfs` | 0.4.1 | MIT | Vendored in `rust/vendor` with Russet patches |
 | `arraydeque` | 0.5.1 | MIT/Apache-2.0 | https://github.com/andylokandy/arraydeque |
+| `atomic-waker` | 1.1.2 | Apache-2.0 OR MIT | https://github.com/smol-rs/atomic-waker |
 | `base64` | 0.22.1 | MIT OR Apache-2.0 | https://github.com/marshallpierce/rust-base64 |
 | `base64` | 0.23.1 | MIT OR Apache-2.0 | https://github.com/marshallpierce/rust-base64 |
 | `base64ct` | 1.8.3 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
@@ -21,6 +22,7 @@ folder holds the license and notice files the crate publishes.
 | `block-buffer` | 0.12.1 | MIT OR Apache-2.0 | https://github.com/RustCrypto/utils |
 | `bumpalo` | 3.20.3 | MIT OR Apache-2.0 | https://github.com/fitzgen/bumpalo |
 | `byteorder` | 1.5.0 | Unlicense OR MIT | https://github.com/BurntSushi/byteorder |
+| `bytes` | 1.12.1 | MIT | https://github.com/tokio-rs/bytes |
 | `bzip2` | 0.5.2 | MIT OR Apache-2.0 | https://github.com/trifectatechfoundation/bzip2-rs |
 | `bzip2` | 0.6.1 | MIT OR Apache-2.0 | https://github.com/trifectatechfoundation/bzip2-rs |
 | `bzip2-sys` | 0.1.13+1.0.8 | MIT/Apache-2.0 | https://github.com/alexcrichton/bzip2-rs |
@@ -31,6 +33,7 @@ folder holds the license and notice files the crate publishes.
 | `cms` | 0.2.3 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats/tree/master/cms |
 | `const-oid` | 0.10.2 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
 | `const-oid` | 0.9.6 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats/tree/master/const-oid |
+| `core-foundation` | 0.10.1 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs |
 | `core-foundation-sys` | 0.8.7 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs |
 | `core_detect` | 1.0.0 | MIT/Apache-2.0 | https://github.com/thomcc/core_detect |
 | `cpufeatures` | 0.2.17 | MIT OR Apache-2.0 | https://github.com/RustCrypto/utils |
@@ -56,19 +59,33 @@ folder holds the license and notice files the crate publishes.
 | `filetime` | 0.2.29 | MIT/Apache-2.0 | https://github.com/alexcrichton/filetime |
 | `flagset` | 0.4.7 | Apache-2.0 | https://github.com/enarx/flagset |
 | `flate2` | 1.1.10 | MIT OR Apache-2.0 | https://github.com/rust-lang/flate2-rs |
+| `fnv` | 1.0.7 | Apache-2.0 / MIT | https://github.com/servo/rust-fnv |
 | `foldhash` | 0.1.5 | Zlib | https://github.com/orlp/foldhash |
 | `form_urlencoded` | 1.2.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-url |
 | `fstool` | 0.4.35 | MIT | https://github.com/KarpelesLab/fstool |
+| `futures-channel` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
+| `futures-core` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
+| `futures-sink` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
+| `futures-task` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
+| `futures-util` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
 | `generic-array` | 0.14.7 | MIT | https://github.com/fizyk20/generic-array.git |
 | `getrandom` | 0.2.17 | MIT OR Apache-2.0 | https://github.com/rust-random/getrandom |
 | `getrandom` | 0.4.3 | MIT OR Apache-2.0 | https://github.com/rust-random/getrandom |
 | `glob` | 0.3.4 | MIT OR Apache-2.0 | https://github.com/rust-lang/glob |
+| `h2` | 0.4.20 | MIT | https://github.com/hyperium/h2 |
 | `hashbrown` | 0.15.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
 | `hashbrown` | 0.17.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
 | `hashlink` | 0.10.0 | MIT OR Apache-2.0 | https://github.com/kyren/hashlink |
 | `hayro-jpeg2000` | 0.3.5 | Apache-2.0 OR MIT | https://github.com/LaurenzV/hayro |
 | `hfsplus` | 0.4.0 | MIT | Vendored in `rust/vendor` with Russet patches |
+| `http` | 1.5.0 | MIT OR Apache-2.0 | https://github.com/hyperium/http |
+| `http-body` | 1.1.0 | MIT | https://github.com/hyperium/http-body |
+| `http-body-util` | 0.1.5 | MIT | https://github.com/hyperium/http-body |
+| `httparse` | 1.10.1 | MIT OR Apache-2.0 | https://github.com/seanmonstar/httparse |
 | `hybrid-array` | 0.4.15 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hybrid-array |
+| `hyper` | 1.12.0 | MIT | https://github.com/hyperium/hyper |
+| `hyper-rustls` | 0.27.10 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/hyper-rustls |
+| `hyper-util` | 0.1.21 | MIT | https://github.com/hyperium/hyper-util |
 | `iana-time-zone` | 0.1.65 | MIT OR Apache-2.0 | https://github.com/strawlab/iana-time-zone |
 | `icns` | 0.5.0 | MIT | https://github.com/mdsteele/rust-icns |
 | `icu_collections` | 2.3.0 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
@@ -81,6 +98,7 @@ folder holds the license and notice files the crate publishes.
 | `idna` | 1.1.0 | MIT OR Apache-2.0 | https://github.com/servo/rust-url/ |
 | `idna_adapter` | 1.2.2 | Apache-2.0 OR MIT | https://github.com/hsivonen/idna_adapter |
 | `indexmap` | 2.14.2 | Apache-2.0 OR MIT | https://github.com/indexmap-rs/indexmap |
+| `ipnet` | 2.12.2 | MIT OR Apache-2.0 | https://github.com/krisprice/ipnet |
 | `itoa` | 1.0.18 | MIT OR Apache-2.0 | https://github.com/dtolnay/itoa |
 | `libbz2-rs-sys` | 0.2.5 | bzip2-1.0.6 | https://github.com/trifectatechfoundation/libbzip2-rs |
 | `libc` | 0.2.190 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc |
@@ -96,6 +114,7 @@ folder holds the license and notice files the crate publishes.
 | `memchr` | 2.8.3 | Unlicense OR MIT | https://github.com/BurntSushi/memchr |
 | `miniz_oxide` | 0.8.9 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | `miniz_oxide` | 0.9.1 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
+| `mio` | 1.2.4 | MIT | https://github.com/tokio-rs/mio |
 | `multiversion_no_op` | 1.0.0 | Apache-2.0 OR MIT | https://github.com/hsivonen/multiversion_no_op |
 | `num-bigint` | 0.4.8 | MIT OR Apache-2.0 | https://github.com/rust-num/num-bigint |
 | `num-conv` | 0.2.2 | MIT OR Apache-2.0 | https://github.com/jhpratt/num-conv |
@@ -105,8 +124,10 @@ folder holds the license and notice files the crate publishes.
 | `objc2-encode` | 4.1.0 | MIT | https://github.com/madsmtm/objc2 |
 | `objc2-exception-helper` | 0.1.1 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |
 | `once_cell` | 1.21.4 | MIT OR Apache-2.0 | https://github.com/matklad/once_cell |
+| `openssl-probe` | 0.2.1 | MIT OR Apache-2.0 | https://github.com/rustls/openssl-probe |
 | `pem-rfc7468` | 0.7.0 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats/tree/master/pem-rfc7468 |
 | `percent-encoding` | 2.3.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-url/ |
+| `pin-project-lite` | 0.2.17 | Apache-2.0 OR MIT | https://github.com/taiki-e/pin-project-lite |
 | `plist` | 1.10.1 | MIT | https://github.com/ebarnard/rust-plist/ |
 | `png` | 0.18.1 | MIT OR Apache-2.0 | https://github.com/image-rs/image-png |
 | `potential_utf` | 0.1.6 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
@@ -117,16 +138,21 @@ folder holds the license and notice files the crate publishes.
 | `regex` | 1.13.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
 | `regex-automata` | 0.4.18 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
 | `regex-syntax` | 0.8.11 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
+| `reqwest` | 0.13.5 | MIT OR Apache-2.0 | https://github.com/seanmonstar/reqwest |
 | `ring` | 0.17.14 | Apache-2.0 AND ISC | https://github.com/briansmith/ring |
 | `roxmltree` | 0.20.0 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree |
 | `rustix` | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/rustix |
 | `rustls` | 0.23.45 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls |
+| `rustls-native-certs` | 0.8.4 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls-native-certs |
 | `rustls-pemfile` | 2.2.0 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/pemfile |
 | `rustls-pki-types` | 1.15.1 | MIT OR Apache-2.0 | https://github.com/rustls/pki-types |
+| `rustls-platform-verifier` | 0.7.1 | MIT OR Apache-2.0 | https://github.com/rustls/rustls-platform-verifier |
 | `rustls-webpki` | 0.103.15 | ISC | https://github.com/rustls/webpki |
 | `ryu` | 1.0.23 | Apache-2.0 OR BSL-1.0 | https://github.com/dtolnay/ryu |
 | `schannel` | 0.1.29 | MIT | https://github.com/steffengy/schannel-rs |
 | `scopeguard` | 1.2.0 | MIT OR Apache-2.0 | https://github.com/bluss/scopeguard |
+| `security-framework` | 3.7.0 | MIT OR Apache-2.0 | https://github.com/kornelski/rust-security-framework |
+| `security-framework-sys` | 2.17.0 | MIT OR Apache-2.0 | https://github.com/kornelski/rust-security-framework |
 | `serde` | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
 | `serde_core` | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
 | `serde_derive` | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
@@ -137,12 +163,15 @@ folder holds the license and notice files the crate publishes.
 | `sha2` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
 | `simd-adler32` | 0.3.10 | MIT | https://github.com/mcountryman/simd-adler32 |
 | `simdutf8` | 0.1.5 | MIT OR Apache-2.0 | https://github.com/rusticstuff/simdutf8 |
+| `slab` | 0.4.12 | MIT | https://github.com/tokio-rs/slab |
 | `smallvec` | 1.16.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-smallvec |
+| `socket2` | 0.6.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/socket2 |
 | `spki` | 0.7.3 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats/tree/master/spki |
 | `stable_deref_trait` | 1.2.1 | MIT OR Apache-2.0 | https://github.com/storyyeller/stable_deref_trait |
 | `subtle` | 2.6.1 | BSD-3-Clause | https://github.com/dalek-cryptography/subtle |
 | `syn` | 2.0.119 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn |
 | `syn` | 3.0.6 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn |
+| `sync_wrapper` | 1.0.2 | Apache-2.0 | https://github.com/Actyx/sync_wrapper |
 | `synstructure` | 0.14.0 | MIT | https://github.com/mystor/synstructure |
 | `tar` | 0.4.46 | MIT OR Apache-2.0 | https://github.com/composefs/tar-rs |
 | `tempfile` | 3.27.0 | MIT OR Apache-2.0 | https://github.com/Stebalien/tempfile |
@@ -155,6 +184,17 @@ folder holds the license and notice files the crate publishes.
 | `tinyvec` | 1.13.3 | Zlib OR Apache-2.0 OR MIT | https://github.com/Lokathor/tinyvec |
 | `tls_codec` | 0.4.2 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
 | `tls_codec_derive` | 0.4.2 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
+| `tokio` | 1.53.2 | MIT | https://github.com/tokio-rs/tokio |
+| `tokio-macros` | 2.7.2 | MIT | https://github.com/tokio-rs/tokio |
+| `tokio-rustls` | 0.26.6 | MIT OR Apache-2.0 | https://github.com/rustls/tokio-rustls |
+| `tokio-util` | 0.7.20 | MIT | https://github.com/tokio-rs/tokio |
+| `tower` | 0.5.3 | MIT | https://github.com/tower-rs/tower |
+| `tower-http` | 0.6.11 | MIT | https://github.com/tower-rs/tower-http |
+| `tower-layer` | 0.3.3 | MIT | https://github.com/tower-rs/tower |
+| `tower-service` | 0.3.3 | MIT | https://github.com/tower-rs/tower |
+| `tracing` | 0.1.44 | MIT | https://github.com/tokio-rs/tracing |
+| `tracing-core` | 0.1.36 | MIT | https://github.com/tokio-rs/tracing |
+| `try-lock` | 0.2.5 | MIT | https://github.com/seanmonstar/try-lock |
 | `typenum` | 1.20.1 | MIT OR Apache-2.0 | https://github.com/paholg/typenum |
 | `udif` | 0.4.2 | MIT | Vendored in `rust/vendor` with Russet patches |
 | `unicode-ident` | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident |
@@ -164,6 +204,7 @@ folder holds the license and notice files the crate publishes.
 | `url` | 2.5.8 | MIT OR Apache-2.0 | https://github.com/servo/rust-url |
 | `utf8_iter` | 1.0.4 | Apache-2.0 OR MIT | https://github.com/hsivonen/utf8_iter |
 | `uuid` | 1.27.0 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid |
+| `want` | 0.3.2 | MIT | https://github.com/seanmonstar/want |
 | `windows-link` | 0.2.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | `windows-sys` | 0.61.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | `writeable` | 0.6.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
