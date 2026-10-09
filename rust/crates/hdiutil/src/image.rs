@@ -119,6 +119,22 @@ fn plist_has_license(path: &Path, koly: &udif::KolyHeader) -> io::Result<bool> {
     Ok(xml.windows(key.len()).any(|w| w == key))
 }
 
+/// The bytes a partition's runs decode to, apart from zero fill.
+fn data_bytes(partition: &udif::PartitionEntry) -> u64 {
+    partition
+        .block_map
+        .block_runs
+        .iter()
+        .filter(|run| {
+            !matches!(
+                run.block_type,
+                BlockType::ZeroFill | BlockType::Comment | BlockType::End
+            ) && !(run.block_type == BlockType::Ignore && run.compressed_length == 0)
+        })
+        .map(|run| run.sector_count.saturating_mul(512))
+        .fold(0, u64::saturating_add)
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Filesystem {
     Hfs,
@@ -148,12 +164,14 @@ pub fn extract(image: &Path, destination: &Path, limits: Limits) -> io::Result<E
     check_supported(image)?;
     let mut reader = udif::DmgReader::new(BufReader::new(File::open(image)?))
         .map_err(|e| udif_error(image, e))?;
-    // A partition is decompressed whole before its files are read, so its
-    // declared size counts against the extraction's total.
+    // A partition is decompressed before its files are read, so its data
+    // counts against the extraction's total. Zero-fill runs are left as
+    // holes and don't count: installer volumes often declare far more space
+    // than they use.
     if reader
         .partitions()
         .iter()
-        .any(|p| p.block_map.sector_count.saturating_mul(512) > limits.max_total_bytes)
+        .any(|p| data_bytes(p) > limits.max_total_bytes)
     {
         return Err(invalid(format!(
             "{} declares a volume larger than the extraction limit",
@@ -165,7 +183,7 @@ pub fn extract(image: &Path, destination: &Path, limits: Limits) -> io::Result<E
     for id in ids {
         let mut partition = tempfile::tempfile_in(destination)?;
         reader
-            .decompress_partition_to(id, &mut partition)
+            .extract_partition_sparse(id, &mut partition)
             .map_err(|e| udif_error(image, e))?;
         let Some(filesystem) = sniff(&mut partition)? else {
             continue;

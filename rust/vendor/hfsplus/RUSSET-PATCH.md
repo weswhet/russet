@@ -30,3 +30,8 @@ transparently compressed files, against the same images mounted by macOS.
 - **Record flags.** `CatalogFile::flags` exposes the catalog file record's
   flags, so callers can tell hard links (`kHFSHasLinkChainMask`, 0x20) from
   Finder aliases, which share their `fdrp`/`MACS` and `hlnk`/`hfs+` types.
+- **Fragmented B-trees.** A catalog or attributes file with more than eight
+  extents keeps the rest in the extents overflow file, and B-tree reads only
+  followed the inline eight ("fork offset exceeds extent capacity").
+  `HfsVolume` now looks those extents up when it opens the tree, and
+  `BTreeHeaderRecord::overflow_extents` holds them.

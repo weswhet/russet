@@ -96,13 +96,25 @@ pub struct DmgReader<R> {
 /// Largest resource plist read. Russet patch.
 const MAX_PLIST_LENGTH: u64 = 64 << 20;
 /// Largest block run held in memory, compressed or decoded. hdiutil writes
-/// runs of 1 MiB. Russet patch.
+/// runs of 1 MiB, but other tools write much larger ones, so
+/// [`DmgReader::extract_partition_sparse`] streams every kind it can and
+/// only LZFSE and ADC runs are held in memory there. Russet patch.
 const MAX_RUN_BYTES: u64 = 64 << 20;
 
+/// A buffer length for a run read into memory, refused past
+/// [`MAX_RUN_BYTES`]. Russet patch.
+fn run_buffer(length: u64) -> Result<usize> {
+    if length > MAX_RUN_BYTES {
+        return Err(DppError::InvalidBlockMap("block run is too large".into()));
+    }
+    Ok(length as usize)
+}
+
 /// Checks every block run against the file before anything is allocated
-/// from it: stored data must lie inside the data fork, and runs that are
-/// read into memory must be bounded. Zero-fill runs may be any size; their
-/// zeros are written in pieces. Russet patch.
+/// from it: stored data must lie inside the data fork, and a run may not
+/// store more than it decodes to when it's stored raw. Runs that are read
+/// into memory are bounded where they're read, by [`run_buffer`]. Russet
+/// patch.
 fn validate_block_maps(
     koly: &KolyHeader,
     partitions: &[PartitionEntry],
@@ -132,12 +144,10 @@ fn validate_block_maps(
             match run.block_type {
                 BlockType::ZeroFill | BlockType::Comment | BlockType::End => continue,
                 BlockType::Ignore if run.compressed_length == 0 => continue,
-                BlockType::Raw | BlockType::Ignore => {}
-                _ if decoded > MAX_RUN_BYTES => return bad("block run is too large"),
+                BlockType::Raw | BlockType::Ignore if run.compressed_length > decoded => {
+                    return bad("block run stores more than it declares");
+                }
                 _ => {}
-            }
-            if run.compressed_length > MAX_RUN_BYTES {
-                return bad("block run is too large");
             }
             let end = run.compressed_offset.checked_add(run.compressed_length);
             if end.is_none_or(|end| end > koly.data_fork_length) {
@@ -146,6 +156,13 @@ fn validate_block_maps(
         }
     }
     Ok(())
+}
+
+/// Copies a decoder's output, stopping one byte past `expected` so a run
+/// that decodes to more than it declares is caught without decoding it all.
+/// Russet patch.
+fn copy_bounded<R: Read, W: Write>(decoder: R, writer: &mut W, expected: u64) -> Result<u64> {
+    Ok(std::io::copy(&mut decoder.take(expected + 1), writer)?)
 }
 
 /// Writes `count` zero bytes without allocating them all. Russet patch.
@@ -339,7 +356,7 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = flate2::read::ZlibDecoder::new(&compressed[..]);
@@ -350,7 +367,7 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = bzip2::read::BzDecoder::new(&compressed[..]);
@@ -361,7 +378,7 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let end = out_offset as usize + out_size as usize;
@@ -371,7 +388,7 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = lzma_rust2::XzReader::new(&compressed[..], false);
@@ -383,7 +400,7 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = adc::AdcDecoder::new(&compressed[..]);
@@ -439,7 +456,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut buf = vec![0u8; block_run.compressed_length as usize];
+                        let mut buf = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut buf)?;
                         writer.write_all(&buf)?;
                         bytes_written += block_run.compressed_length;
@@ -466,11 +483,11 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = flate2::read::ZlibDecoder::new(&compressed[..]);
-                    let mut decompressed = vec![0u8; out_size as usize];
+                    let mut decompressed = vec![0u8; run_buffer(out_size)?];
                     decode_exact(&mut decoder, &mut decompressed, "zlib")?;
                     writer.write_all(&decompressed)?;
                     bytes_written += out_size;
@@ -479,11 +496,11 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = bzip2::read::BzDecoder::new(&compressed[..]);
-                    let mut decompressed = vec![0u8; out_size as usize];
+                    let mut decompressed = vec![0u8; run_buffer(out_size)?];
                     decode_exact(&mut decoder, &mut decompressed, "bzip2")?;
                     writer.write_all(&decompressed)?;
                     bytes_written += out_size;
@@ -492,10 +509,10 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
-                    let mut block = vec![0u8; out_size as usize];
+                    let mut block = vec![0u8; run_buffer(out_size)?];
                     decode_lzfse_exact(&compressed, &mut block)?;
                     writer.write_all(&block)?;
                     bytes_written += out_size;
@@ -504,11 +521,11 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = lzma_rust2::XzReader::new(&compressed[..], false);
-                    let mut decompressed = vec![0u8; out_size as usize];
+                    let mut decompressed = vec![0u8; run_buffer(out_size)?];
                     decode_exact(&mut decoder, &mut decompressed, "xz")?;
                     writer.write_all(&decompressed)?;
                     bytes_written += out_size;
@@ -518,11 +535,11 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                    let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut compressed)?;
 
                     let mut decoder = adc::AdcDecoder::new(&compressed[..]);
-                    let mut decompressed = vec![0u8; out_size as usize];
+                    let mut decompressed = vec![0u8; run_buffer(out_size)?];
                     decode_exact(&mut decoder, &mut decompressed, "adc")?;
                     writer.write_all(&decompressed)?;
                     bytes_written += out_size;
@@ -542,6 +559,93 @@ impl<R: Read + Seek> DmgReader<R> {
         }
 
         Ok(bytes_written)
+    }
+
+    /// Writes a partition into `file` at its offsets, leaving zero-fill runs
+    /// and gaps as holes, so an installer volume that declares many
+    /// gigabytes of free space takes only the space its data needs. Raw,
+    /// zlib, bzip2, and xz runs are streamed whatever their size; LZFSE and
+    /// ADC runs are decoded in memory and bounded. Returns the bytes of data
+    /// written. Russet patch.
+    pub fn extract_partition_sparse(&mut self, partition_id: i32, file: &mut File) -> Result<u64> {
+        let partition = self
+            .partitions
+            .iter()
+            .find(|p| p.id == partition_id)
+            .ok_or_else(|| DppError::FileNotFound(format!("partition {}", partition_id)))?
+            .clone();
+        let mut data = 0u64;
+        for run in &partition.block_map.block_runs {
+            let out_size = run.sector_count * SECTOR_SIZE;
+            let stored = match run.block_type {
+                BlockType::ZeroFill | BlockType::Comment | BlockType::End => continue,
+                BlockType::Ignore if run.compressed_length == 0 => continue,
+                _ => run.compressed_length,
+            };
+            file.seek(SeekFrom::Start(run.sector_number * SECTOR_SIZE))?;
+            self.reader.seek(SeekFrom::Start(
+                self.koly.data_fork_offset + run.compressed_offset,
+            ))?;
+            let source = (&mut self.reader).take(stored);
+            let (written, format) = match run.block_type {
+                BlockType::Raw | BlockType::Ignore => {
+                    // A raw run may store less than it declares; the rest
+                    // stays a hole, which reads as zeros.
+                    let mut source = source;
+                    let copied = std::io::copy(&mut source, file)?;
+                    if copied != stored {
+                        return Err(DppError::Decompression(format!(
+                            "raw run stored {copied} bytes, expected {stored}"
+                        )));
+                    }
+                    data += copied;
+                    continue;
+                }
+                BlockType::Zlib => (
+                    copy_bounded(flate2::read::ZlibDecoder::new(source), file, out_size)?,
+                    "zlib",
+                ),
+                BlockType::Bzip2 => (
+                    copy_bounded(bzip2::read::BzDecoder::new(source), file, out_size)?,
+                    "bzip2",
+                ),
+                BlockType::Xz => (
+                    copy_bounded(lzma_rust2::XzReader::new(source, false), file, out_size)?,
+                    "xz",
+                ),
+                BlockType::Lzfse => {
+                    let mut compressed = vec![0u8; run_buffer(stored)?];
+                    let mut source = source;
+                    source.read_exact(&mut compressed)?;
+                    let mut block = vec![0u8; run_buffer(out_size)?];
+                    decode_lzfse_exact(&compressed, &mut block)?;
+                    file.write_all(&block)?;
+                    (out_size, "lzfse")
+                }
+                BlockType::Adc => {
+                    let mut compressed = vec![0u8; run_buffer(stored)?];
+                    let mut source = source;
+                    source.read_exact(&mut compressed)?;
+                    let mut block = vec![0u8; run_buffer(out_size)?];
+                    decode_exact(
+                        &mut adc::AdcDecoder::new(&compressed[..]),
+                        &mut block,
+                        "adc",
+                    )?;
+                    file.write_all(&block)?;
+                    (out_size, "adc")
+                }
+                BlockType::ZeroFill | BlockType::Comment | BlockType::End => unreachable!(),
+            };
+            if written != out_size {
+                return Err(DppError::Decompression(format!(
+                    "{format} decoded {written} bytes, expected {out_size}"
+                )));
+            }
+            data += written;
+        }
+        file.set_len(partition.block_map.sector_count * SECTOR_SIZE)?;
+        Ok(data)
     }
 
     /// Decompress the main HFS+ partition (largest one)
@@ -622,7 +726,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                        let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut compressed)?;
 
                         let mut decoder = flate2::read::ZlibDecoder::new(&compressed[..]);
@@ -633,7 +737,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                        let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut compressed)?;
 
                         let mut decoder = bzip2::read::BzDecoder::new(&compressed[..]);
@@ -644,7 +748,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                        let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut compressed)?;
 
                         let end = out_offset as usize + out_size as usize;
@@ -654,7 +758,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                        let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut compressed)?;
 
                         let mut decoder = lzma_rust2::XzReader::new(&compressed[..], false);
@@ -667,7 +771,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut compressed = vec![0u8; block_run.compressed_length as usize];
+                        let mut compressed = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut compressed)?;
                         let mut decoder = adc::AdcDecoder::new(&compressed[..]);
                         let slice =
@@ -833,7 +937,7 @@ impl<R: Read + Seek> DmgReader<R> {
                         self.reader.seek(SeekFrom::Start(
                             self.koly.data_fork_offset + block_run.compressed_offset,
                         ))?;
-                        let mut data = vec![0u8; block_run.compressed_length as usize];
+                        let mut data = vec![0u8; run_buffer(block_run.compressed_length)?];
                         self.reader.read_exact(&mut data)?;
                         blocks.push(ReadBlock {
                             block_type: block_run.block_type,
@@ -848,7 +952,7 @@ impl<R: Read + Seek> DmgReader<R> {
                     self.reader.seek(SeekFrom::Start(
                         self.koly.data_fork_offset + block_run.compressed_offset,
                     ))?;
-                    let mut data = vec![0u8; block_run.compressed_length as usize];
+                    let mut data = vec![0u8; run_buffer(block_run.compressed_length)?];
                     self.reader.read_exact(&mut data)?;
                     blocks.push(ReadBlock {
                         block_type: block_run.block_type,

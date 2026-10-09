@@ -464,3 +464,43 @@ fn test_synthetic_open_file_streaming() {
     reader.read_to_end(&mut buf).unwrap();
     assert_eq!(buf, b"Hello, World!\n");
 }
+
+/// Russet patch: a fragmented catalog keeps extents past its inline ones in
+/// the extents overflow file, and B-tree reads must follow them.
+#[test]
+fn test_catalog_leaf_in_an_overflow_extent() {
+    let mut image = make_test_image();
+    let moved = (image.len() / BLOCK_SIZE) as u32;
+    let overflow_leaf = moved + 1;
+    image.resize(image.len() + 2 * BLOCK_SIZE, 0);
+    // Move the catalog leaf (catalog node 1, block 3) to a new block that
+    // only the overflow file points to.
+    image.copy_within(3 * BLOCK_SIZE..4 * BLOCK_SIZE, moved as usize * BLOCK_SIZE);
+    image[3 * BLOCK_SIZE..4 * BLOCK_SIZE].fill(0);
+    let header = 1024;
+    image[header + 44..header + 48].copy_from_slice(&(overflow_leaf + 1).to_be_bytes());
+    // Catalog fork: one inline block of two.
+    let catalog = header + 0x110;
+    image[catalog + 20..catalog + 24].copy_from_slice(&1u32.to_be_bytes());
+    // Extents file: its header node, then a leaf in the new last block.
+    let extents = header + 0xC0;
+    image[extents..extents + 8].copy_from_slice(&(2 * BLOCK_SIZE as u64).to_be_bytes());
+    image[extents + 12..extents + 16].copy_from_slice(&2u32.to_be_bytes());
+    image[extents + 24..extents + 28].copy_from_slice(&overflow_leaf.to_be_bytes());
+    image[extents + 28..extents + 32].copy_from_slice(&1u32.to_be_bytes());
+    write_btree_header_node(&mut image, BLOCK_SIZE, 1, 1, 10, 0);
+    let mut record = Vec::new();
+    push_u16(&mut record, 10); // key length
+    record.extend([0, 0]); // data fork, pad
+    push_u32(&mut record, 4); // catalog file ID
+    push_u32(&mut record, 1); // first block this record covers
+    push_u32(&mut record, moved);
+    push_u32(&mut record, 1);
+    record.resize(record.len() + 7 * 8, 0);
+    write_leaf_node(&mut image, overflow_leaf as usize * BLOCK_SIZE, &[record]);
+
+    let mut vol = HfsVolume::open(Cursor::new(image)).unwrap();
+    let entries = vol.list_directory("/").unwrap();
+    let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+    assert_eq!(names, vec!["hello.txt", "test.pkg"]);
+}

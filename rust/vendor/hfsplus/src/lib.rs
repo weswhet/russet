@@ -110,6 +110,12 @@ fn classify(names: Vec<String>) -> Vec<XattrEntry> {
         .collect()
 }
 
+/// Catalog IDs of the special files whose B-trees may overflow their
+/// inline extents, and the data fork's type in an extent key.
+const CATALOG_FILE_ID: u32 = 4;
+const ATTRIBUTES_FILE_ID: u32 = 8;
+const DATA_FORK: u8 = 0x00;
+
 /// High-level HFS+/HFSX volume reader
 pub struct HfsVolume<R: Read + Seek> {
     reader: R,
@@ -129,12 +135,20 @@ impl<R: Read + Seek> HfsVolume<R> {
         let header = volume::VolumeHeader::parse(&mut reader)?;
 
         // Read catalog B-tree header
-        let catalog_btree_header =
+        let mut catalog_btree_header =
             btree::read_btree_header(&mut reader, &header.catalog_file, header.block_size)?;
 
         // Read extents overflow B-tree header
         let extents_btree_header =
             btree::read_btree_header(&mut reader, &header.extents_file, header.block_size)?;
+        // Russet patch: a fragmented catalog continues in the overflow file.
+        catalog_btree_header.overflow_extents = extents::overflow_extents(
+            &mut reader,
+            &extents_btree_header,
+            CATALOG_FILE_ID,
+            DATA_FORK,
+            &header.catalog_file,
+        )?;
 
         Ok(HfsVolume {
             reader,
@@ -184,11 +198,19 @@ impl<R: Read + Seek> HfsVolume<R> {
             let header = if self.header.attributes_file.logical_size == 0 {
                 None
             } else {
-                Some(btree::read_btree_header(
+                let mut header = btree::read_btree_header(
                     &mut self.reader,
                     &self.header.attributes_file,
                     self.header.block_size,
-                )?)
+                )?;
+                header.overflow_extents = extents::overflow_extents(
+                    &mut self.reader,
+                    &self.extents_btree_header,
+                    ATTRIBUTES_FILE_ID,
+                    DATA_FORK,
+                    &self.header.attributes_file,
+                )?;
+                Some(header)
             };
             self.attributes_btree_header = Some(header);
         }
