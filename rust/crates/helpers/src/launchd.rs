@@ -208,10 +208,11 @@ mod tests {
                 .unwrap()
                 .as_dictionary()
                 .unwrap();
-            let path = service.socket_path();
+            // launchd's socket path, written with `/` on every platform.
+            let path = format!("/var/run/{}", service.name());
             assert_eq!(
                 socket.get("SockPathName").unwrap().as_string(),
-                path.to_str()
+                Some(path.as_str())
             );
             assert_eq!(
                 socket.get("SockPathMode").unwrap().as_signed_integer(),
