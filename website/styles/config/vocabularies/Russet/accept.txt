@@ -48,3 +48,4 @@ Xcode
 cpio
 zlib
 pbzx
+[Dd]ownloaders?

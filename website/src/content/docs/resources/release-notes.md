@@ -45,6 +45,9 @@ then, [build Russet from source](/get-started/install/).
   `com.github.autopkg.AutoPkgGitMaster/GenerateRelocatablePython`.
 - Munki pkginfo generation and catalog rebuilding for file-based Munki
   repositories.
+- A built-in HTTP downloader for `URLDownloader` and `URLDownloaderPython`
+  that reuses connections and downloads parts of large files at once. Set
+  `UseRussetDownloader` to `false` to use curl instead.
 
 ### Platforms and installation
 

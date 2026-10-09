@@ -227,6 +227,20 @@ authentication.
 token only from these locations. For details, see
 [Preferences](/reference/preferences/).
 
+## Downloads fail with Russet's downloader
+
+**Symptom:** a download fails with Russet, but the same URL downloads with
+curl, or a server returns a different file to Russet.
+
+**Cause:** the server might depend on a curl behavior that Russet's
+downloader doesn't reproduce, such as an older version of the Transport Layer
+Security (TLS) protocol.
+
+**Resolution:** set the `UseRussetDownloader` preference to `false` to
+download with curl. To test a single recipe first, run it with
+`--key UseRussetDownloader=false`. For details, see
+[Downloads](/reference/preferences/#downloads).
+
 ## What's next
 
 - [Exit codes](/reference/exit-codes/)

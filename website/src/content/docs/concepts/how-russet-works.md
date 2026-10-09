@@ -79,7 +79,9 @@ that only macOS supports package creation and installation.
 
 Russet runs operating system tools where AutoPkg does:
 
-- **Downloads:** Russet runs curl for every download and web request.
+- **Downloads:** Russet downloads files with its built-in HTTP downloader, and
+  runs curl for other web requests and for downloads that need curl. For
+  details, see [Downloads](/reference/preferences/#downloads).
 - **Recipe repositories:** Russet runs Git to clone and update recipe
   repositories.
 - **macOS operations:** Russet runs tools such as `hdiutil` to mount disk

@@ -43,12 +43,13 @@ Russet also reads the following standard variables:
 | `XDG_CONFIG_HOME` | Linux | Parent of the `Autopkg` preference folder. Defaults to `~/.config`. |
 | `LOCALAPPDATA` | Windows | Parent of the `Autopkg` preference folder. Russet fails if this variable isn't set. |
 | `PATH` | All | Search path for curl, Git, and other tools that Russet runs by name. |
-| `SSL_CERT_FILE` | All | Certificate bundle for Transport Layer Security (TLS) connections. On macOS, if this variable names an existing file, Russet doesn't supply its bundled certificates to curl. |
+| `SSL_CERT_FILE` | All | Certificate bundle for Transport Layer Security (TLS) connections. On macOS, if this variable names an existing file, Russet doesn't supply its bundled certificates to curl or to its downloader. |
 | `SSL_CERT_DIR` | Linux, macOS | Folder of hashed certificates that `URLDownloaderPython` adds to its trust store. |
 
 Russet doesn't clear the environment of the tools that it runs. For example,
 curl and Git still read their own environment variables, such as proxy
-settings.
+settings. Russet's downloader doesn't use a proxy, so if you set a proxy
+variable such as `https_proxy`, Russet downloads files with curl.
 
 ## Related pages
 
