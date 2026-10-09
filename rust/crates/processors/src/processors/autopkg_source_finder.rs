@@ -1,6 +1,9 @@
 //! `AutoPkgSourceFinder`: find the AutoPkg source folder that GitHub's
 //! archive extracts to. A native port of the autopkg/recipes processor
 //! (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info AutoPkgSourceFinder`, or see
+//! `AutoPkgSourceFinder` in `compatibility/community-processors.json`.
 use crate::community_builders::{output, string};
 use plist::Dictionary;
 use std::fs;

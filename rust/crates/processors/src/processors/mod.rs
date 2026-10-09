@@ -120,9 +120,18 @@ mod tests {
             // deprecated MunkiCatalogBuilder, which only warns.
             let here = crates.join("processors/src/processors").join(&module);
             let munki = crates.join("munki/src/processors").join(&module);
+            let path = if here.is_file() { here } else { munki };
+            let source = std::fs::read_to_string(&path)
+                .unwrap_or_else(|_| panic!("{processor} has no module named {module}"));
+            // Each module's documentation names its processor and points to
+            // where its inputs and outputs are defined.
             assert!(
-                here.is_file() || munki.is_file(),
-                "{processor} has no module named {module}"
+                source.starts_with(&format!("//! `{processor}`: ")),
+                "{module} doesn't start with a summary of {processor}"
+            );
+            assert!(
+                source.contains(&format!("russet processor-info {processor}`")),
+                "{module} doesn't point to `russet processor-info {processor}`"
             );
         }
     }

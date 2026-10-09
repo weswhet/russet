@@ -1,5 +1,8 @@
 //! `MunkiSetDefaultCatalog`: set the pkginfo's catalogs to munkiimport's
 //! default catalog, when one is set.
+//!
+//! Inputs and outputs: run `russet processor-info MunkiSetDefaultCatalog`, or see
+//! `MunkiSetDefaultCatalog` in `compatibility/reference.json`.
 use crate::truthy;
 use plist::{Dictionary, Value};
 

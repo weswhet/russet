@@ -1,3 +1,9 @@
+//! `Unarchiver`: extract a zip archive, a tar archive (plain, gzip, bzip2, or
+//! xz), or a gzip file into a folder. It detects the format from the file
+//! name unless `archive_format` is set.
+//!
+//! Inputs and outputs: run `russet processor-info Unarchiver`, or see
+//! `Unarchiver` in `compatibility/reference.json`.
 use crate::{io, remove, string, truth, Result};
 use autopkg_platform::backend::{Backend, Tool};
 use plist::{Dictionary, Value};

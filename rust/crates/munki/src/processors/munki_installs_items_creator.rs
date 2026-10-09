@@ -1,5 +1,9 @@
-//! Native installs metadata, following Munki 7.2.0.5787 createInstallsItem.
-//! Reference: https://github.com/munki/munki/blob/8896fe831e870732aac760f76566762fc35d5d00/code/cli/munki/shared/admin/pkginfolib.swift
+//! `MunkiInstallsItemsCreator`: generate a pkginfo's installs items, natively,
+//! following Munki 7.2.0.5787 createInstallsItem.
+//! Reference: <https://github.com/munki/munki/blob/8896fe831e870732aac760f76566762fc35d5d00/code/cli/munki/shared/admin/pkginfolib.swift>
+//!
+//! Inputs and outputs: run `russet processor-info MunkiInstallsItemsCreator`, or see
+//! `MunkiInstallsItemsCreator` in `compatibility/reference.json`.
 use md5::{Digest, Md5};
 use plist::{Dictionary, Value};
 use std::{cmp::Ordering, path::Path};

@@ -1,4 +1,7 @@
 //! `PkgPayloadUnpacker`: unpack a package's Payload into a folder.
+//!
+//! Inputs and outputs: run `russet processor-info PkgPayloadUnpacker`, or see
+//! `PkgPayloadUnpacker` in `compatibility/reference.json`.
 use crate::package::{native, run};
 use crate::{io, macos_path, remove, string, truth, Result};
 use autopkg_platform::backend::{select, Backend, Tool};

@@ -1,5 +1,8 @@
 //! `PackageRequired`: fail unless the run was given an existing package or
 //! disk image with `-p`.
+//!
+//! Inputs and outputs: run `russet processor-info PackageRequired`, or see
+//! `PackageRequired` in `compatibility/reference.json`.
 use crate::{string, Result};
 use plist::Dictionary;
 use std::path::Path;

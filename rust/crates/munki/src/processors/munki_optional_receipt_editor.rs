@@ -1,5 +1,8 @@
 //! `MunkiOptionalReceiptEditor`: mark package receipts as optional in a
 //! pkginfo in the Munki repo.
+//!
+//! Inputs and outputs: run `russet processor-info MunkiOptionalReceiptEditor`, or see
+//! `MunkiOptionalReceiptEditor` in `compatibility/reference.json`.
 use crate::{string, FileRepo};
 use plist::{Dictionary, Value};
 use std::path::Path;

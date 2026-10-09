@@ -1,4 +1,7 @@
 //! `FileMover`: rename a file the way Python's `os.rename` does.
+//!
+//! Inputs and outputs: run `russet processor-info FileMover`, or see
+//! `FileMover` in `compatibility/reference.json`.
 use super::Output;
 use crate::{io, string, ExecutionFailure, Result};
 use plist::Dictionary;

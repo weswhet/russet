@@ -2,6 +2,9 @@
 //! that download. It isn't a processor a recipe runs; running it directly
 //! fails as it does in Python. These helpers fetch text with curl for
 //! `URLTextSearcher` and the community processors.
+//!
+//! Inputs and outputs: run `russet processor-info URLGetter`, or see
+//! `URLGetter` in `compatibility/reference.json`.
 use crate::{string, Result};
 use plist::{Dictionary, Value};
 use std::process::Command;

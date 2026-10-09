@@ -1,5 +1,8 @@
 //! `MunkiInfoCreator`: generate a Munki pkginfo for a package, the way
 //! `makepkginfo` does, and optionally write it to a file.
+//!
+//! Inputs and outputs: run `russet processor-info MunkiInfoCreator`, or see
+//! `MunkiInfoCreator` in `compatibility/reference.json`.
 use crate::{metadata, string};
 use plist::{Dictionary, Value};
 use std::path::Path;

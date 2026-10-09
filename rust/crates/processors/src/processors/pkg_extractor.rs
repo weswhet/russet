@@ -1,5 +1,8 @@
 //! `PkgExtractor`: extract a bundle package's Archive.pax.gz into a folder,
 //! at its default install location.
+//!
+//! Inputs and outputs: run `russet processor-info PkgExtractor`, or see
+//! `PkgExtractor` in `compatibility/reference.json`.
 use crate::package::{native, run};
 use crate::{io, read_dict, string, Result};
 use autopkg_platform::backend::{select, Backend, Tool};

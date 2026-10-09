@@ -1,4 +1,7 @@
 //! `MunkiPkginfoMerger`: merge additional keys into the pkginfo.
+//!
+//! Inputs and outputs: run `russet processor-info MunkiPkginfoMerger`, or see
+//! `MunkiPkginfoMerger` in `compatibility/reference.json`.
 use plist::{Dictionary, Value};
 
 pub fn execute(env: &mut Dictionary) -> Result<(), String> {

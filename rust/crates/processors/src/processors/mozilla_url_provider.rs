@@ -1,5 +1,8 @@
 //! `MozillaURLProvider`: find the download URL for a Mozilla product. A
 //! native port of the autopkg/recipes processor (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info MozillaURLProvider`, or see
+//! `MozillaURLProvider` in `compatibility/community-processors.json`.
 use crate::community_modern::{fetch, get, output};
 use crate::{string, Result};
 use plist::Dictionary;

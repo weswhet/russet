@@ -1,4 +1,7 @@
 //! `Copier`: copy a file or folder, found with a glob, to a destination.
+//!
+//! Inputs and outputs: run `russet processor-info Copier`, or see
+//! `Copier` in `compatibility/reference.json`.
 use super::Output;
 use crate::{copy_tree, io, matches, remove, string, truth, Result};
 use plist::Dictionary;

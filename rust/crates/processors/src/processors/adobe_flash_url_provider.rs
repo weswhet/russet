@@ -1,5 +1,8 @@
 //! `AdobeFlashURLProvider`: find the download URL for Adobe Flash Player. A
 //! native port of the autopkg/recipes processor (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info AdobeFlashURLProvider`, or see
+//! `AdobeFlashURLProvider` in `compatibility/community-processors.json`.
 use crate::community_legacy::{fetch_common, get, output, Result};
 use plist::Dictionary;
 

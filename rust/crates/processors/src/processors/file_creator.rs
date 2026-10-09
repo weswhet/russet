@@ -1,4 +1,7 @@
 //! `FileCreator`: write text to a file, and optionally set its mode.
+//!
+//! Inputs and outputs: run `russet processor-info FileCreator`, or see
+//! `FileCreator` in `compatibility/reference.json`.
 use super::Output;
 use crate::{io, mode, string, Result};
 use plist::Dictionary;

@@ -1,5 +1,8 @@
 //! `URLTextSearcher`: download text with curl and search it with a Python
 //! regular expression, saving the match and its named groups.
+//!
+//! Inputs and outputs: run `russet processor-info URLTextSearcher`, or see
+//! `URLTextSearcher` in `compatibility/reference.json`.
 use super::url_getter::fetch;
 use crate::{string, ExecutionFailure, Result};
 use plist::{Dictionary, Value};

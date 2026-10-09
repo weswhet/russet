@@ -1,6 +1,9 @@
 //! `AdobeReaderRepackager`: repackage Adobe Reader with its preinstall and
 //! distribution changes. A native port of the autopkg/recipes processor
 //! (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info AdobeReaderRepackager`, or see
+//! `AdobeReaderRepackager` in `compatibility/community-processors.json`.
 use crate::community_legacy::{output, Result};
 use plist::Dictionary;
 use std::{fs, path::Path, process::Command};

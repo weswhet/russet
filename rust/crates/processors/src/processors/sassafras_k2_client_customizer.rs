@@ -1,5 +1,8 @@
 //! `SassafrasK2ClientCustomizer`: customize a Sassafras K2 client package.
 //! A native port of the autopkg/recipes processor (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info SassafrasK2ClientCustomizer`, or see
+//! `SassafrasK2ClientCustomizer` in `compatibility/community-processors.json`.
 use crate::community_legacy::Result;
 use plist::Dictionary;
 use std::{fs, path::Path, process::Command};

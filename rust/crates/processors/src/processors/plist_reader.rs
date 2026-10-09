@@ -1,5 +1,8 @@
 //! `PlistReader`: copy keys from a property list, or a bundle's Info.plist,
 //! into environment variables.
+//!
+//! Inputs and outputs: run `russet processor-info PlistReader`, or see
+//! `PlistReader` in `compatibility/reference.json`.
 use super::Output;
 use crate::{info_path, normalized_path, read_dict, string, Result};
 use plist::{Dictionary, Value};

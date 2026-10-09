@@ -1,5 +1,8 @@
 //! `Installer`: install a package through the `russet-installd` helper on
 //! macOS, unless the recipe produced no new package or download.
+//!
+//! Inputs and outputs: run `russet processor-info Installer`, or see
+//! `Installer` in `compatibility/reference.json`.
 use crate::clients::{install_summary, mac};
 use crate::{matches, string, truth, Result};
 use autopkg_platform::processor_output as output;

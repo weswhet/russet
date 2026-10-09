@@ -1,5 +1,8 @@
 //! `FlatPkgPacker`: flatten an expanded package folder into a flat package,
 //! natively or with `pkgutil --flatten`.
+//!
+//! Inputs and outputs: run `russet processor-info FlatPkgPacker`, or see
+//! `FlatPkgPacker` in `compatibility/reference.json`.
 use crate::package::{native, run, unsupported};
 use crate::{string, Result};
 use autopkg_platform::backend::{select, Backend, Tool};

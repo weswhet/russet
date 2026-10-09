@@ -1,5 +1,8 @@
 //! `PkgCreator`: build a flat package from a package root, through the
 //! `russet-server` helper on macOS or Russet's builder on Linux.
+//!
+//! Inputs and outputs: run `russet processor-info PkgCreator`, or see
+//! `PkgCreator` in `compatibility/reference.json`.
 use crate::clients::{can_build, exists, summary};
 use crate::{string, truth, Result};
 use autopkg_platform::processor_output as output;

@@ -1,6 +1,9 @@
 //! `MSOfficeMacURLandUpdateInfoProvider`: find Microsoft Office for Mac and
 //! Edge downloads through Microsoft AutoUpdate's feed. A native port of the
 //! autopkg/recipes processor (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info MSOfficeMacURLandUpdateInfoProvider`, or see
+//! `MSOfficeMacURLandUpdateInfoProvider` in `compatibility/community-processors.json`.
 use crate::community_modern::{fetch, get, output};
 use crate::processors::sparkle_update_info_provider::version_cmp;
 use crate::{string, truth, Result};

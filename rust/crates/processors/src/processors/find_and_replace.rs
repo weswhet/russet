@@ -1,5 +1,8 @@
 //! `FindAndReplace`: replace text in a string and save the result to a
 //! variable, `output_string` unless `result_output_var_name` names another.
+//!
+//! Inputs and outputs: run `russet processor-info FindAndReplace`, or see
+//! `FindAndReplace` in `compatibility/reference.json`.
 use super::Output;
 use crate::{string, Result};
 use plist::{Dictionary, Value};

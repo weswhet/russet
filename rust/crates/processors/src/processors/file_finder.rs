@@ -1,4 +1,7 @@
 //! `FileFinder`: find the last file, in sorted order, that matches a glob.
+//!
+//! Inputs and outputs: run `russet processor-info FileFinder`, or see
+//! `FileFinder` in `compatibility/reference.json`.
 use super::Output;
 use crate::{matches, string, Result};
 use plist::{Dictionary, Value};

@@ -1,3 +1,8 @@
+//! `SparkleUpdateInfoProvider`: read a Sparkle appcast and find the latest
+//! version and its download URL.
+//!
+//! Inputs and outputs: run `russet processor-info SparkleUpdateInfoProvider`, or see
+//! `SparkleUpdateInfoProvider` in `compatibility/reference.json`.
 use crate::{string, truth, Result};
 use plist::{Dictionary, Value};
 use std::{cmp::Ordering, collections::BTreeMap};

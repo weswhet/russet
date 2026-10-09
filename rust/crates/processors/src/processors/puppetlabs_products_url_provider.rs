@@ -1,5 +1,8 @@
 //! `PuppetlabsProductsURLProvider`: find the download URL for a Puppet Labs
 //! product. A native port of the autopkg/recipes processor (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info PuppetlabsProductsURLProvider`, or see
+//! `PuppetlabsProductsURLProvider` in `compatibility/community-processors.json`.
 use crate::community_legacy::{fetch, get, output, Result};
 use plist::Dictionary;
 

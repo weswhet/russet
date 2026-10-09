@@ -1,5 +1,8 @@
 //! `Symlinker`: create a symbolic link, replacing an existing file when
 //! `overwrite` is set.
+//!
+//! Inputs and outputs: run `russet processor-info Symlinker`, or see
+//! `Symlinker` in `compatibility/reference.json`.
 use super::Output;
 use crate::{io, string, symlink, truth, Result};
 use plist::Dictionary;

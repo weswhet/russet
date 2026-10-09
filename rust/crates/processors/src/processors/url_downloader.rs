@@ -1,3 +1,10 @@
+//! `URLDownloader`: download a file into the recipe cache with Russet's native
+//! HTTP engine, or with curl when a request uses options the engine doesn't
+//! support. It skips the download when the server reports the cached file is
+//! unchanged, and records the download's metadata.
+//!
+//! Inputs and outputs: run `russet processor-info URLDownloader`, or see
+//! `URLDownloader` in `compatibility/reference.json`.
 use crate::download_transport::{self, Headers};
 use crate::{io, json_value, string, Result};
 use autopkg_platform::processor_output as output;

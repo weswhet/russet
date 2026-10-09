@@ -1,5 +1,8 @@
 //! `FlatPkgUnpacker`: expand a flat package into a folder, natively or with
 //! `pkgutil --expand`, or extract everything but its payload with `xar`.
+//!
+//! Inputs and outputs: run `russet processor-info FlatPkgUnpacker`, or see
+//! `FlatPkgUnpacker` in `compatibility/reference.json`.
 use crate::package::{native, run, unsupported};
 use crate::{io, portable_path, remove, string, truth, Result};
 use autopkg_platform::backend::{select, Backend, Tool};

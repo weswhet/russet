@@ -1,6 +1,9 @@
 //! `GenerateRelocatablePython`: build a relocatable Python framework. A
 //! native port of the autopkg/recipes processor (Apache-2.0); framework
 //! relocation follows gregneagle/relocatable-python at 8ee72fe3.
+//!
+//! Inputs and outputs: run `russet processor-info GenerateRelocatablePython`, or see
+//! `GenerateRelocatablePython` in `compatibility/community-processors.json`.
 use crate::community_builders::{output, string, truthy};
 use plist::{Dictionary, Value};
 use std::{

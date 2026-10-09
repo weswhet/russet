@@ -1,6 +1,9 @@
 //! `MakeCatalogsProcessor`: rebuild a Munki repo's catalogs. A native port
 //! of the autopkg/recipes processor (Apache-2.0) that follows Munki 7.2.0's
 //! native makecatalogs.
+//!
+//! Inputs and outputs: run `russet processor-info MakeCatalogsProcessor`, or see
+//! `MakeCatalogsProcessor` in `compatibility/community-processors.json`.
 use crate::community_builders::{output, string, truthy};
 use plist::{Dictionary, Value};
 use sha2::{Digest, Sha256};

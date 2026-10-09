@@ -1,5 +1,8 @@
 //! `StopProcessingIf`: evaluate a predicate against the environment and stop
 //! the recipe when it's true.
+//!
+//! Inputs and outputs: run `russet processor-info StopProcessingIf`, or see
+//! `StopProcessingIf` in `compatibility/reference.json`.
 use super::Output;
 use crate::{string, Result};
 use plist::Dictionary;

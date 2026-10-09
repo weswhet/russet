@@ -1,5 +1,8 @@
 //! `AppPkgCreator`: build a flat package that installs an app into
 //! /Applications, through the same helper as `PkgCreator`.
+//!
+//! Inputs and outputs: run `russet processor-info AppPkgCreator`, or see
+//! `AppPkgCreator` in `compatibility/reference.json`.
 use crate::clients::{can_build, exists, summary};
 use crate::{copy_tree, io, matches, mode, read_dict, remove, string, truth, Result};
 use autopkg_platform::processor_output as output;

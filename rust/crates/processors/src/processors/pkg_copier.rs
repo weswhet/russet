@@ -1,5 +1,8 @@
 //! `PkgCopier`: copy a package, found with a glob, to the recipe cache or
 //! `pkg_path`.
+//!
+//! Inputs and outputs: run `russet processor-info PkgCopier`, or see
+//! `PkgCopier` in `compatibility/reference.json`.
 use crate::package::log_glob;
 use crate::{string, Result};
 use autopkg_platform::processor_output as output;

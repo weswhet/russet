@@ -1,5 +1,8 @@
 //! `DmgCreator`: create a disk image from a folder, natively or with
 //! `hdiutil`.
+//!
+//! Inputs and outputs: run `russet processor-info DmgCreator`, or see
+//! `DmgCreator` in `compatibility/reference.json`.
 use crate::{io, string, truth, Result};
 use plist::{Dictionary, Value};
 use std::{path::Path, process::Command};

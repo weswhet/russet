@@ -1,5 +1,8 @@
 //! `AppDmgVersioner`: read an app's bundle identifier and version from the
 //! first app in a disk image.
+//!
+//! Inputs and outputs: run `russet processor-info AppDmgVersioner`, or see
+//! `AppDmgVersioner` in `compatibility/reference.json`.
 use crate::dmg::Mount;
 use crate::{matches, read_dict, string, Result};
 use plist::Dictionary;

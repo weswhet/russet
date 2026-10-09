@@ -1,5 +1,8 @@
 //! `PkgRootCreator`: create a package root and its folders with the given
 //! modes.
+//!
+//! Inputs and outputs: run `russet processor-info PkgRootCreator`, or see
+//! `PkgRootCreator` in `compatibility/reference.json`.
 use super::Output;
 use crate::{io, mode, remove, string, visible_path, Result};
 use plist::{Dictionary, Value};

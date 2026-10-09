@@ -1,4 +1,7 @@
 //! `PlistEditor`: merge keys into a property list and write the result.
+//!
+//! Inputs and outputs: run `russet processor-info PlistEditor`, or see
+//! `PlistEditor` in `compatibility/reference.json`.
 use super::Output;
 use crate::{read_dict, string, Result};
 use plist::{Dictionary, Value};

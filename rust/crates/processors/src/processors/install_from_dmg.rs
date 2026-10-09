@@ -1,5 +1,8 @@
 //! `InstallFromDMG`: copy items from a disk image into place through the
 //! `russet-installd` helper on macOS.
+//!
+//! Inputs and outputs: run `russet processor-info InstallFromDMG`, or see
+//! `InstallFromDMG` in `compatibility/reference.json`.
 use crate::clients::{install_summary, mac};
 use crate::dmg::Mount;
 use crate::{string, truth, Result};

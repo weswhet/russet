@@ -1,5 +1,8 @@
 //! `DeprecationWarning`: warn that a recipe is deprecated and add it to the
 //! run's deprecation summary. Other deprecated processors use [`warn`] too.
+//!
+//! Inputs and outputs: run `russet processor-info DeprecationWarning`, or see
+//! `DeprecationWarning` in `compatibility/reference.json`.
 use crate::{string, Result};
 use plist::{Dictionary, Value};
 use std::path::Path;

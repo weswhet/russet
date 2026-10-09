@@ -1,5 +1,8 @@
 //! `Versioner`: read a version from a property list, including one inside a
 //! zip archive.
+//!
+//! Inputs and outputs: run `russet processor-info Versioner`, or see
+//! `Versioner` in `compatibility/reference.json`.
 use super::Output;
 use crate::{portable_path, read_dict, string, truth, Result};
 use plist::{Dictionary, Value};

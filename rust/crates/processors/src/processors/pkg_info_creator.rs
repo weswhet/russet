@@ -1,5 +1,8 @@
 //! `PkgInfoCreator`: write a flat package's PackageInfo file from a template,
 //! with the payload's size and file count.
+//!
+//! Inputs and outputs: run `russet processor-info PkgInfoCreator`, or see
+//! `PkgInfoCreator` in `compatibility/reference.json`.
 use crate::{io, read_dict, string, Result};
 use autopkg_platform::processor_output as output;
 use plist::Dictionary;

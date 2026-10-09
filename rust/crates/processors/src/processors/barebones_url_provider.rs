@@ -1,5 +1,8 @@
 //! `BarebonesURLProvider`: find the download URL and version for BBEdit or
 //! Yojimbo. A native port of the autopkg/recipes processor (Apache-2.0).
+//!
+//! Inputs and outputs: run `russet processor-info BarebonesURLProvider`, or see
+//! `BarebonesURLProvider` in `compatibility/community-processors.json`.
 use crate::community_modern::{fetch, get, output};
 use crate::processors::sparkle_update_info_provider::version_cmp;
 use crate::{string, Result};

@@ -1,6 +1,9 @@
 //! `CodeSignatureVerifier`: verify the code signature of an app, a bundle, or
 //! an installer package found with a glob. The platform crate does the
 //! verification, natively where Russet supports it.
+//!
+//! Inputs and outputs: run `russet processor-info CodeSignatureVerifier`, or see
+//! `CodeSignatureVerifier` in `compatibility/reference.json`.
 use crate::{python_glob, Result};
 use plist::{Dictionary, Value};
 

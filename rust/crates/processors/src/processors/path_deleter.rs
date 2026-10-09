@@ -1,4 +1,7 @@
 //! `PathDeleter`: delete files and folders, retrying folders that fail.
+//!
+//! Inputs and outputs: run `russet processor-info PathDeleter`, or see
+//! `PathDeleter` in `compatibility/reference.json`.
 use super::Output;
 use crate::{remove, truth, Result};
 use plist::{Dictionary, Value};
