@@ -116,10 +116,14 @@ pub(crate) fn log_glob(key: &str, pattern: &str, paths: &[PathBuf]) {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
     use super::*;
     use crate::tests::{env, Temp};
+    #[cfg(target_os = "macos")]
     use plist::Dictionary;
-    use std::{fs, path::Path};
+    use std::fs;
+    #[cfg(unix)]
+    use std::path::Path;
     use xmltree::Element;
     /// Builds a component package the way `pkgbuild` lays it out, then runs
     /// the native package processors over it. This is the Linux path; on

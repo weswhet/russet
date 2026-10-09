@@ -32,8 +32,9 @@ mod tests {
         adobe_reader_repackager::{modify_distribution, replace_preinstall},
         adobe_reader_url_provider::execute_typed as reader,
         puppetlabs_products_url_provider::puppet_candidate,
-        sassafras_k2_client_customizer::execute as sassafras,
     };
+    #[cfg(unix)]
+    use crate::processors::sassafras_k2_client_customizer::execute as sassafras;
     use std::fs;
     #[test]
     fn runtime_errors_are_typed_without_reclassifying_processor_failures() {

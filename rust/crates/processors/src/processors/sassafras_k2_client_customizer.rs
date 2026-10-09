@@ -5,7 +5,7 @@
 //! `SassafrasK2ClientCustomizer` in `compatibility/community-processors.json`.
 use crate::community_legacy::Result;
 use plist::Dictionary;
-use std::{fs, path::Path, process::Command};
+use std::{path::Path, process::Command};
 
 pub(crate) fn execute(env: &Dictionary) -> Result<()> {
     let script = crate::string(env, "k2clientconfig_path")?;
@@ -15,7 +15,7 @@ pub(crate) fn execute(env: &Dictionary) -> Result<()> {
     }
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
+        use std::{fs, os::unix::fs::PermissionsExt};
         let mode = fs::metadata(script)
             .map_err(|e| e.to_string())?
             .permissions()
