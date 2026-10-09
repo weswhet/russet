@@ -78,7 +78,7 @@ fn python_text(value: &Value) -> Result<String> {
         _ => Err("Header values must be scalar values".into()),
     }
 }
-fn command(
+pub(crate) fn command(
     env: &Dictionary,
     python: bool,
     operation: &[std::ffi::OsString],
@@ -624,10 +624,11 @@ pub(super) fn execute_typed(
         return stage(env, &source).map_err(Into::into);
     }
     let url = string(env, "url")?.to_string();
+    let backend = download_transport::policy(env)?;
     let mut filename = None;
     if boolean(env, "prefetch_filename", false)? {
         let (command, _trust) = command(env, false, &["--head".into()])?;
-        let (headers, _) = download_transport::run(command, false)?;
+        let (headers, _) = download_transport::run(command, false, &backend)?;
         if let Some(disposition) = headers
             .get("content-disposition")
             .filter(|s| s.contains("filename="))
@@ -724,7 +725,7 @@ pub(super) fn execute_typed(
     if python {
         command.args(["--write-out", "\nAUTOPKG_EFFECTIVE_URL:%{url_effective}"]);
     }
-    let (headers, effective) = match download_transport::run(command, python) {
+    let (headers, effective) = match download_transport::run(command, python, &backend) {
         Ok(result) => result,
         Err(error) => {
             if let Some(headers) = error.incomplete.as_ref().filter(|_| python) {

@@ -27,9 +27,13 @@ filetime = "0.2"
 sha1 = "0.10"
 sha2 = "0.10"
 md-5 = "0.10"
-rustls = { version = "0.23", default-features = false, features = ["std"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
 rustls-pemfile = "2"
 base64 = "0.22"
+tokio = { version = "1.53", default-features = false, features = ["rt-multi-thread", "time", "sync", "macros"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "http2"] }
+rustls-platform-verifier = "0.7"
+hyper = { version = "1", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 schannel = "0.1"
@@ -43,3 +47,6 @@ russet-pkgutil = { path = "../pkgutil" }
 russet-xar = { path = "../xar" }
 xattr = "1"
 libc = "0.2"
+
+[dev-dependencies]
+rcgen = "0.14"

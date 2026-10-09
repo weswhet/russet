@@ -60,22 +60,27 @@ impl From<TransportFailure> for crate::ExecutionFailure {
         error.failure
     }
 }
-pub(crate) fn execute(
-    mut command: Command,
-    python: bool,
-) -> std::result::Result<(Headers, String), TransportFailure> {
+pub(crate) fn arguments(command: &Command) -> String {
     let arguments = std::iter::once(command.get_program())
         .chain(command.get_args())
         .map(|s| Value::String(s.to_string_lossy().into_owned()))
         .collect::<Vec<_>>();
-    let output = command
-        .output()
-        .map_err(|e| format!("Unable to execute curl: {e}"))?;
-    let response_headers = parse_headers(&String::from_utf8_lossy(&output.stdout));
+    plist::python_repr(&Value::Array(arguments))
+}
+
+/// Applies the downloader's handling of a curl exit status. `code` is curl's
+/// exit code, `None` when curl did not exit normally. The native engine
+/// reports its failures with the same codes, so both backends fail alike.
+pub(crate) fn check_exit(
+    python: bool,
+    code: Option<i32>,
+    response_headers: Headers,
+    message: impl FnOnce() -> String,
+) -> std::result::Result<(), TransportFailure> {
     let chunked = response_headers
         .get("transfer-encoding")
         .is_some_and(|s| s.to_ascii_lowercase().contains("chunked"));
-    if python && output.status.code() == Some(18) && chunked {
+    if python && code == Some(18) && chunked {
         return Err(TransportFailure {
             failure: crate::ExecutionFailure::unexpected(
                 "IncompleteRead: incomplete chunked response",
@@ -85,13 +90,11 @@ pub(crate) fn execute(
     }
     // urllib's fixed-size read loop accepts EOF before Content-Length, but
     // incomplete chunk framing raises IncompleteRead. curl uses exit 18 for both.
-    let accepted_short_body = python
-        && output.status.code() == Some(18)
-        && !chunked
-        && response_headers.contains_key("content-length");
-    if !output.status.success() && !accepted_short_body {
-        if python && output.status.code() == Some(22) {
-            let headers = parse_headers(&String::from_utf8_lossy(&output.stdout));
+    let accepted_short_body =
+        python && code == Some(18) && !chunked && response_headers.contains_key("content-length");
+    if code != Some(0) && !accepted_short_body {
+        if python && code == Some(22) {
+            let headers = &response_headers;
             if let Some(code) = headers.get("http_result_code") {
                 return Err(TransportFailure {
                     failure: crate::ExecutionFailure::unexpected(format!(
@@ -105,7 +108,7 @@ pub(crate) fn execute(
                 });
             }
         }
-        let message = curl_stderr(&output.stderr);
+        let message = message();
         if python {
             // urllib propagates transport exceptions (including TLS verification
             // failures) rather than wrapping them in AutoPkg's ProcessorError.
@@ -123,14 +126,25 @@ pub(crate) fn execute(
         );
         return Err(message.into());
     }
+    Ok(())
+}
+
+pub(crate) fn execute(
+    mut command: Command,
+    python: bool,
+) -> std::result::Result<(Headers, String), TransportFailure> {
+    let arguments = arguments(&command);
+    let output = command
+        .output()
+        .map_err(|e| format!("Unable to execute curl: {e}"))?;
+    check_exit(
+        python,
+        output.status.code(),
+        parse_headers(&String::from_utf8_lossy(&output.stdout)),
+        || curl_stderr(&output.stderr),
+    )?;
     if !python {
-        autopkg_platform::processor_output(
-            4,
-            format!(
-                "Curl command: {}",
-                plist::python_repr(&Value::Array(arguments))
-            ),
-        );
+        autopkg_platform::processor_output(4, format!("Curl command: {arguments}"));
     }
     let text = String::from_utf8_lossy(&output.stdout);
     let (headers, effective) = text

@@ -296,6 +296,60 @@ fn bundle_for(
     })
 }
 
+/// The roots the native download engine trusts: the same PEM files and
+/// hashed certificate directories curl receives for this request. Returns
+/// the roots with a digest of their source bytes, which identifies a client
+/// that can reuse connections. An unreadable or empty source is an error, so
+/// the request stays on curl and curl reports the problem as it does today.
+pub(crate) fn native_roots(
+    files: &[PathBuf],
+    directories: &[PathBuf],
+) -> Result<(rustls::RootCertStore, [u8; 32]), String> {
+    use sha2::Digest;
+    let mut sources = Vec::new();
+    for file in files {
+        sources.push(fs::read(file).map_err(|_| "an unreadable CA bundle".to_string())?);
+    }
+    for directory in directories {
+        let Ok(entries) = fs::read_dir(directory) else {
+            continue;
+        };
+        let mut names = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .and_then(|n| n.split_once('.'))
+                    .is_some_and(|(hash, index)| {
+                        hash.len() == 8
+                            && hash.bytes().all(|c| c.is_ascii_hexdigit())
+                            && !index.is_empty()
+                            && index.bytes().all(|c| c.is_ascii_digit())
+                    })
+            })
+            .collect::<Vec<_>>();
+        names.sort();
+        for path in names {
+            if let Ok(bytes) = fs::read(&path) {
+                sources.push(bytes);
+            }
+        }
+    }
+    let mut roots = rustls::RootCertStore::empty();
+    let mut digest = sha2::Sha256::new();
+    for bytes in &sources {
+        digest.update((bytes.len() as u64).to_le_bytes());
+        digest.update(bytes);
+        let mut slice = bytes.as_slice();
+        roots.add_parsable_certificates(rustls_pemfile::certs(&mut slice).flatten());
+    }
+    if roots.is_empty() {
+        return Err("a CA bundle without usable certificates".into());
+    }
+    Ok((roots, digest.finalize().into()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
