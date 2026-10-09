@@ -17,3 +17,6 @@ rust/crates/processors/data/certifi/cacert.pem -text
 # Keep third-party license files byte-for-byte, so `cargo xtask licenses --check`
 # matches the published crates on every checkout.
 rust/licenses/** -text
+
+# Signature fixtures are signed bytes; a line-ending change breaks them.
+rust/crates/codesign/tests/fixtures/** -text
