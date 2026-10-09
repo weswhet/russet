@@ -15,7 +15,7 @@ jobs:
       run:
         working-directory: rust/fuzz
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@nightly
@@ -31,7 +31,7 @@ jobs:
             exit 1
           fi
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fuzz-artifacts
           path: rust/fuzz/artifacts
@@ -57,7 +57,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@stable
@@ -172,7 +172,7 @@ jobs:
         run: |
           tar -xzf dist/russet-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
           docker run --rm --network none -e AUTOPKG_DISPOSABLE_CONTAINER=1 -v "$RUNNER_TEMP/russet-development-${{ matrix.target }}:/candidate:ro" -v "$GITHUB_WORKSPACE/Scripts/verify_rust_linux.sh:/verify.sh:ro" mirror.gcr.io/library/ubuntu:24.04 /bin/sh /verify.sh /candidate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: russet-development-${{ matrix.target }}
           path: rust/dist/*
