@@ -94,14 +94,14 @@ pub fn json_bytes(value: &Value) -> Vec<u8> {
     output.into_bytes()
 }
 
-fn is_lower_hex(value: &str, length: usize) -> bool {
+pub(crate) fn is_lower_hex(value: &str, length: usize) -> bool {
     value.len() == length
         && value
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-fn is_version(version: &str) -> bool {
+pub(crate) fn is_version(version: &str) -> bool {
     let parts: Vec<_> = version.split('.').collect();
     parts.len() == 3
         && parts
