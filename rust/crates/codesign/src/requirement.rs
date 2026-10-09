@@ -1,11 +1,19 @@
 //! The code requirement language that `codesign -R` and
 //! `CodeSignatureVerifier`'s `requirement` use.
 //!
-//! Supported: `identifier`, `anchor apple`, `anchor apple generic`, `certificate`
-//! (`leaf`, `root`, or a position) with `[subject.*]` or `[field.OID]`,
-//! `cdhash`, `always`, `never`, `and`, `or`, `!`, parentheses, and
-//! comments. Anything else is an error, so a requirement is never treated
-//! as satisfied when the verifier doesn't understand it.
+//! Supported: `identifier`, `anchor apple`, `anchor apple generic`,
+//! `anchor trusted`, `certificate` (`leaf`, `root`, or a position) with
+//! `[subject.*]` or `[field.OID]`, `cdhash`, `always`, `never`, `and`, `or`,
+//! `!`, parentheses, and comments. Anything else is an error, so a
+//! requirement is never treated as satisfied when the verifier doesn't
+//! understand it.
+//!
+//! `anchor trusted` means the chain ends at a root the system trusts for code
+//! signing. Russet's trust store is the three Apple roots in `data/`, which
+//! macOS trusts for code signing by default, so it holds exactly when the
+//! chain was validated to one of them, as `anchor apple generic` does.
+//! Roots that an administrator adds to macOS trust settings aren't
+//! honored, so signatures anchored at them fail instead of passing.
 
 use crate::trust::{Cert, Chain};
 use der::asn1::ObjectIdentifier;
@@ -163,6 +171,7 @@ enum Expr {
     Identifier(String),
     AnchorAppleGeneric,
     AnchorApple,
+    AnchorTrusted,
     Certificate(Slot, Field, Match),
     /// `certificate <slot> = H"..."`: the certificate's SHA-1 hash.
     CertificateHash(Slot, Vec<u8>),
@@ -265,6 +274,8 @@ impl Parser {
                     Ok(Expr::AnchorAppleGeneric)
                 } else if kind == "apple" {
                     Ok(Expr::AnchorApple)
+                } else if kind == "trusted" {
+                    Ok(Expr::AnchorTrusted)
                 } else {
                     Err(unsupported(&format!("anchor {kind}")))
                 }
@@ -409,8 +420,10 @@ fn evaluate(expr: &Expr, context: &Context) -> bool {
     match expr {
         Expr::Always(value) => *value,
         Expr::Identifier(id) => context.identifier == id,
-        // The chain was validated to one of Apple's roots.
-        Expr::AnchorAppleGeneric => context.chain.is_some(),
+        // The chain was validated to one of Apple's roots. Those are the
+        // only roots Russet trusts, so `anchor trusted` is the same check;
+        // see the module documentation.
+        Expr::AnchorAppleGeneric | Expr::AnchorTrusted => context.chain.is_some(),
         // Apple's own code: the original Apple Root CA, with Apple's code
         // signing authority directly below it.
         Expr::AnchorApple => context.chain.is_some_and(|chain| {
@@ -480,12 +493,16 @@ mod tests {
         assert!(Requirement::parse("=identifier com.google.Chrome")
             .unwrap()
             .evaluate(&context));
+        // Ad hoc code has no chain, so no trusted anchor either.
+        assert!(!Requirement::parse("anchor trusted")
+            .unwrap()
+            .evaluate(&context));
     }
 
     #[test]
     fn rejects_unsupported_clauses() {
         for text in [
-            "anchor trusted",
+            "anchor untrusted",
             "not anchor apple",
             "notarized",
             "info [CFBundleVersion] = 1",

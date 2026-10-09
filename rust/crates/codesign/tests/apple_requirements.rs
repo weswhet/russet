@@ -9,7 +9,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
 
-const REQUIREMENTS: [&str; 9] = [
+const REQUIREMENTS: [&str; 12] = [
     // SHA-1 of Apple Root CA, then of something else.
     "certificate root = H\"611e5b662c593a08ff58d14ae22452d198df6c60\"",
     "certificate root = H\"0000000000000000000000000000000000000000\"",
@@ -20,6 +20,10 @@ const REQUIREMENTS: [&str; 9] = [
     "!anchor apple",
     "!(anchor apple generic)",
     "anchor apple generic and certificate leaf[subject.OU] = T4SK8ZXCXG",
+    // EndNote X9's installer seals nested code with this.
+    "anchor trusted",
+    "!anchor trusted",
+    "anchor trusted and certificate leaf[subject.OU] = T4SK8ZXCXG",
 ];
 
 fn apple(path: &Path, requirement: &str) -> bool {
