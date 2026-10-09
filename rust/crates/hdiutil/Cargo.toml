@@ -9,7 +9,7 @@ description = "Native replacement for the hdiutil operations Russet uses: readin
 russet-fs = { path = "../fs" }
 udif = { version = "0.4.2", path = "../../vendor/udif" }
 hfsplus = { version = "0.4.0", path = "../../vendor/hfsplus" }
-apfs = "0.4.1"
+apfs = { version = "0.4.1", path = "../../vendor/apfs" }
 tempfile = "3"
 # Pinned exactly: its API is unstable before 0.5. Only the HFS+ writer is used.
 fstool = { version = "=0.4.35", default-features = false, features = ["hfs-plus", "std"] }

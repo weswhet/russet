@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/value", "crates/cli", "crates/engine", "crates/processors", "crates/platform", "crates/munki", "crates/helpers", "crates/fs", "crates/ditto", "crates/hdiutil", "crates/xar", "crates/pkgutil", "crates/installer", "crates/codesign", "crates/mkbom", "crates/pkgbuild", "crates/aa", "xtask"]
-exclude = ["vendor/fancy-regex", "vendor/udif", "vendor/hfsplus", "fuzz"]
+exclude = ["vendor/fancy-regex", "vendor/udif", "vendor/hfsplus", "vendor/apfs", "fuzz"]
 resolver = "2"
 
 [workspace.package]

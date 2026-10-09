@@ -35,19 +35,23 @@ struct Walk<'a, R: Read + Seek> {
 
 pub(crate) fn extract<R: Read + Seek>(reader: R, writer: &mut TreeWriter) -> io::Result<()> {
     let volume = ApfsVolume::open(reader).map_err(|e| error("/", e))?;
+    let root = volume.root_oid();
     let mut walk = Walk {
         volume,
         writer,
         inodes: HashMap::new(),
     };
-    walk.directory("/", Path::new(""))
+    walk.directory(root, "/", Path::new(""))
 }
 
+/// The walk addresses every entry by object ID: looking a path up scans each
+/// directory on it, so naming entries by path made extraction quadratic.
+/// Paths are kept only for error messages.
 impl<R: Read + Seek> Walk<'_, R> {
-    fn directory(&mut self, source: &str, destination: &Path) -> io::Result<()> {
+    fn directory(&mut self, oid: u64, source: &str, destination: &Path) -> io::Result<()> {
         let entries = self
             .volume
-            .list_directory(source)
+            .list_directory_by_oid(oid)
             .map_err(|e| error(source, e))?;
         for entry in entries {
             if entry.name.contains('/') {
@@ -60,18 +64,18 @@ impl<R: Read + Seek> Walk<'_, R> {
             let child = destination.join(&entry.name);
             let stat = self
                 .volume
-                .stat(&child_source)
+                .stat_by_oid(entry.oid)
                 .map_err(|e| error(&child_source, e))?;
             let mode = u32::from(stat.mode) & 0o7777;
             match entry.kind {
                 EntryKind::Directory => {
                     self.writer.create_dir(&child, Some(mode))?;
-                    self.directory(&child_source, &child)?;
+                    self.directory(entry.oid, &child_source, &child)?;
                 }
                 EntryKind::Symlink => {
-                    let target = self
-                        .volume
-                        .read_file(&child_source)
+                    let mut target = Vec::new();
+                    self.volume
+                        .read_file_to_by_oid(entry.oid, &mut target)
                         .map_err(|e| error(&child_source, e))?;
                     let target = String::from_utf8_lossy(&target);
                     let target = target.trim_end_matches('\0');
@@ -87,15 +91,15 @@ impl<R: Read + Seek> Walk<'_, R> {
                         self.inodes.insert(stat.oid, child.clone());
                     }
                     if stat.compression.is_some() {
-                        let data = self
-                            .volume
-                            .read_file(&child_source)
+                        let mut data = Vec::new();
+                        self.volume
+                            .read_file_to_by_oid(entry.oid, &mut data)
                             .map_err(|e| error(&child_source, e))?;
                         self.writer.write_file(&child, data.as_slice(), mode)?;
                     } else {
                         let reader = self
                             .volume
-                            .open_file(&child_source)
+                            .open_file_by_oid(entry.oid)
                             .map_err(|e| error(&child_source, e))?;
                         let written =
                             self.writer
@@ -108,15 +112,15 @@ impl<R: Read + Seek> Walk<'_, R> {
                     }
                 }
             }
-            self.xattrs(&child_source, &child)?;
+            self.xattrs(entry.oid, &child_source, &child)?;
         }
         Ok(())
     }
 
-    fn xattrs(&mut self, source: &str, destination: &Path) -> io::Result<()> {
+    fn xattrs(&mut self, oid: u64, source: &str, destination: &Path) -> io::Result<()> {
         for attribute in self
             .volume
-            .list_xattrs(source)
+            .list_xattrs_by_oid(oid)
             .map_err(|e| error(source, e))?
         {
             if attribute.kind != XattrKind::User || INTERNAL.contains(&attribute.name.as_str()) {
@@ -124,7 +128,7 @@ impl<R: Read + Seek> Walk<'_, R> {
             }
             if let Some(value) = self
                 .volume
-                .get_xattr(source, &attribute.name)
+                .get_xattr_by_oid(oid, &attribute.name)
                 .map_err(|e| error(source, e))?
             {
                 self.writer
