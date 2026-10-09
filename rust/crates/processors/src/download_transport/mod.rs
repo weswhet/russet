@@ -1,11 +1,12 @@
 //! The transport for URL download processors. Recipe policy stays in
-//! `downloader.rs`, which builds the curl command; this module runs it.
+//! `url_downloader.rs`, which builds the curl command; this module runs it.
 //!
 //! Two backends perform a transfer. Russet's native engine runs a request
 //! when every argument and the environment have verified equivalent
-//! behavior. Everything else, and every request when the
-//! `UseRussetDownloader` preference is false, runs the original curl
-//! command unchanged. The choice is made before any network activity, and a
+//! behavior. For `URLDownloader` and `URLDownloaderPython`, everything else,
+//! and every request when the `UseRussetDownloader` preference is false,
+//! runs the original curl command unchanged. `RussetURLDownloader` always
+//! uses the engine and fails on a request the engine can't run. The choice is made before any network activity, and a
 //! native request is never replayed through curl.
 mod chunks;
 mod curl;
@@ -29,6 +30,20 @@ pub(crate) const PREFERENCE: &str = "UseRussetDownloader";
 pub(super) struct Policy {
     /// `Err` holds the reason every request uses curl.
     native: Result<(), String>,
+    /// Whether a request that the engine can't run fails instead of running
+    /// with curl. Only `RussetURLDownloader` requires the engine.
+    required: bool,
+}
+
+impl Policy {
+    /// `RussetURLDownloader`'s policy: the native engine, whatever the
+    /// preferences say, and never curl.
+    pub(super) fn native_only() -> Self {
+        Self {
+            native: Ok(()),
+            required: true,
+        }
+    }
 }
 
 fn preference(env: &Dictionary, key: &str) -> Result<Option<Value>, String> {
@@ -65,7 +80,10 @@ pub(super) fn policy(env: &Dictionary) -> Result<Policy, crate::ExecutionFailure
         _ if preference(env, "CURL_PATH")?.is_some() => Err("CURL_PATH is set".into()),
         _ => Ok(()),
     };
-    Ok(Policy { native })
+    Ok(Policy {
+        native,
+        required: false,
+    })
 }
 
 fn debug(message: impl std::fmt::Display) {
@@ -90,16 +108,35 @@ fn run_with(
     policy: &Policy,
     chunking: chunks::ChunkPolicy,
 ) -> Result<(Headers, String), TransportFailure> {
+    // curl's own configuration doesn't apply when curl never runs, but a proxy
+    // does, and the engine can't use one.
+    let environment = if policy.required {
+        options::proxies()
+    } else {
+        options::environment(command.get_program())
+    };
     let prepared = policy
         .native
         .clone()
-        .and_then(|()| options::environment(command.get_program()))
+        .and(environment)
         .and_then(|()| options::inspect(&command, python))
         .and_then(|request| native::prepare(request, command.get_program()));
     let prepared = match prepared {
         Ok(prepared) => prepared,
+        Err(reason) if policy.required => {
+            return Err(format!(
+                "RussetURLDownloader can't download this request with Russet's native engine because of {reason}. Use URLDownloader to download it with curl."
+            )
+            .into());
+        }
         Err(reason) => {
             debug(format_args!("curl, because of {reason}"));
+            if !python {
+                autopkg_platform::processor_output(
+                    4,
+                    format!("Downloading with curl, because Russet's native engine can't reproduce {reason}"),
+                );
+            }
             return curl::execute(command, python);
         }
     };

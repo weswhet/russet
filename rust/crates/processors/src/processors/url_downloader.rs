@@ -84,12 +84,28 @@ fn python_text(value: &Value) -> Result<String> {
         _ => Err("Header values must be scalar values".into()),
     }
 }
+#[cfg(test)]
 pub(crate) fn command(
     env: &Dictionary,
     python: bool,
     operation: &[std::ffi::OsString],
 ) -> std::result::Result<(Command, Option<trust::Bundle>), crate::ExecutionFailure> {
-    let mut c = Command::new(autopkg_platform::downloads::curl_binary(env)?);
+    command_for(env, python, operation, false)
+}
+/// The request as a curl command. Native-only requests never run it, so they
+/// don't need curl installed.
+fn command_for(
+    env: &Dictionary,
+    python: bool,
+    operation: &[std::ffi::OsString],
+    native_only: bool,
+) -> std::result::Result<(Command, Option<trust::Bundle>), crate::ExecutionFailure> {
+    let program = match autopkg_platform::downloads::curl_binary(env) {
+        Ok(path) => path,
+        Err(_) if native_only => PathBuf::from(if cfg!(windows) { "curl.exe" } else { "curl" }),
+        Err(error) => return Err(error.into()),
+    };
+    let mut c = Command::new(program);
     c.args([
         "--silent",
         "--show-error",
@@ -619,6 +635,7 @@ pub(crate) fn execute_typed(
     env: &mut Dictionary,
 ) -> std::result::Result<(), crate::ExecutionFailure> {
     let python = name == "URLDownloaderPython";
+    let native_only = name == super::russet_url_downloader::NAME;
     env.remove("url_downloader_summary_result");
     env.insert("file_size".into(), 0.into());
     for key in ["last_modified", "etag", "download_url"] {
@@ -630,10 +647,17 @@ pub(crate) fn execute_typed(
         return stage(env, &source).map_err(Into::into);
     }
     let url = string(env, "url")?.to_string();
-    let backend = download_transport::policy(env)?;
+    // URLDownloader and URLDownloaderPython use the native engine when the
+    // UseRussetDownloader preference allows it, and curl otherwise.
+    // RussetURLDownloader always uses the engine.
+    let backend = if native_only {
+        download_transport::Policy::native_only()
+    } else {
+        download_transport::policy(env)?
+    };
     let mut filename = None;
     if boolean(env, "prefetch_filename", false)? {
-        let (command, _trust) = command(env, false, &["--head".into()])?;
+        let (command, _trust) = command_for(env, false, &["--head".into()], native_only)?;
         let (headers, _) = download_transport::run(command, false, &backend)?;
         if let Some(disposition) = headers
             .get("content-disposition")
@@ -698,7 +722,7 @@ pub(crate) fn execute_typed(
         .tempfile_in(&dir)
         .map_err(|e| e.to_string())?;
     crate::mode(temporary.path(), "644")?;
-    let (mut command, _trust) = match command(
+    let (mut command, _trust) = match command_for(
         env,
         python,
         &[
@@ -706,6 +730,7 @@ pub(crate) fn execute_typed(
             "--output".into(),
             temporary.path().as_os_str().to_owned(),
         ],
+        native_only,
     ) {
         Ok(command) => command,
         Err(error) => {
@@ -1019,6 +1044,39 @@ pub(crate) mod tests {
     }
     fn ok() -> String {
         "HTTP/1.1 200 OK\r\nContent-Length: 4\r\nETag: \"v1\"\r\nLast-Modified: Thu, 01 Oct 2026 00:00:00 GMT\r\nConnection: close\r\n\r\ndata".into()
+    }
+    #[test]
+    fn russet_downloader_never_runs_curl() {
+        let t = Temp::new();
+        let (url, server) = server(vec![ok()]);
+        // Neither preference that sends URLDownloader to curl applies.
+        let mut e = env(&[
+            ("url", &url),
+            ("download_dir", &t.path("downloads")),
+            ("UseRussetDownloader", "false"),
+            ("CURL_PATH", &t.path("missing-curl")),
+        ]);
+        crate::execute("RussetURLDownloader", &mut e).unwrap();
+        assert_eq!(e["download_changed"].as_boolean(), Some(true));
+        assert_eq!(e["etag"].as_string(), Some("\"v1\""));
+        let pathname = e["pathname"].as_string().unwrap().to_owned();
+        assert_eq!(fs::read(&pathname).unwrap(), b"data");
+        server.join().unwrap();
+
+        // An option only curl understands fails before any request is made,
+        // rather than running curl.
+        let jar = t.path("cookies");
+        e.insert(
+            "curl_opts".into(),
+            Value::Array(vec!["--cookie-jar".into(), jar.as_str().into()]),
+        );
+        let error = crate::execute("RussetURLDownloader", &mut e).unwrap_err();
+        assert!(
+            error.starts_with("RussetURLDownloader can't download this request"),
+            "{error}"
+        );
+        assert!(!Path::new(&jar).exists());
+        assert_eq!(fs::read(&pathname).unwrap(), b"data");
     }
     #[test]
     fn conditional_cache_missing_materialization_and_failed_transfer_state() {
