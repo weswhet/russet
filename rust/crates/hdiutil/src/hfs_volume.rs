@@ -112,7 +112,10 @@ impl<R: Read + Seek> Walk<'_, R> {
         destination: &Path,
     ) -> io::Result<()> {
         for (name, record) in entries {
-            if name.contains('/') {
+            // HFS+ separates paths with ':' internally, so a name may contain
+            // '/'. The kernel swaps the two in POSIX paths, and so does this.
+            let name = name.replace('/', ":");
+            if name.contains('\0') || name == "." || name == ".." {
                 return Err(invalid(format!(
                     "A disk image entry named {name:?} can't be represented"
                 )));
@@ -231,5 +234,25 @@ impl<R: Read + Seek> Walk<'_, R> {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hfsplus::testutil::HfsPlusImageBuilder;
+    use russet_fs::Limits;
+
+    #[test]
+    fn slashes_in_names_become_colons_as_the_kernel_shows_them() {
+        let image = HfsPlusImageBuilder::new()
+            .add_file("Africa (1 3/4 x 1/2 in).laba", b"label", 0o444)
+            .build();
+        let temp = tempfile::tempdir().unwrap();
+        let mut writer = TreeWriter::open(temp.path(), Limits::default()).unwrap();
+        extract(std::io::Cursor::new(image), &mut writer).unwrap();
+        writer.finish().unwrap();
+        let file = temp.path().join("Africa (1 3:4 x 1:2 in).laba");
+        assert_eq!(std::fs::read(file).unwrap(), b"label");
     }
 }

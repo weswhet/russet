@@ -237,12 +237,7 @@ impl TreeWriter {
                 }
             }
         };
-        match rfs::fsetxattr(
-            &fd,
-            host_xattr_name(name).as_ref(),
-            value,
-            XattrFlags::empty(),
-        ) {
+        match set_xattr_writable(&fd, host_xattr_name(name).as_ref(), value) {
             Ok(()) => {
                 self.written += value.len() as u64;
                 Ok(())
@@ -363,6 +358,22 @@ fn remove_non_directory(dir: &OwnedFd, name: &OsStr, rel: &Path) -> io::Result<(
     }
 }
 
+/// Sets an extended attribute. Linux and macOS both require write permission
+/// for that, so an entry whose mode denies the owner write access, such as a
+/// read-only file with Finder info, briefly gets it and is then restored.
+fn set_xattr_writable(fd: &OwnedFd, name: &str, value: &[u8]) -> Result<(), Errno> {
+    match rfs::fsetxattr(fd, name, value, XattrFlags::empty()) {
+        Err(Errno::ACCESS) => {
+            let original = perm(rfs::fstat(fd)?.st_mode as u32);
+            rfs::fchmod(fd, original | Mode::WUSR)?;
+            let result = rfs::fsetxattr(fd, name, value, XattrFlags::empty());
+            rfs::fchmod(fd, original)?;
+            result
+        }
+        other => other,
+    }
+}
+
 /// Opens a regular file to change its attributes. A file whose mode denies
 /// the owner read access is opened after briefly granting it, then restored.
 fn open_for_xattr(dir: &OwnedFd, name: &OsStr, mode: u32) -> io::Result<OwnedFd> {
@@ -406,5 +417,31 @@ impl Write for Limited {
 
     fn flush(&mut self) -> io::Result<()> {
         self.file.flush()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn xattrs_reach_files_the_owner_cannot_write() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut writer = TreeWriter::open(temp.path(), Limits::default()).unwrap();
+        writer
+            .write_file(Path::new("ReadOnly"), &b"data"[..], 0o444)
+            .unwrap();
+        writer
+            .set_xattr(Path::new("ReadOnly"), "com.example.test", b"value")
+            .unwrap();
+        writer.finish().unwrap();
+        let file = temp.path().join("ReadOnly");
+        let mode = std::fs::metadata(&file).unwrap().permissions().mode();
+        assert_eq!(mode & 0o7777, 0o444);
+        assert_eq!(
+            crate::get_xattr(&file, "com.example.test").unwrap(),
+            Some(b"value".to_vec())
+        );
     }
 }

@@ -39,3 +39,11 @@ Unix platform.
   partition, and the padding after the last run is written in pieces; a
   1,311-byte image declaring 2^54 sectors used to panic. LZFSE blocks are decoded
   as a stream capped one byte past their declared size, instead of in full.
+- **Sparse, streaming extraction.** `DmgReader::extract_partition_sparse`
+  writes a partition to a file at its offsets, leaves zero-fill runs and
+  gaps as holes, and streams raw, zlib, bzip2, and xz runs of any size.
+  Vendor images from tools other than `hdiutil` store runs far larger than
+  1 MiB, and installer volumes can declare tens of gigabytes they don't use.
+  The 64 MiB bound now applies where a run is read into memory (LZFSE, ADC,
+  and the in-memory decompression paths) instead of to every run when the
+  image opens.

@@ -27,6 +27,9 @@ pub struct BTreeHeaderRecord {
     pub fork: ForkData,
     /// Block size of the volume
     pub block_size: u32,
+    /// Extents past the eight in `fork`, from the extents overflow file. A
+    /// fragmented catalog or attributes file keeps them there. Russet patch.
+    pub overflow_extents: Vec<crate::volume::ExtentDescriptor>,
 }
 
 /// A B-tree node descriptor (14 bytes at the start of each node)
@@ -102,6 +105,7 @@ pub fn read_btree_header<R: Read + Seek>(
         key_compare_type,
         fork: fork.clone(),
         block_size,
+        overflow_extents: Vec::new(),
     })
 }
 
@@ -131,8 +135,13 @@ pub fn read_node<R: Read + Seek>(
 ) -> Result<BTreeNode> {
     let node_size = btree_header.node_size;
     let byte_offset_in_fork = node_number as u64 * node_size as u64;
-    let byte_offset = compute_fork_offset(
-        &btree_header.fork,
+    let byte_offset = compute_extents_offset(
+        btree_header
+            .fork
+            .extents
+            .iter()
+            .take_while(|e| e.block_count != 0)
+            .chain(&btree_header.overflow_extents),
         btree_header.block_size,
         byte_offset_in_fork,
     )?;
@@ -223,10 +232,20 @@ fn parse_node_descriptor<R: Read>(reader: &mut R) -> Result<NodeDescriptor> {
 /// Compute the absolute byte offset in the volume for a given byte offset within a fork.
 /// Walks through the fork's extent descriptors to find the right allocation block.
 pub fn compute_fork_offset(fork: &ForkData, block_size: u32, offset_in_fork: u64) -> Result<u64> {
+    compute_extents_offset(fork.extents.iter(), block_size, offset_in_fork)
+}
+
+/// `compute_fork_offset` over any run of extents, such as a fork's inline
+/// extents followed by its overflow extents. Russet patch.
+fn compute_extents_offset<'a>(
+    extents: impl Iterator<Item = &'a crate::volume::ExtentDescriptor>,
+    block_size: u32,
+    offset_in_fork: u64,
+) -> Result<u64> {
     let block_size = block_size as u64;
     let mut remaining = offset_in_fork;
 
-    for extent in &fork.extents {
+    for extent in extents {
         if extent.block_count == 0 {
             break;
         }

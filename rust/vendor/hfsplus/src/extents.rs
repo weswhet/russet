@@ -302,5 +302,35 @@ fn lookup_overflow_extents<R: Read + Seek>(
     }
 }
 
+/// The extents of a fork past its eight inline ones, from the extents
+/// overflow file, until they cover the fork's `total_blocks`. Russet patch:
+/// B-tree reads need these for a fragmented catalog or attributes file.
+pub(crate) fn overflow_extents<R: Read + Seek>(
+    reader: &mut R,
+    extents_btree: &BTreeHeaderRecord,
+    file_id: u32,
+    fork_type: u8,
+    fork: &ForkData,
+) -> Result<Vec<ExtentDescriptor>> {
+    let mut covered: u64 = fork.extents.iter().map(|e| u64::from(e.block_count)).sum();
+    let mut found = Vec::new();
+    while covered < u64::from(fork.total_blocks) {
+        let start = u32::try_from(covered)
+            .map_err(|_| HfsPlusError::InvalidBTree("fork extends past 2^32 blocks".into()))?;
+        let record = lookup_overflow_extents(reader, extents_btree, file_id, fork_type, start)?;
+        let before = covered;
+        for extent in record.into_iter().take_while(|e| e.block_count != 0) {
+            covered += u64::from(extent.block_count);
+            found.push(extent);
+        }
+        if covered == before {
+            return Err(HfsPlusError::InvalidBTree(format!(
+                "file {file_id} is missing extents past block {start}"
+            )));
+        }
+    }
+    Ok(found)
+}
+
 #[cfg(test)]
 mod tests {}

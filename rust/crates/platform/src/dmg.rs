@@ -204,7 +204,19 @@ impl Mount {
                 "DMG paths must be relative and may not contain parent-directory references".into(),
             );
         }
-        let path = self.root.join(inner);
+        let path = self.root.join(&inner);
+        // An extracted image sits on the host filesystem, which on Linux is
+        // case-sensitive, but a mounted HFS+ or APFS volume usually isn't:
+        // Reaper's recipe asks for `Reaper.app` in an image that holds
+        // `REAPER.app`. Patterns are left to the caller's glob, which falls
+        // back to matching regardless of case.
+        #[cfg(unix)]
+        let path = match self._extraction {
+            Some(_) if !inner.contains(['*', '?', '[']) => {
+                crate::case_fold::resolve(&path).unwrap_or(path)
+            }
+            _ => path,
+        };
         let root = io(self.root.canonicalize())?;
         // Validate the nearest existing ancestor and every glob match, including
         // symlinks, before exposing the mounted path to a processor.

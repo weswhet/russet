@@ -134,6 +134,40 @@ fn created_images_round_trip() {
     );
 }
 
+/// Images from tools other than `hdiutil` can store runs far larger than
+/// the 1 MiB `hdiutil` writes, and installer volumes often declare much more
+/// space than they use. Both must extract, within a limit that counts only
+/// the data.
+#[test]
+fn large_runs_and_mostly_empty_volumes_extract() {
+    use hfsplus::testutil::HfsPlusImageBuilder;
+    let big: Vec<u8> = (0..65u32 << 20).map(|i| (i % 251) as u8).collect();
+    let mut volume = HfsPlusImageBuilder::new()
+        .add_file("big.bin", &big, 0o644)
+        .build();
+    let used = volume.len();
+    volume.resize(used + (256 << 20), 0);
+    let temp = tempfile::tempdir().unwrap();
+    for method in [udif::CompressionMethod::Raw, udif::CompressionMethod::Zlib] {
+        let image = temp.path().join(format!("{method:?}.dmg"));
+        let mut writer = udif::create(&image)
+            .unwrap()
+            .compression(method)
+            .compression_level(1)
+            .chunk_size(used);
+        writer.add_partition("disk image", &volume).unwrap();
+        writer.finish().unwrap();
+        let out = tempfile::tempdir().unwrap();
+        let limits = Limits {
+            max_total_bytes: 200 << 20,
+            ..Limits::default()
+        };
+        let extraction = extract(&image, out.path(), limits).unwrap();
+        let extracted = std::fs::read(extraction.volumes[0].join("big.bin")).unwrap();
+        assert!(extracted == big, "{method:?}");
+    }
+}
+
 /// Inputs the `hdiutil_extract` fuzz target found; each must fail cleanly
 /// instead of allocating what a crafted header claims.
 #[test]
