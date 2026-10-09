@@ -200,7 +200,7 @@ fn is_macho(path: &Path) -> bool {
         .is_ok()
         && matches!(
             u32::from_be_bytes(magic),
-            0xcafe_babe | 0xcafe_babf | 0xcffa_edfe | 0xcefa_edfe
+            0xcafe_babe | 0xcafe_babf | 0xcffa_edfe | 0xcefa_edfe | 0xfeed_face | 0xfeed_facf
         )
 }
 
@@ -223,6 +223,10 @@ struct Seal<'a> {
     now: SystemTime,
     depth: usize,
     count: usize,
+    /// The outermost bundle being verified. With `--strict`, symlinks may
+    /// leave a nested bundle but not this one: helper apps in Qt and
+    /// Electron apps link to their host's Frameworks folder.
+    scope: &'a Path,
 }
 
 impl Seal<'_> {
@@ -307,8 +311,10 @@ impl Seal<'_> {
             } else if rule.nested && (is_macho(&path) || self.sealed_as_code(&key)) {
                 // Non-Mach-O files in nested-code locations are signed as
                 // code, with the signature in com.apple.cs.* attributes.
+                self.check_sideband(&path)?;
                 self.nested(&path, &key)?;
             } else {
+                self.check_sideband(&path)?;
                 let entry = self.entry(&key)?;
                 let bytes = fs::read(&path).map_err(|e| failure(&path, e))?;
                 let ok = match (entry.get("hash2"), entry.get("hash")) {
@@ -332,12 +338,21 @@ impl Seal<'_> {
         Ok(())
     }
 
+    /// With `--strict`, a file the seal covers can't have a resource fork or
+    /// Finder info. Files the seal omits, such as `.DS_Store`, may.
+    fn check_sideband(&self, path: &Path) -> Result<(), String> {
+        if self.options.strict {
+            check_detritus(self.bundle, path)?;
+        }
+        Ok(())
+    }
+
     fn symlink(&mut self, path: &Path, key: &str) -> Result<(), String> {
         let target = fs::read_link(path).map_err(|e| failure(path, e))?;
         if self.options.strict {
             let resolved = path.parent().unwrap().join(&target);
             let normalized = normalize(&resolved);
-            if target.is_absolute() || !normalized.starts_with(normalize(self.bundle)) {
+            if target.is_absolute() || !normalized.starts_with(normalize(self.scope)) {
                 return Err(failure(
                     self.bundle,
                     format!("invalid symlink {key} points outside the bundle"),
@@ -374,7 +389,7 @@ impl Seal<'_> {
             .transpose()?;
         let signature = if self.options.deep || !path.is_dir() {
             if path.is_dir() {
-                verify_at_depth(path, self.options, self.now, self.depth + 1)?
+                verify_at_depth(path, self.scope, self.options, self.now, self.depth + 1)?
             } else {
                 verify_file(path, self.now)?
             }
@@ -395,19 +410,27 @@ impl Seal<'_> {
                 self.now,
             )?
         };
-        if !signature.cdhashes.contains(&cdhash) {
-            return Err(failure(
-                self.bundle,
-                format!("a sealed resource is missing or invalid: nested code modified: {key}"),
-            ));
-        }
-        if let Some(requirement) = requirement {
-            if !signature.satisfies(&requirement) {
+        // When the seal records a requirement, codesign accepts nested code
+        // that was re-signed after the seal was made, as long as its
+        // signature is valid and satisfies that requirement; the recorded
+        // hash is then informational (Raycast's and iClicker's apps ship
+        // like this). Without a requirement, the hash must match.
+        match requirement {
+            Some(requirement) => {
+                if !signature.satisfies(&requirement) {
+                    return Err(failure(
+                        self.bundle,
+                        format!("a sealed resource is missing or invalid: nested code modified: {key} doesn't satisfy its sealed requirement"),
+                    ));
+                }
+            }
+            None if !signature.cdhashes.contains(&cdhash) => {
                 return Err(failure(
                     self.bundle,
-                    format!("nested code {key} doesn't satisfy its sealed requirement"),
+                    format!("a sealed resource is missing or invalid: nested code modified: {key}"),
                 ));
             }
+            None => {}
         }
         self.seen.push(key.to_owned());
         Ok(())
@@ -419,39 +442,34 @@ impl Seal<'_> {
 #[cfg(unix)]
 const DETRITUS: [&str; 2] = ["com.apple.FinderInfo", "com.apple.ResourceFork"];
 
-/// Fails when the bundle itself or any file in it has a resource fork or
-/// Finder info, which `codesign --strict` rejects. Folders inside the
-/// bundle, such as document packages, may have them.
+/// Fails when `path`, the bundle itself or one of the files its signature
+/// covers, has a resource fork or Finder info, which `codesign --strict`
+/// rejects. Folders inside the bundle, such as document packages, and files
+/// the seal omits may have them.
 #[cfg(unix)]
-fn check_detritus(bundle: &Path) -> Result<(), String> {
-    let mut stack = vec![bundle.to_path_buf()];
-    let mut count = 0;
-    while let Some(path) = stack.pop() {
-        count += 1;
-        if count > MAX_FILES {
-            return Err(failure(bundle, "too many files to verify"));
-        }
-        let metadata = fs::symlink_metadata(&path).map_err(|e| failure(&path, e))?;
-        let checked = path == bundle || !metadata.is_dir();
-        for name in DETRITUS.iter().filter(|_| checked) {
-            if russet_fs::get_xattr(&path, name).ok().flatten().is_some() {
-                return Err(failure(
-                    bundle,
-                    "resource fork, Finder information, or similar detritus not allowed",
-                ));
-            }
-        }
-        if metadata.is_dir() {
-            for entry in fs::read_dir(&path).map_err(|e| failure(&path, e))? {
-                stack.push(entry.map_err(|e| failure(&path, e))?.path());
-            }
+fn check_detritus(bundle: &Path, path: &Path) -> Result<(), String> {
+    for name in DETRITUS {
+        if russet_fs::get_xattr(path, name).ok().flatten().is_some() {
+            let shown = path.strip_prefix(bundle).unwrap_or(path);
+            return Err(failure(
+                bundle,
+                format!(
+                    "resource fork, Finder information, or similar detritus not allowed: {name} on {}",
+                    if shown.as_os_str().is_empty() {
+                        Path::new(".")
+                    } else {
+                        shown
+                    }
+                    .display()
+                ),
+            ));
         }
     }
     Ok(())
 }
 
 #[cfg(not(unix))]
-fn check_detritus(_bundle: &Path) -> Result<(), String> {
+fn check_detritus(_bundle: &Path, _path: &Path) -> Result<(), String> {
     Ok(())
 }
 
@@ -481,7 +499,7 @@ pub fn verify(path: &Path, options: Options, now: SystemTime) -> Result<CodeSign
     // Paths below the bundle are absolute, so the symlink check must compare
     // against an absolute bundle path too.
     let path = fs::canonicalize(path).map_err(|e| failure(path, e))?;
-    verify_at_depth(&path, options, now, 0)
+    verify_at_depth(&path, &path, options, now, 0)
 }
 
 /// Verifies a single file's signature: a Mach-O binary's embedded one, or
@@ -507,6 +525,7 @@ fn verify_file(path: &Path, now: SystemTime) -> Result<CodeSignature, String> {
 
 fn verify_at_depth(
     path: &Path,
+    scope: &Path,
     options: Options,
     now: SystemTime,
     depth: usize,
@@ -518,9 +537,17 @@ fn verify_at_depth(
         return verify_file(path, now);
     }
     if options.strict && depth == 0 {
-        check_detritus(path)?;
+        check_detritus(path, path)?;
     }
     let layout = layout(path)?;
+    if options.strict {
+        // The code directory seals the executable rather than
+        // CodeResources, so the resource walk below skips it. codesign
+        // doesn't check the Info.plist.
+        if let Some(executable) = &layout.executable {
+            check_detritus(path, executable)?;
+        }
+    }
     let info = fs::read(&layout.info).map_err(|e| failure(&layout.info, e))?;
     let resources_path = layout.root.join("_CodeSignature/CodeResources");
     let resources = fs::read(&resources_path).ok();
@@ -558,6 +585,7 @@ fn verify_at_depth(
         now,
         depth,
         count: 0,
+        scope,
     };
     walker.walk(&layout.root)?;
     let seen: std::collections::HashSet<&str> = walker.seen.iter().map(String::as_str).collect();

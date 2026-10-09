@@ -144,8 +144,9 @@ fn matches_codesign_on_attribute_and_detached_signatures() {
 }
 
 /// `codesign --strict` rejects Finder info or a resource fork on the bundle
-/// or on a file in it, but not on a folder inside it (OmniOutliner's
-/// document templates).
+/// or on a file it seals, but not on a folder inside it (OmniOutliner's
+/// document templates) or on a file the seal omits (the `.DS_Store` files
+/// in Ghotit's and MAXQDA's apps).
 #[test]
 fn detritus_matches_codesign() {
     let finder_info = {
@@ -153,7 +154,18 @@ fn detritus_matches_codesign() {
         info[8] = 0x40;
         info
     };
-    let cases: [(&str, &str, &str); 5] = [
+    let cases: [(&str, &str, &str); 8] = [
+        (
+            "omitted .DS_Store",
+            "Contents/Resources/.DS_Store",
+            "com.apple.FinderInfo",
+        ),
+        (
+            "executable",
+            "Contents/MacOS/Detritus",
+            "com.apple.FinderInfo",
+        ),
+        ("Info.plist", "Contents/Info.plist", "com.apple.FinderInfo"),
         (
             "folder",
             "Contents/Resources/Doc.pkgdir",
@@ -189,6 +201,8 @@ fn detritus_matches_codesign() {
         run(Command::new("/usr/bin/codesign")
             .args(["--force", "--sign", "-"])
             .arg(&app));
+        // Finder writes .DS_Store files after signing; the seal omits them.
+        fs::write(contents.join("Resources/.DS_Store"), "Bud1").unwrap();
         let value: &[u8] = if attribute == "com.apple.FinderInfo" {
             &finder_info
         } else {
@@ -306,4 +320,132 @@ fn rejects_script_main_executable_with_appended_bytes() {
         .unwrap();
     assert!(!apple_accepts(&app));
     assert!(verify(&app, OPTIONS, SystemTime::now()).is_err());
+}
+
+/// A helper app nested in a framework, whose Frameworks folder is a symlink
+/// to its host app's, as in Calibre's and iClicker's QtWebEngineProcess.app
+/// and iMazing's helper apps. The link leaves the helper but stays in the
+/// app, which `codesign --strict` accepts. With `escape`, the link points
+/// outside the app instead, which it rejects.
+fn helper_app(root: &Path, escape: bool) -> std::path::PathBuf {
+    let app = root.join("Host.app");
+    let contents = app.join("Contents");
+    fs::create_dir_all(contents.join("MacOS")).unwrap();
+    fs::copy("/usr/bin/true", contents.join("MacOS/Host")).unwrap();
+    plist(
+        &contents.join("Info.plist"),
+        "com.example.host",
+        Some("Host"),
+    );
+    let framework = contents.join("Frameworks/Engine.framework");
+    let version = framework.join("Versions/A");
+    fs::create_dir_all(version.join("Resources")).unwrap();
+    fs::copy("/usr/bin/true", version.join("Engine")).unwrap();
+    plist(
+        &version.join("Resources/Info.plist"),
+        "com.example.engine",
+        Some("Engine"),
+    );
+    let helper = version.join("Helpers/Helper.app/Contents");
+    fs::create_dir_all(helper.join("MacOS")).unwrap();
+    fs::copy("/usr/bin/true", helper.join("MacOS/Helper")).unwrap();
+    plist(
+        &helper.join("Info.plist"),
+        "com.example.helper",
+        Some("Helper"),
+    );
+    // From Versions/A/Helpers/Helper.app/Contents, six levels up is the
+    // host's Frameworks folder; nine is outside the app.
+    let target = if escape {
+        "../../../../../../../../.."
+    } else {
+        "../../../../../.."
+    };
+    std::os::unix::fs::symlink(target, helper.join("Frameworks")).unwrap();
+    std::os::unix::fs::symlink("A", framework.join("Versions/Current")).unwrap();
+    for (link, target) in [
+        ("Engine", "Versions/Current/Engine"),
+        ("Resources", "Versions/Current/Resources"),
+        ("Helpers", "Versions/Current/Helpers"),
+    ] {
+        std::os::unix::fs::symlink(target, framework.join(link)).unwrap();
+    }
+    for target in [
+        version.join("Helpers/Helper.app"),
+        framework.clone(),
+        app.clone(),
+    ] {
+        run(Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(target));
+    }
+    app
+}
+
+/// Nested code re-signed after its host was sealed, so its hash no longer
+/// matches the seal (as in Raycast's XPC service and iClicker's Qt
+/// framework). codesign accepts it while it satisfies the sealed
+/// requirement and rejects it once it doesn't.
+#[test]
+fn resigned_nested_code_needs_only_its_sealed_requirement() {
+    for (resign, accepted) in [
+        (&["-o", "runtime"][..], true),
+        (&["-i", "com.example.other"][..], false),
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let app = temp.path().join("Host.app");
+        let contents = app.join("Contents");
+        fs::create_dir_all(contents.join("MacOS")).unwrap();
+        fs::copy("/usr/bin/true", contents.join("MacOS/Host")).unwrap();
+        plist(
+            &contents.join("Info.plist"),
+            "com.example.host",
+            Some("Host"),
+        );
+        let framework = contents.join("Frameworks/Data.framework");
+        fs::create_dir_all(framework.join("Versions/A/Resources")).unwrap();
+        fs::copy("/usr/bin/true", framework.join("Versions/A/Data")).unwrap();
+        plist(
+            &framework.join("Versions/A/Resources/Info.plist"),
+            "com.example.data",
+            Some("Data"),
+        );
+        std::os::unix::fs::symlink("A", framework.join("Versions/Current")).unwrap();
+        std::os::unix::fs::symlink("Versions/Current/Data", framework.join("Data")).unwrap();
+        std::os::unix::fs::symlink("Versions/Current/Resources", framework.join("Resources"))
+            .unwrap();
+        let requirement = r#"-r=designated => identifier "com.example.data""#;
+        run(Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-", requirement])
+            .arg(&framework));
+        run(Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(&app));
+        run(Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-", requirement])
+            .args(resign)
+            .arg(&framework));
+        assert_eq!(apple_accepts(&app), accepted, "codesign's verdict changed");
+        for deep in [true, false] {
+            let options = Options { deep, strict: true };
+            let native = verify(&app, options, SystemTime::now());
+            assert_eq!(
+                native.is_ok(),
+                accepted,
+                "{resign:?}, deep={deep}: {native:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn symlinks_may_leave_nested_code_but_not_the_bundle() {
+    for escape in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        let app = helper_app(temp.path(), escape);
+        let apple = apple_accepts(&app);
+        assert_eq!(apple, !escape, "codesign's verdict changed");
+        let native = verify(&app, OPTIONS, SystemTime::now());
+        assert_eq!(native.is_ok(), apple, "escape={escape}: {native:?}");
+    }
 }

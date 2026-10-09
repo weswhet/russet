@@ -146,14 +146,17 @@ fn platform_utility(kind: &str, source: &str, destination: &Path) -> Result<()> 
     Ok(())
 }
 
-/// Russet's replacement for the platform utilities: `russet-ditto` for zip
-/// and gzip-compressed cpio, and the tar reader for tar archives.
+/// Russet's replacement for the platform utilities: `russet-ditto` for zip,
+/// gzip-compressed cpio, and tar archives.
 #[cfg(unix)]
 fn ditto_native(kind: &str, source: &Path, destination: &Path) -> Result<()> {
     let limits = russet_fs::Limits::default();
     let report = match kind {
         "zip" => russet_ditto::extract_zip(source, destination, limits),
         "gzip" => russet_ditto::extract_cpio(source, destination, limits),
+        _ if kind.starts_with("tar") => {
+            russet_ditto::extract_tar(tar_reader(source)?, destination, limits)
+        }
         _ => return native(kind, source, destination),
     }
     .map_err(|e| format!("Unarchiving {} failed: {e}", source.display()))?;
