@@ -6,6 +6,7 @@ mod community_modern;
 mod registry;
 pub use registry::{
     canonical_name, community_contract, community_source, contract, processor_order,
+    russet_contract,
 };
 mod dmg;
 mod download_transport;
@@ -45,6 +46,7 @@ pub fn supported() -> &'static [&'static str] {
         "FlatPkgUnpacker",
         "URLDownloader",
         "URLDownloaderPython",
+        "RussetURLDownloader",
         "URLGetter",
         "URLTextSearcher",
         "MunkiInfoCreator",
@@ -492,6 +494,7 @@ fn execute_standalone_context(
             | "FileMover"
             | "URLDownloader"
             | "URLDownloaderPython"
+            | "RussetURLDownloader"
             | "URLTextSearcher"
             | "MunkiImporter"
             | "AdobeReaderURLProvider"
@@ -512,6 +515,7 @@ fn execute_standalone_context(
         }),
         "URLDownloader" => processors::url_downloader::execute_typed(name, env),
         "URLDownloaderPython" => processors::url_downloader_python::execute_typed(env),
+        "RussetURLDownloader" => processors::russet_url_downloader::execute_typed(env),
         "URLTextSearcher" => processors::url_text_searcher::execute_typed(env).map(|_| ()),
         "MunkiImporter" => autopkg_munki::processors::munki_importer::execute_classified(env)
             .map_err(|error| match error {
@@ -673,6 +677,7 @@ fn execute_builtin(
         "PuppetlabsProductsURLProvider" => {
             processors::puppetlabs_products_url_provider::execute(env)
         }
+        "RussetURLDownloader" => processors::russet_url_downloader::execute(env),
         "SassafrasK2ClientCustomizer" => processors::sassafras_k2_client_customizer::execute(env),
         "SignToolVerifier" => processors::sign_tool_verifier::execute(env),
         "SparkleUpdateInfoProvider" => processors::sparkle_update_info_provider::execute(env),

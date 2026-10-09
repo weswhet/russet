@@ -49,6 +49,7 @@ pub(crate) mod pkg_root_creator;
 pub(crate) mod plist_editor;
 pub(crate) mod plist_reader;
 pub(crate) mod puppetlabs_products_url_provider;
+pub(crate) mod russet_url_downloader;
 pub(crate) mod sassafras_k2_client_customizer;
 pub(crate) mod sign_tool_verifier;
 pub(crate) mod sparkle_update_info_provider;

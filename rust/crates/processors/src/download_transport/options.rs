@@ -480,9 +480,9 @@ fn default_bundle() -> Option<PathBuf> {
     .find(|path| path.is_file())
 }
 
-/// Configuration curl reads that the engine does not interpret. Any of it
-/// keeps every request on curl.
-pub(crate) fn environment(program: &OsStr) -> Result<(), Reason> {
+/// Proxy settings, which the engine doesn't support. A native-only request
+/// fails rather than bypass a proxy.
+pub(crate) fn proxies() -> Result<(), Reason> {
     for name in [
         "http_proxy",
         "HTTP_PROXY",
@@ -490,11 +490,20 @@ pub(crate) fn environment(program: &OsStr) -> Result<(), Reason> {
         "HTTPS_PROXY",
         "all_proxy",
         "ALL_PROXY",
-        "CURL_SSL_BACKEND",
     ] {
         if std::env::var_os(name).is_some_and(|v| !v.is_empty()) {
             return Err(format!("the {name} environment variable"));
         }
+    }
+    Ok(())
+}
+
+/// Configuration curl reads that the engine does not interpret. Any of it
+/// keeps every request on curl.
+pub(crate) fn environment(program: &OsStr) -> Result<(), Reason> {
+    proxies()?;
+    if std::env::var_os("CURL_SSL_BACKEND").is_some_and(|v| !v.is_empty()) {
+        return Err("the CURL_SSL_BACKEND environment variable".into());
     }
     if curl_config(program).is_some() {
         return Err("a curl configuration file".into());

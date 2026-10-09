@@ -1,0 +1,449 @@
+{
+  "schema_version": 1,
+  "description": "Processors that Russet adds to the AutoPkg processor set. Each entry has the same shape as reference.json, and ordering has the same shape as cli-processor-order.json.",
+  "processors": {
+    "RussetURLDownloader": {
+      "description": "Downloads a URL to the specified download_dir with Russet's native HTTP engine, splitting a large download into parallel range requests when the server allows it. It never runs curl; a request the engine can't reproduce exactly fails.",
+      "input_variables": {
+        "CHECK_FILESIZE_ONLY": {
+          "default": false,
+          "description": "If True, a server's ETag and Last-Modified headers will not be checked to verify whether a download is newer than a cached item, and only Content-Length (filesize) will be used. This is useful for cases where a download always redirects to different mirrors, which could cause items to be needlessly re-downloaded. Defaults to False.",
+          "required": false
+        },
+        "COMPUTE_HASHES": {
+          "default": false,
+          "description": "Determine whether to compute md5, sha1, and sha256 hashes of the downloaded file.",
+          "required": false
+        },
+        "DOWNLOAD_MISSING_FILE": {
+          "default": true,
+          "description": "If the file is missing but matching metadata is present, download the file again. Defaults to True as most current recipes expect the files to be present. This re-fetch does not mark the item as changed (download_changed stays false); download_changed reflects the remote resource only. Omit the key to use the default; a blank string disables it. Note that a recipe Input of null resolves to a blank string during variable substitution, and so disables it.",
+          "required": false
+        },
+        "HEADERS_TO_TEST": {
+          "default": [
+            "ETag",
+            "Last-Modified",
+            "Content-Length"
+          ],
+          "description": "List of HTTP headers compared against the previous download to detect changes. Setting this replaces the default list for comparison purposes; if 'CHECK_FILESIZE_ONLY' is enabled, only Content-Length is compared. The default headers are always recorded in .info.json regardless, so narrowing this list does not discard cached metadata.",
+          "required": false
+        },
+        "PKG": {
+          "description": "Local path to the pkg/dmg we'd otherwise download. If provided, the download is skipped and we just use this package or disk image.",
+          "required": false
+        },
+        "curl_opts": {
+          "description": "Optional array of curl options to include with the download request. RussetURLDownloader accepts only the options its native engine reproduces exactly, and fails on any other.",
+          "required": false
+        },
+        "download_dir": {
+          "description": "The directory where the file will be downloaded to. Defaults to RECIPE_CACHE_DIR/downloads.",
+          "required": false
+        },
+        "filename": {
+          "description": "Filename to override the URL's tail.",
+          "required": false
+        },
+        "prefetch_filename": {
+          "default": false,
+          "description": "If True, URLDownloader attempts to determine filename from HTTP headers downloaded before the file itself. 'prefetch_filename' overrides 'filename' option. Filename is determined from the first available source of information in this order:\n\t1. Content-Disposition header\n\t2. Location header\n\t3. 'filename' option (if set)\n\t4. last part of 'url'.  \n'prefetch_filename' is useful for URLs with redirects.",
+          "required": false
+        },
+        "request_headers": {
+          "description": "Optional dictionary of headers to include with the download request.",
+          "required": false
+        },
+        "url": {
+          "description": "The URL to download.",
+          "required": true
+        }
+      },
+      "lifecycle": {},
+      "output_variables": {
+        "download_changed": {
+          "description": "Boolean indicating if the download has changed since the last time it was downloaded."
+        },
+        "download_info": {
+          "description": "Info from previous or current download."
+        },
+        "download_url": {
+          "description": "The final URL the file was downloaded from (after redirects)."
+        },
+        "etag": {
+          "description": "etag header for the downloaded item."
+        },
+        "file_md5": {
+          "description": "MD5 hash of the downloaded file."
+        },
+        "file_sha1": {
+          "description": "SHA-1 hash of the downloaded file."
+        },
+        "file_sha256": {
+          "description": "SHA-256 hash of the downloaded file."
+        },
+        "file_size": {
+          "description": "Size of the downloaded file in bytes."
+        },
+        "last_modified": {
+          "description": "last-modified header for the downloaded item."
+        },
+        "pathname": {
+          "description": "Path to the downloaded file."
+        },
+        "url_downloader_summary_result": {
+          "description": "Description of interesting results."
+        }
+      }
+    }
+  },
+  "ordering": {
+    "RussetURLDownloader": {
+      "description": {
+        "display": "Downloads a URL to the specified download_dir with Russet's native HTTP engine, splitting a large download into parallel range requests when the server allows it. It never runs curl; a request the engine can't reproduce exactly fails."
+      },
+      "input_variables": [
+        [
+          "url",
+          [
+            [
+              "required",
+              {
+                "display": "True"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "The URL to download."
+              }
+            ]
+          ]
+        ],
+        [
+          "request_headers",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Optional dictionary of headers to include with the download request."
+              }
+            ]
+          ]
+        ],
+        [
+          "curl_opts",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Optional array of curl options to include with the download request. RussetURLDownloader accepts only the options its native engine reproduces exactly, and fails on any other."
+              }
+            ]
+          ]
+        ],
+        [
+          "download_dir",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "The directory where the file will be downloaded to. Defaults to RECIPE_CACHE_DIR/downloads."
+              }
+            ]
+          ]
+        ],
+        [
+          "filename",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Filename to override the URL's tail."
+              }
+            ]
+          ]
+        ],
+        [
+          "prefetch_filename",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "If True, URLDownloader attempts to determine filename from HTTP headers downloaded before the file itself. 'prefetch_filename' overrides 'filename' option. Filename is determined from the first available source of information in this order:\n\t1. Content-Disposition header\n\t2. Location header\n\t3. 'filename' option (if set)\n\t4. last part of 'url'.  \n'prefetch_filename' is useful for URLs with redirects."
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "False"
+              }
+            ]
+          ]
+        ],
+        [
+          "CHECK_FILESIZE_ONLY",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "If True, a server's ETag and Last-Modified headers will not be checked to verify whether a download is newer than a cached item, and only Content-Length (filesize) will be used. This is useful for cases where a download always redirects to different mirrors, which could cause items to be needlessly re-downloaded. Defaults to False."
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "False"
+              }
+            ]
+          ]
+        ],
+        [
+          "PKG",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Local path to the pkg/dmg we'd otherwise download. If provided, the download is skipped and we just use this package or disk image."
+              }
+            ]
+          ]
+        ],
+        [
+          "COMPUTE_HASHES",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "Determine whether to compute md5, sha1, and sha256 hashes of the downloaded file."
+              }
+            ]
+          ]
+        ],
+        [
+          "HEADERS_TO_TEST",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "List of HTTP headers compared against the previous download to detect changes. Setting this replaces the default list for comparison purposes; if 'CHECK_FILESIZE_ONLY' is enabled, only Content-Length is compared. The default headers are always recorded in .info.json regardless, so narrowing this list does not discard cached metadata."
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "['ETag', 'Last-Modified', 'Content-Length']"
+              }
+            ]
+          ]
+        ],
+        [
+          "DOWNLOAD_MISSING_FILE",
+          [
+            [
+              "required",
+              {
+                "display": "False"
+              }
+            ],
+            [
+              "description",
+              {
+                "display": "If the file is missing but matching metadata is present, download the file again. Defaults to True as most current recipes expect the files to be present. This re-fetch does not mark the item as changed (download_changed stays false); download_changed reflects the remote resource only. Omit the key to use the default; a blank string disables it. Note that a recipe Input of null resolves to a blank string during variable substitution, and so disables it."
+              }
+            ],
+            [
+              "default",
+              {
+                "display": "True"
+              }
+            ]
+          ]
+        ]
+      ],
+      "output_variables": [
+        [
+          "pathname",
+          [
+            [
+              "description",
+              {
+                "display": "Path to the downloaded file."
+              }
+            ]
+          ]
+        ],
+        [
+          "last_modified",
+          [
+            [
+              "description",
+              {
+                "display": "last-modified header for the downloaded item."
+              }
+            ]
+          ]
+        ],
+        [
+          "etag",
+          [
+            [
+              "description",
+              {
+                "display": "etag header for the downloaded item."
+              }
+            ]
+          ]
+        ],
+        [
+          "download_url",
+          [
+            [
+              "description",
+              {
+                "display": "The final URL the file was downloaded from (after redirects)."
+              }
+            ]
+          ]
+        ],
+        [
+          "download_changed",
+          [
+            [
+              "description",
+              {
+                "display": "Boolean indicating if the download has changed since the last time it was downloaded."
+              }
+            ]
+          ]
+        ],
+        [
+          "download_info",
+          [
+            [
+              "description",
+              {
+                "display": "Info from previous or current download."
+              }
+            ]
+          ]
+        ],
+        [
+          "file_size",
+          [
+            [
+              "description",
+              {
+                "display": "Size of the downloaded file in bytes."
+              }
+            ]
+          ]
+        ],
+        [
+          "file_sha1",
+          [
+            [
+              "description",
+              {
+                "display": "SHA-1 hash of the downloaded file."
+              }
+            ]
+          ]
+        ],
+        [
+          "file_sha256",
+          [
+            [
+              "description",
+              {
+                "display": "SHA-256 hash of the downloaded file."
+              }
+            ]
+          ]
+        ],
+        [
+          "file_md5",
+          [
+            [
+              "description",
+              {
+                "display": "MD5 hash of the downloaded file."
+              }
+            ]
+          ]
+        ],
+        [
+          "url_downloader_summary_result",
+          [
+            [
+              "description",
+              {
+                "display": "Description of interesting results."
+              }
+            ]
+          ]
+        ]
+      ]
+    }
+  }
+}
