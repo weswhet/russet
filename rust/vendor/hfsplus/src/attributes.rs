@@ -137,11 +137,59 @@ pub fn lookup<R: Read + Seek>(
     parse_value(record).map(Some)
 }
 
+/// The leaf where records for `file_id` start: the descent follows the last
+/// index record at or before `(file_id, "", 0)`, which sorts before every
+/// attribute of the file, or the first child when every key is greater.
+/// (Russet patch: listing a file's attributes scanned every leaf from the
+/// start of the tree, which made extracting a volume quadratic in its file
+/// count.)
+fn first_leaf_for<R: Read + Seek>(
+    reader: &mut R,
+    attributes_btree: &BTreeHeaderRecord,
+    file_id: u32,
+) -> Result<u32> {
+    if attributes_btree.root_node == 0 {
+        return Ok(0);
+    }
+    let mut node_num = attributes_btree.root_node;
+    // A well-formed tree is far shallower than this; a cycle isn't.
+    for _ in 0..32 {
+        let node = btree::read_node(reader, attributes_btree, node_num)?;
+        match node.descriptor.kind {
+            btree::NODE_KIND_LEAF => return Ok(node_num),
+            btree::NODE_KIND_INDEX => {
+                let mut child = None;
+                for i in 0..node.descriptor.num_records as usize {
+                    let record = node.record_data(i)?;
+                    if compare_key(record, file_id, &[], 0)? == std::cmp::Ordering::Greater {
+                        break;
+                    }
+                    child = Some(btree::extract_index_child_pub(record)?);
+                }
+                node_num = match child {
+                    Some(child) => child,
+                    None if node.descriptor.num_records > 0 => {
+                        btree::extract_index_child_pub(node.record_data(0)?)?
+                    }
+                    None => return Ok(0),
+                };
+            }
+            other => {
+                return Err(HfsPlusError::InvalidBTree(format!(
+                    "unexpected node kind {other} while descending the attributes tree"
+                )));
+            }
+        }
+    }
+    Err(HfsPlusError::InvalidBTree(
+        "attributes tree is too deep".into(),
+    ))
+}
+
 /// Names of every extended attribute on a file, in on-disk order.
 ///
-/// Scans the leaves from the start of the tree rather than descending to the
-/// file, since a lookup needs a name to descend with. Stops at the first
-/// record past `file_id`.
+/// Descends to the leaf where the file's records start, then scans forward,
+/// stopping at the first record past `file_id`.
 pub fn list_names<R: Read + Seek>(
     reader: &mut R,
     attributes_btree: &BTreeHeaderRecord,
@@ -159,13 +207,11 @@ pub fn list_names<R: Read + Seek>(
     };
     let parse_fn = |record: &[u8]| AttrKey::parse(record)?.to_name();
 
-    btree::scan_leaves(
-        reader,
-        attributes_btree,
-        attributes_btree.first_leaf_node,
-        &match_fn,
-        &parse_fn,
-    )
+    let start = first_leaf_for(reader, attributes_btree, file_id)?;
+    if start == 0 {
+        return Ok(Vec::new());
+    }
+    btree::scan_leaves(reader, attributes_btree, start, &match_fn, &parse_fn)
 }
 
 /// Parse an attribute record's value.

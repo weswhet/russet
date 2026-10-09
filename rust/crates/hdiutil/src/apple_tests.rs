@@ -181,6 +181,96 @@ fn native_extraction_matches_mounted_images() {
     assert_eq!(native, mounted(&udco), "UDCO");
 }
 
+/// Counts the seeks a reader sees; each B-tree node read starts with one.
+struct CountingReader<R> {
+    inner: R,
+    seeks: std::rc::Rc<std::cell::Cell<usize>>,
+}
+
+impl<R: std::io::Read> std::io::Read for CountingReader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.inner.read(buf)
+    }
+}
+
+impl<R: std::io::Seek> std::io::Seek for CountingReader<R> {
+    fn seek(&mut self, to: std::io::SeekFrom) -> std::io::Result<u64> {
+        self.seeks.set(self.seeks.get() + 1);
+        self.inner.seek(to)
+    }
+}
+
+/// Listing a file's extended attributes descends the attributes B-tree to
+/// that file instead of scanning every leaf from the start. The scan made
+/// extracting a volume quadratic in its file count: Electron apps with tens
+/// of thousands of files took longer than ten minutes to extract.
+#[test]
+fn listing_attributes_reads_only_the_path_to_the_file() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("source");
+    fs::create_dir(&source).unwrap();
+    let count = 3000;
+    for i in 0..count {
+        let path = source.join(format!("f{i}"));
+        fs::write(&path, "x").unwrap();
+        xattr::set(
+            &path,
+            "com.example.attribute",
+            format!("{i:0>120}").as_bytes(),
+        )
+        .unwrap();
+    }
+    // A raw volume, with no image format around it, opens directly.
+    let volume_path = temp.path().join("volume");
+    run(
+        "/usr/bin/hdiutil",
+        &[
+            "create",
+            "-quiet",
+            "-srcfolder",
+            source.to_str().unwrap(),
+            "-fs",
+            "HFS+",
+            "-layout",
+            "NONE",
+            "-format",
+            "UDTO",
+            "-o",
+            volume_path.to_str().unwrap(),
+        ],
+    );
+    let seeks = std::rc::Rc::new(std::cell::Cell::new(0));
+    let reader = CountingReader {
+        inner: std::io::BufReader::new(fs::File::open(volume_path.with_extension("cdr")).unwrap()),
+        seeks: seeks.clone(),
+    };
+    let mut volume = hfsplus::HfsVolume::open(reader).unwrap();
+    let ids: Vec<u32> = volume
+        .children(hfsplus::catalog::CNID_ROOT_FOLDER)
+        .unwrap()
+        .into_iter()
+        .filter_map(|(_, record)| match record {
+            hfsplus::catalog::CatalogRecord::File(file) => Some(file.file_id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ids.len(), count);
+    let last = *ids.iter().max().unwrap();
+    seeks.set(0);
+    let names = volume.list_xattrs_by_id(last).unwrap();
+    assert!(
+        names.iter().any(|a| a.name == "com.example.attribute"),
+        "{names:?}"
+    );
+    // Thousands of records span dozens of leaves; a descent reads a handful
+    // of nodes.
+    assert!(
+        seeks.get() < 20,
+        "{} seeks to list one file's attributes",
+        seeks.get()
+    );
+}
+
 /// Rebuilds the committed fixtures that the portable test checks on Linux:
 /// small images in each supported format, with the manifest of each mounted
 /// volume. Run on macOS with

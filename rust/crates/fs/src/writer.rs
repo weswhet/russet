@@ -2,11 +2,14 @@ use crate::sidecar::{encode, SIDECAR};
 use crate::{clean_relative, host_xattr_name, invalid, Limits};
 use rustix::fs::{self as rfs, AtFlags, FileType, Mode, OFlags, XattrFlags};
 use rustix::io::Errno;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::os::fd::OwnedFd;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 const DIR_FLAGS: OFlags = OFlags::RDONLY
     .union(OFlags::DIRECTORY)
@@ -38,6 +41,12 @@ pub struct SkippedXattr {
 /// read-only directories and links never block later entries.
 pub struct TreeWriter {
     root: OwnedFd,
+    /// Directories opened recently, by relative path, so writing many files
+    /// into one folder doesn't reopen every component of its path each time.
+    /// The writer never removes or replaces a directory, and links are only
+    /// created in [`TreeWriter::finish`], so a cached handle always names the
+    /// directory its path resolves to.
+    dirs: RefCell<HashMap<PathBuf, Rc<OwnedFd>>>,
     limits: Limits,
     written: u64,
     entries: u64,
@@ -64,6 +73,7 @@ impl TreeWriter {
         )?;
         Ok(Self {
             root,
+            dirs: RefCell::new(HashMap::new()),
             limits,
             written: 0,
             entries: 0,
@@ -305,19 +315,35 @@ impl TreeWriter {
     }
 
     /// Opens the directory at `rel` without following symlinks, creating
-    /// missing components when `create` is set.
-    fn open_dir(&self, rel: &Path, create: bool) -> io::Result<OwnedFd> {
-        let mut fd = rfs::openat(&self.root, ".", DIR_FLAGS, Mode::empty())?;
-        for part in rel.components() {
+    /// missing components when `create` is set. Starts from the deepest
+    /// cached ancestor; each component below it is opened relative to its
+    /// parent, as from the root.
+    fn open_dir(&self, rel: &Path, create: bool) -> io::Result<Rc<OwnedFd>> {
+        let mut dirs = self.dirs.borrow_mut();
+        let cached = rel
+            .ancestors()
+            .find_map(|a| dirs.get(a).map(|fd| (a.to_path_buf(), Rc::clone(fd))));
+        let (mut path, mut fd) = match cached {
+            Some(found) => found,
+            None => (
+                PathBuf::new(),
+                Rc::new(rfs::openat(&self.root, ".", DIR_FLAGS, Mode::empty())?),
+            ),
+        };
+        let remaining = rel.strip_prefix(&path).unwrap_or(rel).to_path_buf();
+        if dirs.len() >= MAX_CACHED_DIRS {
+            dirs.clear();
+        }
+        for part in remaining.components() {
             let name = part.as_os_str();
-            fd = match rfs::openat(&fd, name, DIR_FLAGS, Mode::empty()) {
+            let next = match rfs::openat(&*fd, name, DIR_FLAGS, Mode::empty()) {
                 Ok(next) => next,
                 Err(Errno::NOENT) if create => {
-                    match rfs::mkdirat(&fd, name, perm(0o755)) {
+                    match rfs::mkdirat(&*fd, name, perm(0o755)) {
                         Ok(()) | Err(Errno::EXIST) => {}
                         Err(errno) => return Err(errno.into()),
                     }
-                    rfs::openat(&fd, name, DIR_FLAGS, Mode::empty())?
+                    rfs::openat(&*fd, name, DIR_FLAGS, Mode::empty())?
                 }
                 Err(Errno::LOOP | Errno::NOTDIR | Errno::MLINK) => {
                     return Err(invalid(format!(
@@ -327,10 +353,17 @@ impl TreeWriter {
                 }
                 Err(errno) => return Err(errno.into()),
             };
+            path.push(name);
+            fd = Rc::new(next);
+            dirs.insert(path.clone(), Rc::clone(&fd));
         }
         Ok(fd)
     }
 }
+
+/// Directory handles [`TreeWriter`] keeps open at most, well under the
+/// default open-file limit.
+const MAX_CACHED_DIRS: usize = 32;
 
 /// Converts permission bits; the raw mode type differs between Linux and macOS.
 fn perm(bits: u32) -> Mode {
