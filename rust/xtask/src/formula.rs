@@ -75,10 +75,9 @@ pub fn render(version: &str, sums: &str) -> Result<String, String> {
   def caveats
     on_macos do
       <<~EOS
-        Homebrew installs only the russet command. On macOS, the PkgCreator
-        and Installer processors also need the russet-server and
-        russet-installd launchd helpers, which run as root. To get them,
-        install the Russet package from the GitHub release instead.
+        The PkgCreator and Installer processors need the russet-server and
+        russet-installd launchd helpers, which run as root. To set them up:
+          sudo russet --install-helpers
       EOS
     end
   end

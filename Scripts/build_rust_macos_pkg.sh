@@ -1,9 +1,9 @@
 #!/bin/bash
 # Build Russet's macOS installer package from the two verified release
-# archives. The package installs the same files as the archives' install.sh:
-# /opt/russet/russet, the /usr/local/bin/russet symlink, and the two launchd
-# helpers. The executable is the two signed archive slices joined with lipo,
-# which keeps each slice's signature.
+# archives. The package installs /opt/russet/russet and the
+# /usr/local/bin/russet symlink. It doesn't set up the launchd helpers;
+# `sudo russet --install-helpers` does that. The executable is the two signed
+# archive slices joined with lipo, which keeps each slice's signature.
 set -euo pipefail
 
 usage() {
@@ -48,28 +48,21 @@ arm=$(unpack "$arm64" aarch64-apple-darwin)
 intel=$(unpack "$x86_64" x86_64-apple-darwin)
 [[ "$(lipo -archs "$arm/bin/russet")" == arm64 ]] || fail "$arm64 doesn't hold an arm64 executable"
 [[ "$(lipo -archs "$intel/bin/russet")" == x86_64 ]] || fail "$x86_64 doesn't hold an x86_64 executable"
-for plist in "${daemons[@]/#/russet-}"; do
-    cmp -s "$arm/launchd/$plist.plist" "$intel/launchd/$plist.plist" ||
-        fail "the archives' $plist.plist files differ"
-done
 
 payload=$work/payload
-mkdir -p "$payload/opt/russet" "$payload/usr/local/bin" "$payload/Library/LaunchDaemons"
+mkdir -p "$payload/opt/russet" "$payload/usr/local/bin"
 lipo -create -output "$payload/opt/russet/russet" "$arm/bin/russet" "$intel/bin/russet"
 chmod 0755 "$payload/opt/russet/russet"
 ln -s /opt/russet/russet "$payload/usr/local/bin/russet"
 cp -R "$arm/LICENSE.txt" "$arm/licenses" "$payload/opt/russet/"
-for daemon in "${daemons[@]}"; do
-    install -m 0644 "$arm/launchd/russet-$daemon.plist" \
-        "$payload/Library/LaunchDaemons/$identifier.$daemon.plist"
-done
 if [[ -n "$identity" ]]; then
     # The archives' slices are signed; joining them must not break that.
     codesign --verify --strict --verbose=2 "$payload/opt/russet/russet"
 fi
 
-# Stop the helpers before replacing their executable, and start them again
-# afterward. Installing to another volume leaves launchd alone.
+# If an administrator already set up the helpers, stop them before replacing
+# their executable and start them again afterward. The package never sets
+# them up itself, and installing to another volume leaves launchd alone.
 scripts=$work/scripts
 mkdir "$scripts"
 cat > "$scripts/preinstall" <<SH
@@ -84,7 +77,8 @@ cat > "$scripts/postinstall" <<SH
 #!/bin/sh
 [ "\$3" = / ] || exit 0
 for daemon in ${daemons[*]}; do
-    /bin/launchctl bootstrap system "/Library/LaunchDaemons/$identifier.\$daemon.plist" || exit 1
+    plist="/Library/LaunchDaemons/$identifier.\$daemon.plist"
+    [ ! -f "\$plist" ] || /bin/launchctl bootstrap system "\$plist" || exit 1
 done
 exit 0
 SH
@@ -124,10 +118,7 @@ installed=$work/expanded/russet.pkg/Payload
     fail "the packaged executable isn't the universal binary"
 [[ "$(readlink "$installed/usr/local/bin/russet")" == /opt/russet/russet ]] ||
     fail 'the packaged russet symlink is wrong'
-for daemon in "${daemons[@]}"; do
-    plutil -lint -s "$installed/Library/LaunchDaemons/$identifier.$daemon.plist" ||
-        fail "the packaged $daemon launchd job is invalid"
-done
+[[ ! -e "$installed/Library" ]] || fail 'the package must not install launchd jobs'
 if [[ -n "$identity" ]]; then
     pkgutil --check-signature "$output" | grep -Fq "$identity" ||
         fail "$output isn't signed by $identity"
