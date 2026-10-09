@@ -136,6 +136,15 @@ fn validate_job(job: &Value, required: &[String]) -> Result<(), String> {
     )
 }
 
+/// The macOS steps that give the executable its Developer ID signature and
+/// notarization, in the order they run. They run only on `main`, so a
+/// promoted macOS archive is always signed and notarized.
+pub const MACOS_SIGNING_STEPS: [&str; 3] = [
+    "Import the Developer ID identity",
+    "Sign the macOS executable",
+    "Notarize the macOS executable",
+];
+
 /// The step names that every development job must complete successfully.
 /// They follow `.github/workflows/rust.yml`.
 pub fn development_steps(target: &str) -> Vec<String> {
@@ -147,9 +156,14 @@ pub fn development_steps(target: &str) -> Vec<String> {
         ),
         "Verify archive install, upgrade, rollback, and failure recovery".to_owned(),
         format!("Run cargo build --release --locked --target {target} -p russet"),
-        format!("Run cargo xtask package --target {target} --bin-dir target/{target}/release"),
-        "Run actions/upload-artifact@v4".to_owned(),
     ];
+    if is_apple(target) {
+        required.extend(MACOS_SIGNING_STEPS.map(String::from));
+    }
+    required.push(format!(
+        "Run cargo xtask package --target {target} --bin-dir target/{target}/release"
+    ));
+    required.push("Run actions/upload-artifact@v4".to_owned());
     required.push(
         if is_apple(target) {
             "Verify installed macOS helpers, upgrade, and rollback"
@@ -884,6 +898,29 @@ mod tests {
             "unexpected extra gate"
         );
         assert!(validate_gates(&SHA.to_uppercase(), &fixture()).is_err());
+    }
+
+    #[test]
+    fn macos_signing_steps_exist_in_the_development_workflow() {
+        // The gate matches step names exactly, so a renamed step in rust.yml
+        // would block every promotion. Catch that here instead.
+        let workflow = fs::read_to_string(
+            crate::package::repository_root().join(".github/workflows/rust.yml"),
+        )
+        .unwrap();
+        for name in MACOS_SIGNING_STEPS {
+            let line = format!("- name: {name}\n");
+            assert_eq!(workflow.matches(&line).count(), 1, "{name} in rust.yml");
+        }
+        for target in ["aarch64-apple-darwin", "x86_64-apple-darwin"] {
+            let steps = development_steps(target);
+            assert!(MACOS_SIGNING_STEPS
+                .iter()
+                .all(|name| steps.iter().any(|step| step == name)));
+        }
+        assert!(!development_steps("x86_64-unknown-linux-gnu")
+            .iter()
+            .any(|step| MACOS_SIGNING_STEPS.contains(&step.as_str())));
     }
 
     #[test]

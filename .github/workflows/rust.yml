@@ -49,6 +49,10 @@ jobs:
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
+    # Only macOS jobs on main can read the Developer ID and notary secrets.
+    # The russet-signing environment deploys only from main, so a branch can't
+    # name it to get the secrets.
+    environment: ${{ contains(matrix.target, 'apple') && github.ref == 'refs/heads/main' && 'russet-signing' || 'russet-development' }}
     defaults:
       run:
         working-directory: rust
@@ -77,6 +81,82 @@ jobs:
       - name: Verify archive install, upgrade, rollback, and failure recovery
         run: cargo test --package xtask --locked --no-fail-fast --target ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }} -p russet
+      - name: Import the Developer ID identity
+        if: github.ref == 'refs/heads/main' && contains(matrix.target, 'apple')
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          DEVELOPER_ID_APPLICATION: 'Developer ID Application: Wesley Whetstone (2D8XQ77EBQ)'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$CERTIFICATE_BASE64" || -z "$CERTIFICATE_PASSWORD" ]]; then
+            echo "::error::The russet-signing environment has no Developer ID identity. Run configure-release-secrets.sh."
+            exit 64
+          fi
+          keychain="$RUNNER_TEMP/russet-signing.keychain-db"
+          certificate="$RUNNER_TEMP/developer-id.p12"
+          keychain_password="$(uuidgen)"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm -f "$certificate"
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$keychain" >/dev/null
+          grep -Fq "\"$DEVELOPER_ID_APPLICATION\"" <<<"$(security find-identity -v -p codesigning "$keychain")" || {
+            echo "::error::The signing keychain has no valid identity named $DEVELOPER_ID_APPLICATION."
+            exit 65
+          }
+      - name: Sign the macOS executable
+        if: github.ref == 'refs/heads/main' && contains(matrix.target, 'apple')
+        env:
+          DEVELOPER_ID_APPLICATION: 'Developer ID Application: Wesley Whetstone (2D8XQ77EBQ)'
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="target/${{ matrix.target }}/release/russet"
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$binary"
+          codesign --verify --strict --verbose=2 "$binary"
+          details="$(codesign --display --verbose=4 "$binary" 2>&1)"
+          grep -qx 'TeamIdentifier=2D8XQ77EBQ' <<<"$details" || {
+            echo "::error::$binary isn't signed by team 2D8XQ77EBQ."
+            exit 65
+          }
+      - name: Notarize the macOS executable
+        if: github.ref == 'refs/heads/main' && contains(matrix.target, 'apple')
+        env:
+          NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/AuthKey_$NOTARY_KEY_ID.p8"
+          archive="$RUNNER_TEMP/russet-notary.zip"
+          trap 'rm -f "$key" "$archive"' EXIT
+          printf '%s\n' "$NOTARY_KEY" > "$key"
+          chmod 600 "$key"
+          # Notarization takes a zip, not a bare executable. A bare executable
+          # can't be stapled, so Gatekeeper checks the ticket online.
+          ditto -c -k --sequesterRsrc "target/${{ matrix.target }}/release/russet" "$archive"
+          notary=(--key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+          status=0
+          result="$(xcrun notarytool submit "$archive" "${notary[@]}" --wait --output-format json 2>&1)" || status=$?
+          submission="$(jq -r '.id // empty' <<<"$result" 2>/dev/null || true)"
+          verdict="$(jq -r '.status // empty' <<<"$result" 2>/dev/null || true)"
+          echo "Notarization ${submission:-unknown} finished with status ${verdict:-unknown}."
+          if [[ "$status" -ne 0 || "$verdict" != Accepted ]]; then
+            [[ -z "$submission" ]] || xcrun notarytool log "$submission" "${notary[@]}" || true
+            echo "::error::Apple didn't accept the russet executable. The log above says why."
+            exit 65
+          fi
+      - name: Remove the signing keychain
+        if: always() && github.ref == 'refs/heads/main' && contains(matrix.target, 'apple')
+        shell: bash
+        run: security delete-keychain "$RUNNER_TEMP/russet-signing.keychain-db" 2>/dev/null || true
       - run: cargo xtask package --target ${{ matrix.target }} --bin-dir target/${{ matrix.target }}/release
       - name: Verify installed macOS helpers, upgrade, and rollback
         if: runner.os == 'macOS'

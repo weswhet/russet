@@ -26,12 +26,41 @@ part of this gate contract: update the promoter and its tests when you rename a
 required step, including when a dependency update changes an action's version
 in a step name such as `Run actions/upload-artifact@v4`.
 
+On the macOS targets, the three signing steps (`MACOS_SIGNING_STEPS` in the
+promoter) must also succeed. They run only on `main`, so a promoted macOS
+executable has a Developer ID signature and an Apple notarization.
+
 The development jobs supply native installation, upgrade, rollback, helper, and
 Python-free runtime checks. Comparisons with Python AutoPkg run separately in
 [russet-compat](https://github.com/weswhet/russet-compat); before you promote a
 release, dispatch its workflows with the release commit as `russet_ref` and
 review the results. Promotion doesn't imply compatibility with operating systems
 outside the runner baselines.
+
+## Signing and notarization
+
+The macOS test jobs sign `russet` with the Developer ID Application identity
+for team `2D8XQ77EBQ`, using the hardened runtime and a secure timestamp. They
+then submit a zip of the executable to Apple's notary service with an App Store
+Connect API key and wait for the verdict. The archive packages the signed
+executable, so promotion keeps the signature.
+
+The `russet-signing` environment holds these secrets and deploys only from
+`main`:
+
+- `DEVELOPER_ID_CERTIFICATE_BASE64` and `DEVELOPER_ID_CERTIFICATE_PASSWORD`:
+  the Developer ID identities as a `.p12`. Set them with the pomme script,
+  `Scripts/export-signing-identities.swift --repo weswhet/russet --skip-homebrew --signing-environment russet-signing`,
+  which runs `Scripts/configure-release-secrets.sh` in the pomme repository
+  with `--signing-environment russet-signing`.
+- `APPLE_NOTARY_KEY`, `APPLE_NOTARY_KEY_ID`, and `APPLE_NOTARY_ISSUER_ID`: the
+  App Store Connect API key file, its key ID, and its issuer ID.
+
+Pull requests and other branches build unsigned archives. They don't read the
+secrets, and because their signing steps are skipped, the promoter refuses them.
+
+A notarized bare executable can't be stapled, so Gatekeeper checks the Apple
+ticket online the first time a user runs it.
 
 ## Local preparation
 
