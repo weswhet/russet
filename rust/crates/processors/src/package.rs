@@ -1,4 +1,4 @@
-use super::{io, portable_path, read_dict, remove, string, truth, Result};
+use super::{io, macos_path, portable_path, read_dict, remove, string, truth, Result};
 use autopkg_platform::backend::{select, Backend, Tool};
 use autopkg_platform::processor_output as output;
 use plist::Dictionary;
@@ -311,7 +311,7 @@ pub(super) fn unpack_payload(env: &Dictionary) -> Result<()> {
         );
     }
     prepare_destination(env)?;
-    let source = string(env, "pkg_payload_path")?;
+    let source = &macos_path(string(env, "pkg_payload_path")?);
     let destination = string(env, "destination_path")?;
     if backend == Backend::Native {
         native::extract_payload(source, destination)?;

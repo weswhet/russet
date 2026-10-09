@@ -8,6 +8,7 @@ use der::{Decode, Encode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const SIGNED_DATA: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.7.2");
+const ID_DATA: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.7.1");
 const MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
 const SIGNING_TIME: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.5");
 const TIMESTAMP_TOKEN: ObjectIdentifier =
@@ -118,17 +119,29 @@ fn signer_certificate(info: &SignerInfo, certificates: &[Cert]) -> Result<Cert, 
 }
 
 /// Checks one signer: its signed attributes must carry the digest of
-/// `content`, and its signature must cover them.
+/// `content`, and its signature must cover them. Without signed attributes,
+/// which RFC 5652 allows when the content is plain data, the signature
+/// covers `content` itself; older package signers write them that way, and
+/// `pkgutil` accepts them. Timestamp tokens must have signed attributes.
 fn check_signer(
     info: &SignerInfo,
     raw_attributes: Option<&[u8]>,
     signer: &Cert,
     content: &[u8],
+    require_attributes: bool,
 ) -> Result<(), String> {
-    let attributes = info
-        .signed_attrs
-        .as_ref()
-        .ok_or("CMS signature has no signed attributes")?;
+    let Some(attributes) = info.signed_attrs.as_ref() else {
+        if require_attributes {
+            return Err("CMS signature has no signed attributes".into());
+        }
+        return verify_message(
+            signer,
+            &info.signature_algorithm.oid,
+            Some(&info.digest_alg.oid),
+            content,
+            info.signature.as_bytes(),
+        );
+    };
     let expected = digest(&info.digest_alg.oid, content)?;
     let mut digests = attributes
         .iter()
@@ -172,7 +185,16 @@ pub fn verify_detached(bytes: &[u8], content: &[u8]) -> Result<VerifiedCms, Stri
         return Err("CMS signature has more than one signer".into());
     }
     let signer = signer_certificate(info, &certificates)?;
-    check_signer(info, parsed.signed_attributes.as_deref(), &signer, content)?;
+    if info.signed_attrs.is_none() && data.encap_content_info.econtent_type != ID_DATA {
+        return Err("CMS signature has no signed attributes".into());
+    }
+    check_signer(
+        info,
+        parsed.signed_attributes.as_deref(),
+        &signer,
+        content,
+        false,
+    )?;
     let mut timestamp = None;
     for attribute in info.unsigned_attrs.iter().flat_map(|a| a.iter()) {
         if attribute.oid == TIMESTAMP_TOKEN {
@@ -242,6 +264,7 @@ fn verify_timestamp(token: &[u8], signature: &[u8]) -> Result<SystemTime, String
         parsed.signed_attributes.as_deref(),
         &signer,
         content.as_bytes(),
+        true,
     )?;
     let time = UNIX_EPOCH + gen_time.to_unix_duration();
     let others: Vec<Cert> = certificates
