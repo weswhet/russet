@@ -84,27 +84,49 @@ fn runtime() -> Result<&'static tokio::runtime::Runtime, String> {
         .map_err(Clone::clone)
 }
 
-/// The user agent the fallback curl sends, read once from `curl --version`.
-fn curl_user_agent(program: &OsStr) -> HeaderValue {
-    static AGENT: OnceLock<HeaderValue> = OnceLock::new();
-    AGENT
-        .get_or_init(|| {
-            std::process::Command::new(program)
-                .arg("--version")
-                .output()
-                .ok()
-                .and_then(|output| {
-                    let text = String::from_utf8(output.stdout).ok()?;
-                    let version = text.strip_prefix("curl ")?.split_whitespace().next()?;
-                    version
-                        .bytes()
-                        .all(|b| b.is_ascii_alphanumeric() || b".-_".contains(&b))
-                        .then(|| format!("curl/{version}"))
-                })
-                .and_then(|agent| HeaderValue::from_str(&agent).ok())
-                .unwrap_or_else(|| HeaderValue::from_static(FALLBACK_USER_AGENT))
-        })
-        .clone()
+/// The fallback curl's version, read once from `curl --version`.
+struct CurlIdentity {
+    user_agent: HeaderValue,
+    version: (u32, u32),
+}
+static IDENTITY: OnceLock<CurlIdentity> = OnceLock::new();
+
+fn curl_identity(program: &OsStr) -> &'static CurlIdentity {
+    IDENTITY.get_or_init(|| {
+        let version = std::process::Command::new(program)
+            .arg("--version")
+            .output()
+            .ok()
+            .and_then(|output| {
+                let text = String::from_utf8(output.stdout).ok()?;
+                let version = text.strip_prefix("curl ")?.split_whitespace().next()?;
+                version
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b".-_".contains(&b))
+                    .then(|| version.to_string())
+            })
+            .unwrap_or_else(|| FALLBACK_USER_AGENT["curl/".len()..].to_string());
+        let mut parts = version.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
+        CurlIdentity {
+            user_agent: HeaderValue::from_str(&format!("curl/{version}"))
+                .unwrap_or_else(|_| HeaderValue::from_static(FALLBACK_USER_AGENT)),
+            version: (parts.next().unwrap_or(0), parts.next().unwrap_or(0)),
+        }
+    })
+}
+
+/// curl's message for a body shorter than its Content-Length. curl 8.9.0
+/// changed the wording.
+pub(crate) fn short_body(remaining: u64) -> Failure {
+    let modern = IDENTITY.get().is_some_and(|i| i.version >= (8, 9));
+    Failure::new(
+        18,
+        if modern {
+            format!("end of response with {remaining} bytes missing")
+        } else {
+            format!("transfer closed with {remaining} bytes remaining to read")
+        },
+    )
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -203,8 +225,9 @@ pub(crate) fn prepare(request: NativeRequest, program: &OsStr) -> Result<Prepare
             pair
         }
     };
+    let identity = curl_identity(program);
     let user_agent = match &request.user_agent {
-        UserAgent::Curl => Some(curl_user_agent(program)),
+        UserAgent::Curl => Some(identity.user_agent.clone()),
         UserAgent::Custom(value) => Some(value.clone()),
         UserAgent::Omitted => None,
     };
@@ -429,13 +452,7 @@ pub(crate) fn body_failure(
         return Failure::new(28, slow_message());
     }
     match expected {
-        Some(length) if received < length => Failure::new(
-            18,
-            format!(
-                "transfer closed with {} bytes remaining to read",
-                length - received
-            ),
-        ),
+        Some(length) if received < length => short_body(length - received),
         _ if chunked => Failure::new(18, "transfer closed with outstanding read data remaining"),
         _ => Failure::new(56, "Failure when receiving data from the peer"),
     }
@@ -487,13 +504,7 @@ pub(crate) async fn stream(
         }
     }
     match expected {
-        Some(length) if received < length => Err(Failure::new(
-            18,
-            format!(
-                "transfer closed with {} bytes remaining to read",
-                length - received
-            ),
-        )),
+        Some(length) if received < length => Err(short_body(length - received)),
         _ => Ok(received),
     }
 }

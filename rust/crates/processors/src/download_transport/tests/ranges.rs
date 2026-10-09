@@ -233,10 +233,7 @@ fn a_short_original_stream_fails_like_one_stream() {
     let error = download(&server, false, small()).result.unwrap_err();
     assert_eq!(
         error.failure.message,
-        format!(
-            "curl: (18) transfer closed with {} bytes remaining to read\n",
-            LENGTH - (16 << 10)
-        )
+        super::super::native::short_body((LENGTH - (16 << 10)) as u64).curl_message()
     );
     // urllib accepts a body shorter than Content-Length; the file then holds
     // exactly the bytes the original stream delivered.

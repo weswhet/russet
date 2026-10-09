@@ -161,13 +161,7 @@ async fn original(
             Ok(Some(bytes)) => bytes,
             Ok(None) if position == length => return Ok((position, true)),
             Ok(None) => {
-                let failure = Failure::new(
-                    18,
-                    format!(
-                        "transfer closed with {} bytes remaining to read",
-                        length - position
-                    ),
-                );
+                let failure = native::short_body(length - position);
                 return Err((failure, position));
             }
             Err(error) => {
