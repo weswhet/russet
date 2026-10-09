@@ -1,7 +1,8 @@
 //! Installer package signatures, checked the way
 //! `pkgutil --check-signature` checks them.
 //!
-//! A signed flat package carries an `RSA` signature over its TOC checksum,
+//! A signed flat package carries an `RSA` signature over its TOC checksum
+//! (or, from some signers, over the checksum's digest),
 //! with the signing chain, and usually a CMS signature over the same
 //! checksum that holds a trusted timestamp. The signature is valid when the
 //! RSA signature verifies with the leaf certificate, the CMS signature (if
@@ -59,8 +60,17 @@ pub fn verify(package: &SignedPackage, now: SystemTime) -> Result<PackageSignatu
         return Err("The package signature has no certificates".into());
     }
     let leaf = certificates.remove(0);
-    let signed = trust::digest_info(&package.checksum_algorithm, package.checksum)?;
+    // Most signers sign the checksum as a digest. Some sign it as a message,
+    // so the signature holds the digest of the checksum; `pkgutil` accepts
+    // both, and either way the signature covers this checksum.
+    let algorithm = &package.checksum_algorithm;
+    let signed = trust::digest_info(algorithm, package.checksum)?;
     trust::verify_raw_pkcs1(&leaf, &signed, package.rsa_signature)
+        .or_else(|error| {
+            let hashed = trust::digest(algorithm, package.checksum)?;
+            let signed = trust::digest_info(algorithm, &hashed)?;
+            trust::verify_raw_pkcs1(&leaf, &signed, package.rsa_signature).map_err(|_| error)
+        })
         .map_err(|e| format!("The package signature is invalid: {e}"))?;
     let mut timestamp = None;
     if let Some(bytes) = package.cms_signature {

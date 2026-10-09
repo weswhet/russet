@@ -94,8 +94,82 @@ pub fn glob(pattern: &str) -> Vec<PathBuf> {
     candidates
 }
 
+/// Resolves a literal path the way a case-insensitive macOS volume would:
+/// each component that doesn't exist as written matches the one entry whose
+/// name differs only in case. Returns `None` when a component is missing or
+/// more than one entry matches it, which a macOS volume can't hold.
+pub fn resolve(path: &Path) -> Option<PathBuf> {
+    if path.symlink_metadata().is_ok() {
+        return Some(path.to_path_buf());
+    }
+    let mut resolved = PathBuf::new();
+    for component in path.components() {
+        let part = match component {
+            Component::Normal(part) => part,
+            other => {
+                resolved.push(other.as_os_str());
+                continue;
+            }
+        };
+        let exact = resolved.join(part);
+        if exact.symlink_metadata().is_ok() {
+            resolved = exact;
+            continue;
+        }
+        let part = part.to_str()?;
+        let directory = if resolved.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            resolved.as_path()
+        };
+        let mut matches = fs::read_dir(directory)
+            .ok()?
+            .flatten()
+            .filter_map(|e| e.file_name().into_string().ok())
+            .filter(|name| same(name, part));
+        let name = matches.next()?;
+        if matches.next().is_some() {
+            return None;
+        }
+        resolved.push(name);
+    }
+    Some(resolved)
+}
+
 #[cfg(all(test, unix))]
 mod tests {
+    #[test]
+    fn resolves_literal_paths_regardless_of_case() {
+        let temp = tempfile::tempdir().unwrap();
+        let package = temp.path().join("unpack/TempPackage.pkg");
+        std::fs::create_dir_all(&package).unwrap();
+        std::fs::write(package.join("Payload"), b"").unwrap();
+        std::fs::write(package.join("[v2] Read Me.rtf"), b"").unwrap();
+        if temp.path().join("UNPACK").exists() {
+            // A case-insensitive volume, such as the default on macOS,
+            // resolves these paths itself.
+            return;
+        }
+        let resolve = |p: &str| super::resolve(&temp.path().join(p));
+        assert_eq!(
+            resolve("unpack/tempPACKAGE.pkg/payload"),
+            Some(package.join("Payload"))
+        );
+        // Glob characters are literal here.
+        assert_eq!(
+            resolve("unpack/TempPackage.pkg/[V2] read me.rtf"),
+            Some(package.join("[v2] Read Me.rtf"))
+        );
+        assert_eq!(resolve("unpack/TempPackage.pkg/Missing"), None);
+        // Two names that differ only in case are ambiguous.
+        std::fs::write(package.join("PAYLOAD"), b"").unwrap();
+        assert_eq!(resolve("unpack/TempPackage.pkg/payload"), None);
+        assert_eq!(
+            resolve("unpack/TempPackage.pkg/Payload"),
+            Some(package.join("Payload"))
+        );
+    }
+
     #[test]
     fn matches_components_regardless_of_case() {
         let temp = tempfile::tempdir().unwrap();

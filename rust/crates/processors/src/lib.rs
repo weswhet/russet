@@ -246,6 +246,18 @@ fn portable_path(path: &str) -> Result<()> {
     }
     Ok(())
 }
+/// An input path as it resolves on a case-insensitive macOS volume. Recipes
+/// can name `payload` when the file is `Payload`; on other systems, a path
+/// that doesn't exist as written resolves to the one entry per component
+/// that differs only in case. Anything else is returned unchanged.
+fn macos_path(path: &str) -> String {
+    if cfg!(target_os = "macos") || Path::new(path).symlink_metadata().is_ok() {
+        return path.to_string();
+    }
+    autopkg_platform::case_fold::resolve(Path::new(path))
+        .and_then(|p| p.into_os_string().into_string().ok())
+        .unwrap_or_else(|| path.to_string())
+}
 fn matches(pattern: &str) -> Result<Vec<PathBuf>> {
     portable_path(pattern)?;
     python_glob::paths(pattern)

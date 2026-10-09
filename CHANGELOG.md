@@ -53,7 +53,9 @@ compatibility version 3.0.0.
   disk images and converts them to PNG, choosing the same image as macOS.
   `RUSSET_NATIVE=icons` uses the same code on macOS.
 - On Linux, when a recipe's path matches nothing, Russet tries it again
-  ignoring case, the way it resolves on case-insensitive macOS volumes.
+  ignoring case, the way it resolves on case-insensitive macOS volumes. So
+  does PkgPayloadUnpacker's `pkg_payload_path`, so `TempPackage.pkg/payload`
+  finds `Payload`.
   Extended attributes that Linux file systems refuse, such as large resource
   forks and the signatures of non-Mach-O files, are kept in a
   `.russet-xattrs` folder at the top of the extraction for code signature
@@ -66,7 +68,9 @@ compatibility version 3.0.0.
   built-in replacement for `pkgutil --check-signature`. It verifies the RSA
   and CMS signatures over the package's table-of-contents checksum, the
   trusted timestamp, and the certificate chain to Apple's root certificates,
-  which are the only roots it trusts. It doesn't check notarization or
+  which are the only roots it trusts. Like `pkgutil`, it accepts RSA
+  signatures over the checksum's digest and CMS signatures without signed
+  attributes, which some signers write. It doesn't check notarization or
   revocation.
 - On Linux, CodeSignatureVerifier checks app signatures with a built-in
   replacement for `codesign --verify --deep --strict -R`: every architecture's
