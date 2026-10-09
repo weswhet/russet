@@ -88,6 +88,31 @@ fn zip_keeps_modes_symlinks_and_apple_double_metadata() {
 }
 
 #[test]
+fn zip_reads_unflagged_names_as_utf8_like_ditto() {
+    let temp = tempfile::tempdir().unwrap();
+    let archive = temp.path().join("names.zip");
+    zip_with(&archive, |z| {
+        z.start_file("Scripts/👋 About.rtf", options(0o644))
+            .unwrap();
+        z.write_all(b"hello").unwrap();
+    });
+    // Clear the UTF-8 flag (bit 11) in the local and central headers, as
+    // macOS zip tools leave it.
+    let mut bytes = fs::read(&archive).unwrap();
+    for (signature, offset) in [(b"PK\x03\x04", 6), (b"PK\x01\x02", 8)] {
+        let start = bytes.windows(4).position(|w| w == signature).unwrap();
+        bytes[start + offset + 1] &= !0x08;
+    }
+    fs::write(&archive, bytes).unwrap();
+    let out = temp.path().join("out");
+    extract_zip(&archive, &out, Limits::default()).unwrap();
+    assert_eq!(
+        fs::read(out.join("Scripts/👋 About.rtf")).unwrap(),
+        b"hello"
+    );
+}
+
+#[test]
 fn zip_rejects_escapes_before_writing() {
     let temp = tempfile::tempdir().unwrap();
     let archive = temp.path().join("evil.zip");

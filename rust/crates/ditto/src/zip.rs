@@ -50,7 +50,7 @@ pub(crate) fn extract(
     let mut roles = Vec::with_capacity(archive.len());
     for index in 0..archive.len() {
         let entry = archive.by_index_raw(index).map_err(zip_error)?;
-        roles.push(role(entry.name())?);
+        roles.push(role(&name(&entry))?);
     }
     let mut writer = TreeWriter::open(destination, limits)?;
     let mut metadata = appledouble::Pending::default();
@@ -87,6 +87,17 @@ pub(crate) fn extract(
     }
     metadata.finish(&mut writer)?;
     writer.finish()
+}
+
+/// The member's name as `ditto` reads it. Without the UTF-8 flag, the zip
+/// format says names are CP437, but `ditto` and Archive Utility read the
+/// bytes as UTF-8, and macOS zip tools often leave the flag unset. CP437 is
+/// only the fallback for names that aren't valid UTF-8.
+fn name<'a>(entry: &'a zip::read::ZipFile<'_>) -> std::borrow::Cow<'a, str> {
+    match std::str::from_utf8(entry.name_raw()) {
+        Ok(name) => name.into(),
+        Err(_) => entry.name().into(),
+    }
 }
 
 fn zip_error(error: zip::result::ZipError) -> io::Error {
