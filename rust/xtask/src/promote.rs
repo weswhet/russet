@@ -904,10 +904,12 @@ mod tests {
     fn macos_signing_steps_exist_in_the_development_workflow() {
         // The gate matches step names exactly, so a renamed step in rust.yml
         // would block every promotion. Catch that here instead.
+        // Windows checkouts use CRLF line endings, so compare with LF only.
         let workflow = fs::read_to_string(
             crate::package::repository_root().join(".github/workflows/rust.yml"),
         )
-        .unwrap();
+        .unwrap()
+        .replace("\r\n", "\n");
         for name in MACOS_SIGNING_STEPS {
             let line = format!("- name: {name}\n");
             assert_eq!(workflow.matches(&line).count(), 1, "{name} in rust.yml");
