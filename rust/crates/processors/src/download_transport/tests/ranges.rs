@@ -100,7 +100,8 @@ fn download(server: &Server, python: bool, policy: ChunkPolicy) -> Outcome {
         "--output".into(),
         output.clone().into_os_string(),
     ];
-    let (mut command, _trust) = crate::downloader::command(&env, python, &operation).unwrap();
+    let (mut command, _trust) =
+        crate::processors::url_downloader::command(&env, python, &operation).unwrap();
     if python {
         command.args(["--write-out", super::super::options::EFFECTIVE_URL_FORMAT]);
     }
@@ -258,7 +259,8 @@ fn https_command(
         "--output".into(),
         output.as_os_str().to_owned(),
     ];
-    let (generated, _trust) = crate::downloader::command(&env, python, &operation).unwrap();
+    let (generated, _trust) =
+        crate::processors::url_downloader::command(&env, python, &operation).unwrap();
     let mut command = Command::new(generated.get_program());
     let mut arguments = generated
         .get_args()

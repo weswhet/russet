@@ -5,11 +5,10 @@ pub mod catalog;
 #[cfg(unix)]
 mod icon_native;
 pub mod icons;
-pub mod importer;
-pub mod installs;
 pub mod metadata;
 mod mount;
 mod osinstaller;
+pub mod processors;
 mod tools;
 
 use plist::{Dictionary, Value};
@@ -80,132 +79,12 @@ impl FileRepo {
 pub fn execute(name: &str, env: &mut Dictionary) -> Result<(), String> {
     validate_backend(env)?;
     match name {
-        "MunkiImporter" => importer::execute(env),
-        "MunkiInfoCreator" => {
-            let mut arguments = Vec::new();
-            for key in ["displayname", "description", "catalog"] {
-                if let Some(v) = env.get(key).and_then(Value::as_string) {
-                    arguments.push(format!("--{key}={v}"));
-                }
-            }
-            let options = metadata::Options::parse(&arguments)?;
-            let mut info = metadata::generate(Some(Path::new(string(env, "pkg_path")?)), &options)?;
-            for key in ["name", "version"] {
-                if let Some(v) = env.get(key) {
-                    info.insert(key.into(), v.clone());
-                }
-            }
-            if let Some(path) = env.get("info_path").and_then(Value::as_string) {
-                Value::Dictionary(info.clone())
-                    .to_file_xml(path)
-                    .map_err(|e| e.to_string())?;
-            }
-            env.insert("munki_info".into(), Value::Dictionary(info));
-            Ok(())
-        }
-        "MunkiInstallsItemsCreator" => installs::execute(env),
-        "MunkiSetDefaultCatalog" => {
-            if !env.contains_key("pkginfo") {
-                env.insert("pkginfo".into(), Value::Dictionary(Dictionary::new()));
-            }
-            let mut changed = false;
-            if let Some(catalog) =
-                autopkg_platform::preference("com.googlecode.munki.munkiimport", "default_catalog")?
-            {
-                let nonempty = truthy(&catalog);
-                if nonempty {
-                    let message = format!(
-                        "Updated target catalogs into pkginfo with {}",
-                        plist::python_str(&catalog)
-                    );
-                    env.get_mut("pkginfo")
-                        .and_then(Value::as_dictionary_mut)
-                        .ok_or("pkginfo must be a dictionary")?
-                        .insert("catalogs".into(), Value::Array(vec![catalog]));
-                    changed = true;
-                    autopkg_platform::processor_output(1, message);
-                }
-            }
-            if !changed {
-                autopkg_platform::processor_output(1, "No default catalogs found, nothing changed");
-            }
-            Ok(())
-        }
-        "MunkiPkginfoMerger" => {
-            let additional = env
-                .get("additional_pkginfo")
-                .and_then(Value::as_dictionary)
-                .ok_or("additional_pkginfo must be a dictionary")?
-                .clone();
-            if !env.contains_key("pkginfo") {
-                env.insert("pkginfo".into(), Value::Dictionary(Dictionary::new()));
-            }
-            let info = env
-                .get_mut("pkginfo")
-                .and_then(Value::as_dictionary_mut)
-                .ok_or("pkginfo must be a dictionary")?;
-            let message = format!(
-                "Merged {} into pkginfo",
-                plist::python_repr(&Value::Dictionary(additional.clone()))
-            );
-            info.extend(additional);
-            autopkg_platform::processor_output(1, message);
-            Ok(())
-        }
-        "MunkiOptionalReceiptEditor" => {
-            let path = string(env, "pkginfo_repo_path")?.to_owned();
-            if path.is_empty() {
-                autopkg_platform::processor_output(1, "No pkginfo_repo_path specified, skipping");
-                if !env.contains_key("munki_info") {
-                    env.insert("munki_info".into(), Value::Dictionary(Dictionary::new()));
-                }
-                return Ok(());
-            }
-            let ids = env
-                .get("pkg_ids_set_optional_true")
-                .and_then(Value::as_array)
-                .ok_or("pkg_ids_set_optional_true must be an array")?;
-            let mut info = match env
-                .get("munki_info")
-                .and_then(Value::as_dictionary)
-                .filter(|d| !d.is_empty())
-            {
-                Some(info) => info.clone(),
-                None => Value::from_file(&path)
-                    .map_err(|e| e.to_string())?
-                    .into_dictionary()
-                    .ok_or("pkginfo must be a dictionary")?,
-            };
-            let receipts = info
-                .get_mut("receipts")
-                .and_then(Value::as_array_mut)
-                .ok_or("pkginfo does not contain any receipts")?;
-            let mut changed = false;
-            for receipt in receipts {
-                let receipt = receipt
-                    .as_dictionary_mut()
-                    .ok_or("Invalid receipt dictionary")?;
-                let id = receipt
-                    .get("packageid")
-                    .ok_or("Receipt does not contain packageid")?;
-                if ids.contains(id) {
-                    autopkg_platform::processor_output(
-                        1,
-                        format!("Setting package ID {} as optional", plist::python_str(id)),
-                    );
-                    receipt.insert("optional".into(), Value::Boolean(true));
-                    changed = true;
-                }
-            }
-            if changed {
-                autopkg_platform::processor_output(1, format!("Writing pkginfo to {path}"));
-                FileRepo::new(string(env, "MUNKI_REPO")?).put_pkginfo(&info, Path::new(&path))?;
-            } else {
-                autopkg_platform::processor_output(1, "No receipts modified, nothing to do");
-            }
-            env.insert("munki_info".into(), Value::Dictionary(info));
-            Ok(())
-        }
+        "MunkiImporter" => processors::munki_importer::execute(env),
+        "MunkiInfoCreator" => processors::munki_info_creator::execute(env),
+        "MunkiInstallsItemsCreator" => processors::munki_installs_items_creator::execute(env),
+        "MunkiOptionalReceiptEditor" => processors::munki_optional_receipt_editor::execute(env),
+        "MunkiPkginfoMerger" => processors::munki_pkginfo_merger::execute(env),
+        "MunkiSetDefaultCatalog" => processors::munki_set_default_catalog::execute(env),
         _ => Err(format!("Munki processor '{name}' is not implemented")),
     }
 }

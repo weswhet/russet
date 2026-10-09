@@ -267,7 +267,7 @@ fn verified_curl_options_run_natively_and_match_curl() {
     let mut env = Dictionary::new();
     env.insert("url".into(), "http://127.0.0.1:1/app.pkg".into());
     env.insert("curl_opts".into(), options.clone());
-    let (command, _) = crate::downloader::command(
+    let (command, _) = crate::processors::url_downloader::command(
         &env,
         false,
         &["--fail".into(), "--output".into(), "/x".into()],

@@ -10,7 +10,7 @@ pub(crate) fn curl_stderr(bytes: &[u8]) -> String {
     // Python subprocess text=True applies universal newline decoding before
     // Processor.output writes through the platform's text stream. Keeping raw
     // CRLF here would turn it into CRCRLF when Windows output translates LF.
-    crate::download::text(bytes)
+    crate::processors::url_getter::text(bytes)
 }
 
 pub(crate) fn parse_headers(text: &str) -> Headers {

@@ -1,63 +1,8 @@
-//! curl-backed text retrieval without a Python runtime.
-use super::{string, ExecutionFailure, Result};
+//! `URLTextSearcher`: download text with curl and search it with a Python
+//! regular expression, saving the match and its named groups.
+use super::url_getter::fetch;
+use crate::{string, ExecutionFailure, Result};
 use plist::{Dictionary, Value};
-use std::process::Command;
-fn command(env: &Dictionary) -> Result<Command> {
-    let binary = autopkg_platform::downloads::curl_binary(env)?;
-    let mut command = Command::new(&binary);
-    if !(cfg!(windows)
-        && binary
-            .to_string_lossy()
-            .to_lowercase()
-            .contains("windows\\system32"))
-    {
-        command.arg("--compressed");
-    }
-    command.arg("--location");
-    if let Some(headers) = env.get("request_headers") {
-        for (key, value) in headers
-            .as_dictionary()
-            .ok_or("request_headers must be a dictionary")?
-        {
-            let value = value
-                .as_string()
-                .ok_or("request_headers values must be strings")?;
-            command.arg("--header").arg(format!("{key}: {value}"));
-        }
-    }
-    if let Some(options) = env.get("curl_opts") {
-        for option in options.as_array().ok_or("curl_opts must be an array")? {
-            command.arg(
-                option
-                    .as_string()
-                    .ok_or("curl_opts values must be strings")?,
-            );
-        }
-    }
-    command.arg(string(env, "url")?);
-    Ok(command)
-}
-pub(super) fn text(bytes: &[u8]) -> String {
-    // Python's subprocess text mode uses errors="ignore" and universal newlines.
-    let mut rest = bytes;
-    let mut result = String::new();
-    loop {
-        match std::str::from_utf8(rest) {
-            Ok(s) => {
-                result.push_str(s);
-                break;
-            }
-            Err(e) => {
-                result.push_str(std::str::from_utf8(&rest[..e.valid_up_to()]).unwrap());
-                match e.error_len() {
-                    Some(n) => rest = &rest[e.valid_up_to() + n..],
-                    None => break,
-                }
-            }
-        }
-    }
-    result.replace("\r\n", "\n").replace('\r', "\n")
-}
 fn capture_close_order(pattern: &str) -> Result<Vec<usize>> {
     fn visit(expr: &fancy_regex::Expr, count: &mut usize, order: &mut Vec<usize>) {
         use fancy_regex::Expr;
@@ -177,7 +122,7 @@ fn search(
             "ASCII and UNICODE flags are incompatible",
         ));
     }
-    let prepared = super::python_regex::prepare(&pattern, content, ascii, ignore_case)
+    let prepared = crate::python_regex::prepare(&pattern, content, ascii, ignore_case)
         .map_err(ExecutionFailure::unexpected)?;
     let mut builder = fancy_regex::RegexBuilder::new(&prepared.pattern);
     builder.python_backreferences(true);
@@ -251,38 +196,10 @@ fn search(
     }
     Ok(output_names)
 }
-pub(super) fn fetch(env: &Dictionary) -> Result<String> {
-    let mut command = command(env)?;
-    let _certificate =
-        super::downloader::trust::native_curl(&mut command).map_err(|e| e.message)?;
-    let arguments = std::iter::once(command.get_program())
-        .chain(command.get_args())
-        .map(|s| Value::String(s.to_string_lossy().into_owned()))
-        .collect::<Vec<_>>();
-    let result = command
-        .output()
-        .map_err(|e| format!("Unable to execute curl: {e}"))?;
-    if !result.status.success() {
-        let error = text(&result.stderr);
-        autopkg_platform::processor_output(
-            1,
-            format!("ERROR: {}", error.strip_prefix("curl: ").unwrap_or(&error)),
-        );
-        return Err(error);
-    }
-    autopkg_platform::processor_output(
-        4,
-        format!(
-            "Curl command: {}",
-            plist::python_repr(&Value::Array(arguments))
-        ),
-    );
-    Ok(text(&result.stdout))
-}
-pub(super) fn execute(env: &mut Dictionary) -> Result<Vec<String>> {
+pub(crate) fn execute(env: &mut Dictionary) -> Result<Vec<String>> {
     execute_typed(env).map_err(|e| e.message)
 }
-pub(super) fn execute_typed(
+pub(crate) fn execute_typed(
     env: &mut Dictionary,
 ) -> std::result::Result<Vec<String>, ExecutionFailure> {
     let content = fetch(env)?;
@@ -371,16 +288,12 @@ mod tests {
         assert_eq!(env["tail"].as_string(), Some("42"));
     }
     #[test]
-    fn invalid_utf8_is_ignored() {
-        assert_eq!(text(b"a\xffb\r\nc\rd"), "ab\nc\nd");
-    }
-    #[test]
     fn no_match_and_unsupported_regex_fail() {
         let mut env = Dictionary::new();
         env.insert("re_pattern".into(), "abc".into());
         assert_eq!(
             search(&mut env, "xyz").unwrap_err().kind,
-            super::super::FailureKind::Processor
+            crate::FailureKind::Processor
         );
         env.insert("re_pattern".into(), "(?<=x)(y)".into());
         search(&mut env, "xy").unwrap();
@@ -391,7 +304,7 @@ mod tests {
         env.insert("re_pattern".into(), "(".into());
         assert_eq!(
             search(&mut env, "xy").unwrap_err().kind,
-            super::super::FailureKind::Unexpected
+            crate::FailureKind::Unexpected
         );
     }
 }
