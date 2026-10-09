@@ -171,7 +171,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           tar -xzf dist/russet-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
-          docker run --rm --network none -e AUTOPKG_DISPOSABLE_CONTAINER=1 -v "$RUNNER_TEMP/russet-development-${{ matrix.target }}:/candidate:ro" -v "$GITHUB_WORKSPACE/Scripts/verify_rust_linux.sh:/verify.sh:ro" ubuntu:24.04 /bin/sh /verify.sh /candidate
+          docker run --rm --network none -e AUTOPKG_DISPOSABLE_CONTAINER=1 -v "$RUNNER_TEMP/russet-development-${{ matrix.target }}:/candidate:ro" -v "$GITHUB_WORKSPACE/Scripts/verify_rust_linux.sh:/verify.sh:ro" mirror.gcr.io/library/ubuntu:24.04 /bin/sh /verify.sh /candidate
       - uses: actions/upload-artifact@v4
         with:
           name: russet-development-${{ matrix.target }}
