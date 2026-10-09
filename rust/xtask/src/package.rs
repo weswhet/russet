@@ -107,14 +107,44 @@ pub fn entries(root: &Path, target: &str, bin_dir: &Path) -> Result<Entries, Str
         );
     }
     if is_apple(target) {
-        for name in ["russet-server.plist", "russet-installd.plist"] {
+        for (name, label) in LAUNCHD_JOBS {
+            let definition = distribution.join("launchd").join(format!("{label}.json"));
             entries.insert(
                 format!("launchd/{name}"),
-                (read(&distribution.join("launchd").join(name))?, 0o644),
+                (launchd_plist(&definition, label)?, 0o644),
             );
         }
     }
     Ok(entries)
+}
+
+/// The archive's launchd plists for install.sh, and the job definitions in
+/// `rust/distribution/launchd` they come from. `russet --install-helpers`
+/// installs the same definitions.
+const LAUNCHD_JOBS: [(&str, &str); 2] = [
+    ("russet-server.plist", "com.github.weswhet.russet.server"),
+    (
+        "russet-installd.plist",
+        "com.github.weswhet.russet.installd",
+    ),
+];
+
+/// Convert a JSON job definition to an XML plist.
+fn launchd_plist(path: &Path, label: &str) -> Result<Vec<u8>, String> {
+    let text = fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
+    let job: plist::Value = serde_json::from_str(&text)
+        .map_err(|error| format!("{}: invalid JSON: {error}", path.display()))?;
+    let found = job
+        .as_dictionary()
+        .and_then(|job| job.get("Label"))
+        .and_then(plist::Value::as_string);
+    if found != Some(label) {
+        return Err(format!("{}: Label must be {label}", path.display()));
+    }
+    let mut xml = Vec::new();
+    job.to_writer_xml(&mut xml)
+        .map_err(|error| format!("{}: {error}", path.display()))?;
+    Ok(xml)
 }
 
 /// Write `russet-development-TARGET.tar.gz` (or `.zip` for Windows) to
@@ -220,11 +250,19 @@ pub(crate) mod tests {
             assert!(entries.keys().any(|name| name.starts_with("licenses/tls/")));
             assert!(entries.contains_key("licenses/third-party/README.md"));
             if is_apple(target) {
-                for name in [
-                    "launchd/russet-server.plist",
-                    "launchd/russet-installd.plist",
-                ] {
-                    assert!(entries.contains_key(name), "{target}: {name}");
+                for ((name, label), flag) in LAUNCHD_JOBS.iter().zip(["--server", "--installd"]) {
+                    let (xml, mode) = &entries[&format!("launchd/{name}")];
+                    assert_eq!(*mode, 0o644, "{target}: {name}");
+                    let job = plist::Value::from_reader_xml(xml.as_slice()).unwrap();
+                    let job = job.as_dictionary().unwrap();
+                    assert_eq!(job["Label"].as_string(), Some(*label));
+                    let arguments: Vec<_> = job["ProgramArguments"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|argument| argument.as_string().unwrap())
+                        .collect();
+                    assert_eq!(arguments, ["/opt/russet/russet", flag], "{target}: {name}");
                 }
                 assert!(!entries.keys().any(|name| name.starts_with("bin/autopkg")));
             } else {

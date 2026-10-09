@@ -4,11 +4,10 @@
 //! PkgCreator or Installer.
 
 use crate::Service;
+use plist::Value;
 use std::path::{Component, Path, PathBuf};
 
 const SERVICES: [Service; 2] = [Service::Packaging, Service::Installation];
-/// The executable path that the plist templates name.
-const TEMPLATE_EXECUTABLE: &str = "<string>/opt/russet/russet</string>";
 
 impl Service {
     /// The launchd job label.
@@ -19,13 +18,17 @@ impl Service {
         }
     }
 
-    /// The job's plist, the same one the archive's install.sh installs.
-    fn template(self) -> &'static str {
+    /// The job definition in `rust/distribution/launchd`, which
+    /// `cargo xtask package` also turns into the archive's plists. Its first
+    /// program argument is the executable, which installation replaces.
+    fn definition(self) -> &'static str {
         match self {
-            Self::Packaging => include_str!("../../../distribution/launchd/russet-server.plist"),
-            Self::Installation => {
-                include_str!("../../../distribution/launchd/russet-installd.plist")
+            Self::Packaging => {
+                include_str!("../../../distribution/launchd/com.github.weswhet.russet.server.json")
             }
+            Self::Installation => include_str!(
+                "../../../distribution/launchd/com.github.weswhet.russet.installd.json"
+            ),
         }
     }
 
@@ -54,20 +57,36 @@ fn job_executable(executable: &Path) -> PathBuf {
     }
 }
 
-/// The job's plist with `executable` in place of the template's path.
-fn render(service: Service, executable: &Path) -> Result<String, String> {
+/// The job's definition with `executable` as its program.
+fn job(service: Service, executable: &Path) -> Result<Value, String> {
     let path = executable
         .to_str()
         .ok_or_else(|| format!("{} isn't valid UTF-8", executable.display()))?;
-    let escaped = path
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;");
-    let template = service.template();
-    if template.matches(TEMPLATE_EXECUTABLE).count() != 1 {
-        return Err(format!("The {} job template is malformed", service.name()));
+    let malformed = |detail: &str| format!("The {} job definition {detail}", service.label());
+    let mut job: Value = serde_json::from_str(service.definition())
+        .map_err(|error| malformed(&format!("isn't valid JSON: {error}")))?;
+    let dictionary = job
+        .as_dictionary_mut()
+        .ok_or_else(|| malformed("isn't an object"))?;
+    if dictionary.get("Label").and_then(Value::as_string) != Some(service.label()) {
+        return Err(malformed("has the wrong Label"));
     }
-    Ok(template.replace(TEMPLATE_EXECUTABLE, &format!("<string>{escaped}</string>")))
+    let program = dictionary
+        .get_mut("ProgramArguments")
+        .and_then(Value::as_array_mut)
+        .and_then(|arguments| arguments.first_mut())
+        .ok_or_else(|| malformed("has no ProgramArguments"))?;
+    *program = path.into();
+    Ok(job)
+}
+
+/// The job's plist with `executable` as its program.
+fn render(service: Service, executable: &Path) -> Result<Vec<u8>, String> {
+    let mut xml = Vec::new();
+    job(service, executable)?
+        .to_writer_xml(&mut xml)
+        .map_err(|error| format!("Unable to write the {} job: {error}", service.label()))?;
+    Ok(xml)
 }
 
 #[cfg(target_os = "macos")]
@@ -118,7 +137,7 @@ pub fn install() -> Result<(), String> {
                 .create_new(true)
                 .mode(0o644)
                 .open(&staged)
-                .and_then(|mut file| file.write_all(text.as_bytes()).and(file.sync_all()))
+                .and_then(|mut file| file.write_all(&text).and(file.sync_all()))
                 .and_then(|()| fs::rename(&staged, &path));
             if let Err(error) = written {
                 let _ = fs::remove_file(&staged);
@@ -166,18 +185,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plists_name_the_executable_and_keep_the_rest_of_the_template() {
-        for service in SERVICES {
-            let text = render(service, Path::new("/opt/homebrew/opt/russet/bin/russet")).unwrap();
-            assert!(text.contains("<string>/opt/homebrew/opt/russet/bin/russet</string>"));
-            assert!(!text.contains("/opt/russet/russet"));
-            assert!(text.contains(&format!("<string>{}</string>", service.label())));
-            assert!(text.contains(&format!("<string>/var/run/{}</string>", service.name())));
-            let unchanged = render(service, Path::new("/opt/russet/russet")).unwrap();
-            assert_eq!(unchanged, service.template());
+    fn plists_run_the_executable_on_the_service_socket() {
+        for (service, flag) in SERVICES.into_iter().zip(["--server", "--installd"]) {
+            let executable = "/tmp/a&b<c>/bin/russet";
+            let xml = render(service, Path::new(executable)).unwrap();
+            let job = Value::from_reader_xml(xml.as_slice()).unwrap();
+            let job = job.as_dictionary().unwrap();
+            let get = |key: &str| job.get(key).unwrap();
+            assert_eq!(get("Label").as_string(), Some(service.label()));
+            assert_eq!(get("KeepAlive").as_boolean(), Some(false));
+            let arguments: Vec<_> = get("ProgramArguments")
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|argument| argument.as_string().unwrap())
+                .collect();
+            assert_eq!(arguments, [executable, flag]);
+            let socket = get("Sockets")
+                .as_dictionary()
+                .unwrap()
+                .get(service.name())
+                .unwrap()
+                .as_dictionary()
+                .unwrap();
+            let path = service.socket_path();
+            assert_eq!(
+                socket.get("SockPathName").unwrap().as_string(),
+                path.to_str()
+            );
+            assert_eq!(
+                socket.get("SockPathMode").unwrap().as_signed_integer(),
+                Some(0o666)
+            );
         }
-        let odd = render(Service::Packaging, Path::new("/tmp/a&b<c>/russet")).unwrap();
-        assert!(odd.contains("<string>/tmp/a&amp;b&lt;c&gt;/russet</string>"));
     }
 
     #[test]

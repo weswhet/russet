@@ -178,7 +178,7 @@ jobs:
           cat > /tmp/release-notes.md <<'EOF'
           Verified native Rust distribution for macOS arm64 and x86-64, Linux x86-64, and Windows x86-64.
 
-          The macOS installer package installs the same signed and notarized executables as the macOS archives, as one universal binary at /opt/russet/russet with a /usr/local/bin/russet link. It doesn't set up launchd jobs; run `sudo russet --install-helpers` to load the russet-server and russet-installd helpers that PkgCreator and Installer need. The package is signed with a Developer ID Installer certificate, notarized, and stapled.
+          The macOS installer package installs the same signed and notarized executables as the macOS archives, as one universal binary at /usr/local/bin/russet, and installs nothing else. It doesn't set up launchd jobs; run `sudo russet --install-helpers` to load the russet-server and russet-installd helpers that PkgCreator and Installer need. The package is signed with a Developer ID Installer certificate, notarized, and stapled.
 
           Binaries and installers are preserved from the recorded development archives. Native installation checks, the gate run, and the source commit are recorded in gate-evidence.json and each archive's RELEASE.json. The CLI continues to report the AutoPkg 3.0.0 compatibility version.
 

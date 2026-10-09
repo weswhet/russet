@@ -139,6 +139,7 @@ dependencies = [
  "russet-mkbom",
  "russet-pkgbuild",
  "russet-xar",
+ "serde_json",
  "tempfile",
 ]
 
@@ -2839,6 +2840,7 @@ dependencies = [
 name = "xtask"
 version = "0.1.0"
 dependencies = [
+ "autopkg-value",
  "chrono",
  "flate2",
  "serde_json",

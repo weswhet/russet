@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build Russet's macOS installer package from the two verified release
-# archives. The package installs /opt/russet/russet and the
-# /usr/local/bin/russet symlink. It doesn't set up the launchd helpers;
+# archives. The package installs only the executable, at
+# /usr/local/bin/russet. It doesn't set up the launchd helpers;
 # `sudo russet --install-helpers` does that. The executable is the two signed
 # archive slices joined with lipo, which keeps each slice's signature.
 set -euo pipefail
@@ -50,14 +50,12 @@ intel=$(unpack "$x86_64" x86_64-apple-darwin)
 [[ "$(lipo -archs "$intel/bin/russet")" == x86_64 ]] || fail "$x86_64 doesn't hold an x86_64 executable"
 
 payload=$work/payload
-mkdir -p "$payload/opt/russet" "$payload/usr/local/bin"
-lipo -create -output "$payload/opt/russet/russet" "$arm/bin/russet" "$intel/bin/russet"
-chmod 0755 "$payload/opt/russet/russet"
-ln -s /opt/russet/russet "$payload/usr/local/bin/russet"
-cp -R "$arm/LICENSE.txt" "$arm/licenses" "$payload/opt/russet/"
+mkdir -p "$payload/usr/local/bin"
+lipo -create -output "$payload/usr/local/bin/russet" "$arm/bin/russet" "$intel/bin/russet"
+chmod 0755 "$payload/usr/local/bin/russet"
 if [[ -n "$identity" ]]; then
     # The archives' slices are signed; joining them must not break that.
-    codesign --verify --strict --verbose=2 "$payload/opt/russet/russet"
+    codesign --verify --strict --verbose=2 "$payload/usr/local/bin/russet"
 fi
 
 # If an administrator already set up the helpers, stop them before replacing
@@ -114,11 +112,11 @@ productbuild --quiet --distribution "$work/distribution.xml" --package-path "$wo
 # Check what the package installs.
 pkgutil --expand-full "$output" "$work/expanded"
 installed=$work/expanded/russet.pkg/Payload
-[[ "$(lipo -archs "$installed/opt/russet/russet")" == "x86_64 arm64" ]] ||
+files="$(cd "$installed" && find . \( -type f -o -type l \) -print)"
+[[ "$files" == ./usr/local/bin/russet ]] ||
+    fail "the package must install only usr/local/bin/russet, not: $(tr '\n' ' ' <<<"$files")"
+[[ "$(lipo -archs "$installed/usr/local/bin/russet")" == "x86_64 arm64" ]] ||
     fail "the packaged executable isn't the universal binary"
-[[ "$(readlink "$installed/usr/local/bin/russet")" == /opt/russet/russet ]] ||
-    fail 'the packaged russet symlink is wrong'
-[[ ! -e "$installed/Library" ]] || fail 'the package must not install launchd jobs'
 if [[ -n "$identity" ]]; then
     pkgutil --check-signature "$output" | grep -Fq "$identity" ||
         fail "$output isn't signed by $identity"
