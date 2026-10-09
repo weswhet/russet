@@ -271,6 +271,56 @@ fn listing_attributes_reads_only_the_path_to_the_file() {
     );
 }
 
+/// Looking up a path in an APFS volume descends the catalog B-tree to each
+/// directory's records instead of scanning every leaf before them. The scan
+/// made each lookup linear in the catalog size, so extracting Electron apps
+/// took longer than ten minutes.
+#[test]
+fn apfs_path_lookups_read_only_the_path() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("source");
+    let dirs = 30;
+    for d in 0..dirs {
+        let dir = source.join(format!("d{d:02}"));
+        fs::create_dir_all(&dir).unwrap();
+        for f in 0..100 {
+            fs::write(dir.join(format!("f{f:03}")), "x").unwrap();
+        }
+    }
+    let volume_path = temp.path().join("volume");
+    run(
+        "/usr/bin/hdiutil",
+        &[
+            "create",
+            "-quiet",
+            "-srcfolder",
+            source.to_str().unwrap(),
+            "-fs",
+            "APFS",
+            "-layout",
+            "NONE",
+            "-format",
+            "UDTO",
+            "-o",
+            volume_path.to_str().unwrap(),
+        ],
+    );
+    let seeks = std::rc::Rc::new(std::cell::Cell::new(0));
+    let reader = CountingReader {
+        inner: std::io::BufReader::new(fs::File::open(volume_path.with_extension("cdr")).unwrap()),
+        seeks: seeks.clone(),
+    };
+    let mut volume = apfs::ApfsVolume::open(reader).unwrap();
+    let root = volume.root_oid();
+    assert_eq!(volume.list_directory_by_oid(root).unwrap().len(), dirs);
+    // The last directory's records sort after almost every other record.
+    let path = format!("/d{:02}/f099", dirs - 1);
+    seeks.set(0);
+    let stat = volume.stat(&path).unwrap();
+    assert_eq!(stat.size, 1);
+    assert!(seeks.get() < 60, "{} seeks to stat {path}", seeks.get());
+}
+
 /// Rebuilds the committed fixtures that the portable test checks on Linux:
 /// small images in each supported format, with the manifest of each mounted
 /// volume. Run on macOS with

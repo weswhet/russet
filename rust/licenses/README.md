@@ -9,7 +9,7 @@ folder holds the license and notice files the crate publishes.
 | `adc` | 0.2.1 | MIT | https://github.com/citruz/adc-rs |
 | `adler2` | 2.0.1 | 0BSD OR MIT OR Apache-2.0 | https://github.com/oyvindln/adler2 |
 | `aho-corasick` | 1.1.5 | Unlicense OR MIT | https://github.com/BurntSushi/aho-corasick |
-| `apfs` | 0.4.1 | MIT | https://github.com/Dil4rd/dpp |
+| `apfs` | 0.4.1 | MIT | Vendored in `rust/vendor` with Russet patches |
 | `arraydeque` | 0.5.1 | MIT/Apache-2.0 | https://github.com/andylokandy/arraydeque |
 | `base64` | 0.22.1 | MIT OR Apache-2.0 | https://github.com/marshallpierce/rust-base64 |
 | `base64` | 0.23.1 | MIT OR Apache-2.0 | https://github.com/marshallpierce/rust-base64 |
