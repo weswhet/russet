@@ -10,6 +10,8 @@ mod copier;
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod installer;
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod launchd;
 #[cfg(unix)]
 mod native;
 #[cfg(unix)]
@@ -18,6 +20,7 @@ mod packager;
 #[cfg(unix)]
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 mod runtime;
+pub use launchd::{install as install_launchd_jobs, uninstall as uninstall_launchd_jobs};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Service {

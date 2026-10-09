@@ -1,0 +1,80 @@
+name: Rust Homebrew formula
+# Points weswhet/homebrew-tap's russet formula at a published release. A draft
+# has no public download URLs, so this runs only once a release is published.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag, for example rust-v0.1.0
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: homebrew-tap
+  cancel-in-progress: false
+jobs:
+  formula:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'rust-v')
+    runs-on: ubuntu-24.04
+    # Holds the tap's deploy key. It deploys only from main and rust-v* tags.
+    environment: russet-release
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Check the tag and the deploy key
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          set -eu
+          case "$TAG" in
+            rust-v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::$TAG isn't a rust-vMAJOR.MINOR.PATCH tag."; exit 64 ;;
+          esac
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::The russet-release environment has no HOMEBREW_TAP_DEPLOY_KEY."
+            exit 64
+          fi
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Download the published checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          draft="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
+          if [ "$draft" != false ]; then
+            echo "::error::$TAG isn't published."
+            exit 64
+          fi
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS \
+            --output "$RUNNER_TEMP/SHA256SUMS"
+      - uses: actions/checkout@v4
+        with:
+          repository: weswhet/homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: homebrew-tap
+      - name: Render the formula
+        working-directory: rust
+        run: >-
+          cargo xtask formula --version "${TAG#rust-v}"
+          --checksums "$RUNNER_TEMP/SHA256SUMS"
+          --output "$GITHUB_WORKSPACE/homebrew-tap/Formula/russet.rb"
+      - name: Push the formula
+        working-directory: homebrew-tap
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/russet.rb
+          if git diff --cached --quiet; then
+            echo "The russet formula is already at ${TAG#rust-v}."
+            exit 0
+          fi
+          git commit -m "russet ${TAG#rust-v}"
+          git push
+          echo "Updated weswhet/homebrew-tap to russet ${TAG#rust-v}." >> "$GITHUB_STEP_SUMMARY"

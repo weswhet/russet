@@ -4,9 +4,11 @@
 //! cargo xtask package --target TARGET --bin-dir DIR [--output DIR]
 //! cargo xtask promote --commit SHA --version VERSION --development-run ID --output DIR
 //! cargo xtask licenses [--check]
+//! cargo xtask formula --version VERSION --checksums FILE [--output FILE]
 //! ```
 
 mod archive;
+mod formula;
 mod licenses;
 mod package;
 mod promote;
@@ -17,6 +19,7 @@ const USAGE: &str = "usage:
   cargo xtask package --target TARGET --bin-dir DIR [--output DIR]
   cargo xtask promote --commit SHA --version VERSION --development-run ID --output DIR
   cargo xtask licenses [--check]
+  cargo xtask formula --version VERSION --checksums FILE [--output FILE]
 
 package  Archive native development binaries for one target. The archive is
          written to rust/dist unless --output is given; its path is printed.
@@ -25,7 +28,9 @@ promote  Check one successful four-target development run at COMMIT and turn
          only; GitHub metadata comes from the authenticated gh CLI.
 licenses Collect the license files of every third-party crate the shipped
          binaries link into rust/licenses. With --check, fail if that folder
-         is out of date instead of writing it.";
+         is out of date instead of writing it.
+formula  Render the Homebrew formula for published release VERSION from its
+         SHA256SUMS file. Prints it unless --output is given.";
 
 /// Parse `--name value` and `--name=value` options, allowing only `allowed`.
 fn options(arguments: &[String], allowed: &[&str]) -> Result<BTreeMap<String, String>, String> {
@@ -125,17 +130,40 @@ fn licenses(arguments: &[String]) -> Result<ExitCode, String> {
     }
 }
 
+fn formula(arguments: &[String]) -> Result<ExitCode, String> {
+    let mut options = options(arguments, &["version", "checksums", "output"])?;
+    let version = required(&mut options, "version")?;
+    let checksums = PathBuf::from(required(&mut options, "checksums")?);
+    let sums = std::fs::read_to_string(&checksums)
+        .map_err(|error| format!("{}: {error}", checksums.display()))?;
+    let text = match formula::render(&version, &sums) {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!("Formula refused: {error}");
+            return Ok(ExitCode::FAILURE);
+        }
+    };
+    match options.remove("output") {
+        Some(output) => {
+            std::fs::write(&output, text).map_err(|error| format!("{output}: {error}"))?
+        }
+        None => print!("{text}"),
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     let result = match arguments.first().map(String::as_str) {
         Some("package") => package(&arguments[1..]),
         Some("promote") => promote(&arguments[1..]),
         Some("licenses") => licenses(&arguments[1..]),
+        Some("formula") => formula(&arguments[1..]),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        _ => Err("expected a task: package, promote, or licenses".to_owned()),
+        _ => Err("expected a task: package, promote, licenses, or formula".to_owned()),
     };
     result.unwrap_or_else(|error| {
         eprintln!("error: {error}\n\n{USAGE}");

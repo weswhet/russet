@@ -742,7 +742,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "processor-run" => return processor_run(rest),
         "run" | "install" => return run(verb, rest),
         "help" | "--help" | "-h" => {
-            autopkg_platform::text_println!("Usage: russet VERB [options]\n\nDevelopment build. The Python executable remains the release implementation.\n\nImplemented verbs:\n  version\n  list-processors (processor-list)\n  processor-info NAME\n  processor-run NAME < input.plist > output.plist\n  list-recipes [--plist] [-i] [-p]\n  info [RECIPE ...]\n  clear-cache RECIPE ...\n  repo-add URL ...\n  repo-delete REPOSITORY ...\n  repo-list (list-repos)\n  repo-update [REPOSITORY ...]\n  audit RECIPE ...\n  search SEARCH_TERM\n  new-recipe PATH\n  make-override RECIPE\n  update-trust-info RECIPE ...\n  verify-trust-info RECIPE ...\n  generate-recipe-map\n  install RECIPE ...\n  run [-l RECIPE_LIST] [-c] [-v] [-k KEY=VALUE] [-d DIRECTORY] [--prefs FILE] RECIPE ...");
+            autopkg_platform::text_println!("Usage: russet VERB [options]\n\nDevelopment build. The Python executable remains the release implementation.\n\nImplemented verbs:\n  version\n  list-processors (processor-list)\n  processor-info NAME\n  processor-run NAME < input.plist > output.plist\n  list-recipes [--plist] [-i] [-p]\n  info [RECIPE ...]\n  clear-cache RECIPE ...\n  repo-add URL ...\n  repo-delete REPOSITORY ...\n  repo-list (list-repos)\n  repo-update [REPOSITORY ...]\n  audit RECIPE ...\n  search SEARCH_TERM\n  new-recipe PATH\n  make-override RECIPE\n  update-trust-info RECIPE ...\n  verify-trust-info RECIPE ...\n  generate-recipe-map\n  install RECIPE ...\n  run [-l RECIPE_LIST] [-c] [-v] [-k KEY=VALUE] [-d DIRECTORY] [--prefs FILE] RECIPE ...\n\nOn macOS, as root:\n  --install-helpers    Load the launchd jobs PkgCreator and Installer need\n  --uninstall-helpers  Unload and remove those launchd jobs");
         }
         _ => {
             return Err(format!(
@@ -767,8 +767,32 @@ fn helper_service(arguments: &[String]) -> Option<Result<autopkg_helpers::Servic
     })
 }
 
+type HelperSetup = fn() -> Result<(), String>;
+
+/// Map `--install-helpers` and `--uninstall-helpers` to setting up or removing
+/// the helpers' launchd jobs.
+fn helper_setup(arguments: &[String]) -> Option<Result<HelperSetup, String>> {
+    let action: HelperSetup = match arguments.first().map(String::as_str)? {
+        "--install-helpers" => autopkg_helpers::install_launchd_jobs,
+        "--uninstall-helpers" => autopkg_helpers::uninstall_launchd_jobs,
+        _ => return None,
+    };
+    Some(if arguments.len() == 1 {
+        Ok(action)
+    } else {
+        Err(format!("Usage: russet {}", arguments[0]))
+    })
+}
+
 fn main() {
     let arguments: Vec<_> = env::args().skip(1).collect();
+    if let Some(action) = helper_setup(&arguments) {
+        if let Err(error) = action.and_then(|action| action()) {
+            autopkg_platform::text_eprintln!("{error}");
+            std::process::exit(1);
+        }
+        std::process::exit(0);
+    }
     if let Some(service) = helper_service(&arguments) {
         if let Err(error) = service.and_then(autopkg_helpers::run) {
             autopkg_platform::text_eprintln!("{error}");
@@ -825,6 +849,26 @@ mod option_tests {
         );
         assert!(helper_service(&args(&["run", "--server"])).is_none());
         assert!(helper_service(&[]).is_none());
+    }
+    #[test]
+    fn helper_setup_flags_take_no_arguments() {
+        let args = |list: &[&str]| list.iter().map(|a| a.to_string()).collect::<Vec<_>>();
+        assert!(matches!(
+            helper_setup(&args(&["--install-helpers"])),
+            Some(Ok(_))
+        ));
+        assert!(matches!(
+            helper_setup(&args(&["--uninstall-helpers"])),
+            Some(Ok(_))
+        ));
+        assert_eq!(
+            helper_setup(&args(&["--install-helpers", "extra"]))
+                .unwrap()
+                .err(),
+            Some("Usage: russet --install-helpers".to_owned())
+        );
+        assert!(helper_setup(&args(&["--server"])).is_none());
+        assert!(helper_setup(&args(&["run", "--install-helpers"])).is_none());
     }
     #[test]
     fn optparse_forms_preserve_values_and_separator() {

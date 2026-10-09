@@ -1,0 +1,11 @@
+{
+  "Label": "com.github.weswhet.russet.installd",
+  "KeepAlive": false,
+  "ProgramArguments": ["/opt/russet/russet", "--installd"],
+  "Sockets": {
+    "russet-installd": {
+      "SockPathName": "/var/run/russet-installd",
+      "SockPathMode": 438
+    }
+  }
+}

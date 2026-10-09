@@ -53,8 +53,96 @@ jobs:
           name: verified-rust-release
           path: release-output/*
           if-no-files-found: error
-  draft:
+  macos-package:
+    # Builds the installer package from the verified macOS archives, so it
+    # installs the same signed and notarized slices.
     needs: verify
+    runs-on: macos-15
+    # Holds the Developer ID and notary secrets. Only main can deploy to it.
+    environment: russet-signing
+    env:
+      DEVELOPER_ID_INSTALLER: 'Developer ID Installer: Wesley Whetstone (2D8XQ77EBQ)'
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-rust-release
+          path: release-output
+      - name: Import the Developer ID Installer identity
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$CERTIFICATE_BASE64" || -z "$CERTIFICATE_PASSWORD" ]]; then
+            echo "::error::The russet-signing environment has no Developer ID identity. Run configure-release-secrets.sh."
+            exit 64
+          fi
+          keychain="$RUNNER_TEMP/russet-signing.keychain-db"
+          certificate="$RUNNER_TEMP/developer-id.p12"
+          keychain_password="$(uuidgen)"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/productbuild -T /usr/bin/productsign
+          rm -f "$certificate"
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$keychain_password" "$keychain" >/dev/null
+          grep -Fq "\"$DEVELOPER_ID_INSTALLER\"" <<<"$(security find-identity -v "$keychain")" || {
+            echo "::error::The signing keychain has no valid identity named $DEVELOPER_ID_INSTALLER."
+            exit 65
+          }
+      - name: Build the signed installer package
+        shell: bash
+        run: >-
+          Scripts/build_rust_macos_pkg.sh --version "$RELEASE_VERSION"
+          --arm64 "release-output/russet-$RELEASE_VERSION-aarch64-apple-darwin.tar.gz"
+          --x86_64 "release-output/russet-$RELEASE_VERSION-x86_64-apple-darwin.tar.gz"
+          --sign "$DEVELOPER_ID_INSTALLER"
+          --output "$RUNNER_TEMP/package/russet-$RELEASE_VERSION.pkg"
+      - name: Notarize and staple the installer package
+        env:
+          NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="$RUNNER_TEMP/package/russet-$RELEASE_VERSION.pkg"
+          key="$RUNNER_TEMP/AuthKey_$NOTARY_KEY_ID.p8"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$NOTARY_KEY" > "$key"
+          chmod 600 "$key"
+          notary=(--key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+          status=0
+          result="$(xcrun notarytool submit "$package" "${notary[@]}" --wait --output-format json 2>&1)" || status=$?
+          submission="$(jq -r '.id // empty' <<<"$result" 2>/dev/null || true)"
+          verdict="$(jq -r '.status // empty' <<<"$result" 2>/dev/null || true)"
+          echo "Notarization ${submission:-unknown} finished with status ${verdict:-unknown}."
+          if [[ "$status" -ne 0 || "$verdict" != Accepted ]]; then
+            [[ -z "$submission" ]] || xcrun notarytool log "$submission" "${notary[@]}" || true
+            echo "::error::Apple didn't accept the installer package. The log above says why."
+            exit 65
+          fi
+          xcrun stapler staple "$package"
+          xcrun stapler validate "$package"
+          spctl --assess --type install --verbose=2 "$package"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: russet-macos-package
+          path: ${{ runner.temp }}/package/*.pkg
+          if-no-files-found: error
+      - name: Remove the signing keychain
+        if: always()
+        shell: bash
+        run: security delete-keychain "$RUNNER_TEMP/russet-signing.keychain-db" 2>/dev/null || true
+  draft:
+    needs: [verify, macos-package]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -64,6 +152,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: verified-rust-release
+          path: release-output
+      - uses: actions/download-artifact@v4
+        with:
+          name: russet-macos-package
           path: release-output
       - name: Create draft only
         env:
@@ -80,8 +172,13 @@ jobs:
             exit 1
           fi
           (cd release-output && sha256sum --check SHA256SUMS)
+          package="russet-$RELEASE_VERSION.pkg"
+          test -f "release-output/$package"
+          (cd release-output && sha256sum "$package" >> SHA256SUMS)
           cat > /tmp/release-notes.md <<'EOF'
           Verified native Rust distribution for macOS arm64 and x86-64, Linux x86-64, and Windows x86-64.
+
+          The macOS installer package installs the same signed and notarized executables as the macOS archives, as one universal binary at /usr/local/bin/russet, and installs nothing else. It doesn't set up launchd jobs; run `sudo russet --install-helpers` to load the russet-server and russet-installd helpers that PkgCreator and Installer need. The package is signed with a Developer ID Installer certificate, notarized, and stapled.
 
           Binaries and installers are preserved from the recorded development archives. Native installation checks, the gate run, and the source commit are recorded in gate-evidence.json and each archive's RELEASE.json. The CLI continues to report the AutoPkg 3.0.0 compatibility version.
 

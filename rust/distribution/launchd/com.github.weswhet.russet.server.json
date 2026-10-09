@@ -1,0 +1,11 @@
+{
+  "Label": "com.github.weswhet.russet.server",
+  "KeepAlive": false,
+  "ProgramArguments": ["/opt/russet/russet", "--server"],
+  "Sockets": {
+    "russet-server": {
+      "SockPathName": "/var/run/russet-server",
+      "SockPathMode": 438
+    }
+  }
+}
