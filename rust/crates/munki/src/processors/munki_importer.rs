@@ -1,4 +1,8 @@
-//! Native FileRepo imports. The catalog is read but never rebuilt here.
+//! `MunkiImporter`: import a package and its pkginfo into a Munki FileRepo,
+//! natively. The catalog is read but never rebuilt here.
+//!
+//! Inputs and outputs: run `russet processor-info MunkiImporter`, or see
+//! `MunkiImporter` in `compatibility/reference.json`.
 use crate::{
     metadata::{self, Options},
     FileRepo,

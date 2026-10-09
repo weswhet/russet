@@ -1,5 +1,12 @@
-use super::download_transport::{self, Headers};
-use super::{io, json_value, string, Result};
+//! `URLDownloader`: download a file into the recipe cache with Russet's native
+//! HTTP engine, or with curl when a request uses options the engine doesn't
+//! support. It skips the download when the server reports the cached file is
+//! unchanged, and records the download's metadata.
+//!
+//! Inputs and outputs: run `russet processor-info URLDownloader`, or see
+//! `URLDownloader` in `compatibility/reference.json`.
+use crate::download_transport::{self, Headers};
+use crate::{io, json_value, string, Result};
 use autopkg_platform::processor_output as output;
 use plist::{Dictionary, Value};
 use serde_json::{json, Value as Json};
@@ -10,8 +17,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-#[path = "download_trust.rs"]
-pub(super) mod trust;
+pub(crate) mod trust;
 fn repr(value: &Json) -> String {
     plist::python_repr(&json_value(value).unwrap_or(Value::Null))
 }
@@ -82,7 +88,7 @@ pub(crate) fn command(
     env: &Dictionary,
     python: bool,
     operation: &[std::ffi::OsString],
-) -> std::result::Result<(Command, Option<trust::Bundle>), super::ExecutionFailure> {
+) -> std::result::Result<(Command, Option<trust::Bundle>), crate::ExecutionFailure> {
     let mut c = Command::new(autopkg_platform::downloads::curl_binary(env)?);
     c.args([
         "--silent",
@@ -430,7 +436,7 @@ fn stage(env: &mut Dictionary, source: &str) -> Result<()> {
         download_dir(env)?.join(source.file_name().ok_or("PKG path has no basename")?);
     if source.canonicalize().ok() != destination.canonicalize().ok() {
         if fs::symlink_metadata(&destination).is_ok() {
-            super::remove(&destination)?;
+            crate::remove(&destination)?;
         }
         if info_path(&destination).exists() {
             io(fs::remove_file(info_path(&destination)))?;
@@ -444,12 +450,12 @@ fn stage(env: &mut Dictionary, source: &str) -> Result<()> {
                 .is_ok_and(|o| o.status.success())
         {
         } else if source.is_dir() {
-            super::copy_tree(&source, &destination)?;
+            crate::copy_tree(&source, &destination)?;
         } else {
             io(fs::copy(&source, &destination))?;
             // Match shutil.copy2 when clonefile is unavailable: retain unrelated
             // extended attributes and timestamps before clearing legacy headers.
-            super::copy_metadata(&source, &destination, false)?;
+            crate::copy_metadata(&source, &destination, false)?;
         }
         #[cfg(unix)]
         for name in xattr_names() {
@@ -605,13 +611,13 @@ fn save_headers(path: &Path, headers: &Headers, python: bool) -> Result<()> {
     }
     Ok(())
 }
-pub(super) fn execute(name: &str, env: &mut Dictionary) -> Result<()> {
+pub(crate) fn execute(name: &str, env: &mut Dictionary) -> Result<()> {
     execute_typed(name, env).map_err(|e| e.message)
 }
-pub(super) fn execute_typed(
+pub(crate) fn execute_typed(
     name: &str,
     env: &mut Dictionary,
-) -> std::result::Result<(), super::ExecutionFailure> {
+) -> std::result::Result<(), crate::ExecutionFailure> {
     let python = name == "URLDownloaderPython";
     env.remove("url_downloader_summary_result");
     env.insert("file_size".into(), 0.into());
@@ -691,7 +697,7 @@ pub(super) fn execute_typed(
         .prefix("tmp")
         .tempfile_in(&dir)
         .map_err(|e| e.to_string())?;
-    super::mode(temporary.path(), "644")?;
+    crate::mode(temporary.path(), "644")?;
     let (mut command, _trust) = match command(
         env,
         python,
@@ -820,8 +826,8 @@ pub(super) fn execute_typed(
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::super::download_transport::curl_stderr;
     use super::*;
+    use crate::download_transport::curl_stderr;
     use crate::tests::{env, Temp};
     use std::collections::BTreeMap;
     /// Phase 1 baseline: the exact arguments a native download runs. Any

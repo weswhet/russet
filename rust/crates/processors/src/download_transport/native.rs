@@ -145,7 +145,8 @@ fn tls(
         .map_err(|e| e.to_string())?;
     let (mut config, digest) = match trust {
         Trust::Files { files, directories } => {
-            let (roots, digest) = crate::downloader::trust::native_roots(files, directories)?;
+            let (roots, digest) =
+                crate::processors::url_downloader::trust::native_roots(files, directories)?;
             (
                 builder.with_root_certificates(roots).with_no_client_auth(),
                 Some(digest),

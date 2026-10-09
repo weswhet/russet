@@ -1,4 +1,10 @@
-use super::{io, remove, string, truth, Result};
+//! `Unarchiver`: extract a zip archive, a tar archive (plain, gzip, bzip2, or
+//! xz), or a gzip file into a folder. It detects the format from the file
+//! name unless `archive_format` is set.
+//!
+//! Inputs and outputs: run `russet processor-info Unarchiver`, or see
+//! `Unarchiver` in `compatibility/reference.json`.
+use crate::{io, remove, string, truth, Result};
 use autopkg_platform::backend::{Backend, Tool};
 use plist::{Dictionary, Value};
 use std::{
@@ -179,7 +185,7 @@ fn ditto_native(_kind: &str, _source: &Path, _destination: &Path) -> Result<()> 
     Err("Native ditto extraction requires macOS or Linux".into())
 }
 
-pub(super) fn execute(env: &mut Dictionary) -> Result<()> {
+pub(crate) fn execute(env: &mut Dictionary) -> Result<()> {
     let source = env
         .get("archive_path")
         .or_else(|| env.get("pathname"))
@@ -236,14 +242,14 @@ pub(super) fn execute(env: &mut Dictionary) -> Result<()> {
     }
     Ok(())
 }
-pub(super) fn zip_plist(path: &str, skip_root: bool) -> Result<Option<Dictionary>> {
+pub(crate) fn zip_plist(path: &str, skip_root: bool) -> Result<Option<Dictionary>> {
     let normalized = path.replace('\\', "/");
     let lowercase = normalized.to_lowercase();
     let index = lowercase
         .find(".zip/")
         .ok_or("Expected a path inside a ZIP archive")?;
     let (archive_path, inner) = normalized.split_at(index + 4);
-    let display_archive = super::normalized_path(archive_path);
+    let display_archive = crate::normalized_path(archive_path);
     let display_archive = display_archive.display();
     let mut inner = inner[1..].to_string();
     let mut archive =
@@ -308,7 +314,7 @@ mod tests {
             ("archive_format", "zip"),
         ]);
         e.insert("USE_PYTHON_NATIVE_EXTRACTOR".into(), true.into());
-        super::super::execute("Unarchiver", &mut e).unwrap();
+        crate::execute("Unarchiver", &mut e).unwrap();
         assert_eq!(fs::read(t.path("out/folder/é.txt")).unwrap(), b"hello");
         assert!(!e.contains_key("archive_format"));
         let file = fs::File::create(&source).unwrap();
@@ -317,7 +323,7 @@ mod tests {
             .unwrap();
         zip.write_all(b"bad").unwrap();
         zip.finish().unwrap();
-        assert!(super::super::execute("Unarchiver", &mut e).is_err());
+        assert!(crate::execute("Unarchiver", &mut e).is_err());
         assert!(!t.0.join("escape").exists());
     }
     #[test]
@@ -339,7 +345,7 @@ mod tests {
             ("destination_path", &t.path("out")),
         ]);
         e.insert("USE_PYTHON_NATIVE_EXTRACTOR".into(), true.into());
-        super::super::execute("Unarchiver", &mut e).unwrap();
+        crate::execute("Unarchiver", &mut e).unwrap();
         assert_eq!(fs::read(t.path("out/file.txt")).unwrap(), b"data");
     }
     /// Archives split into several compressed streams, as parallel
@@ -370,7 +376,7 @@ mod tests {
             ("destination_path", &t.path("out")),
         ]);
         e.insert("USE_PYTHON_NATIVE_EXTRACTOR".into(), true.into());
-        super::super::execute("Unarchiver", &mut e).unwrap();
+        crate::execute("Unarchiver", &mut e).unwrap();
         assert_eq!(fs::read(t.path("out/b.txt")).unwrap(), b"second");
     }
     /// The native ditto path keeps what app bundles need: executable modes

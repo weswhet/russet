@@ -327,9 +327,9 @@ pub fn generate(installer: Option<&Path>, options: &Options) -> Result<Dictionar
             file
         };
         if Path::new(file).exists() {
-            installs.push(Value::Dictionary(crate::installs::create_item(Path::new(
-                file,
-            ))?));
+            installs.push(Value::Dictionary(
+                crate::processors::munki_installs_items_creator::create_item(Path::new(file))?,
+            ));
         }
     }
     if !installs.is_empty() {
@@ -524,7 +524,7 @@ pub fn disk_image(path: &Path, options: &Options) -> Result<Dictionary, String> 
                 let path = entry.map_err(|e| e.to_string())?.path();
                 if path.is_dir()
                     && (path.extension().and_then(|s| s.to_str()) == Some("app")
-                        || crate::installs::create_item(&path)?
+                        || crate::processors::munki_installs_items_creator::create_item(&path)?
                             .get("type")
                             .and_then(Value::as_string)
                             == Some("application"))
@@ -539,7 +539,7 @@ pub fn disk_image(path: &Path, options: &Options) -> Result<Dictionary, String> 
         if !app.exists() {
             return Err(format!("Disk image item {item} does not exist"));
         }
-        let mut install = crate::installs::create_item(&app)?;
+        let mut install = crate::processors::munki_installs_items_creator::create_item(&app)?;
         let destination = options.get("destinationpath").unwrap_or("/Applications");
         let destination_item = options.get("destitemname").unwrap_or(&item);
         let basename = Path::new(destination_item).file_name().unwrap_or_default();

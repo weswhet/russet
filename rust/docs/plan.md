@@ -8,7 +8,7 @@ Updated October 9, 2026.
 
 | Phase | Status |
 | --- | --- |
-| 1. Capture compatibility | Done. See the [curl option inventory](download-curl-inventory.md) and the generated-argument baseline test in `downloader.rs`. |
+| 1. Capture compatibility | Done. See the [curl option inventory](download-curl-inventory.md) and the generated-argument baseline test in `url_downloader.rs`. |
 | 2. Extract the backend boundary | Done. Every download goes through `download_transport::run`. |
 | 3. Native single-stream | Done, and on by default. See the deviations below. |
 | 4. Parallel chunks | Done, for resources of 64 MiB or more with a strong ETag. |
@@ -54,28 +54,28 @@ Never silently discard an option, approximate a required behavior, or reinterpre
 
 ## Preserve the existing integration
 
-Keep recipe policy in [downloader.rs](../crates/processors/src/downloader.rs): cache decisions, download naming, output variables, metadata, optional hashing, and reporting.
+Keep recipe policy in [url_downloader.rs](../crates/processors/src/processors/url_downloader.rs): cache decisions, download naming, output variables, metadata, optional hashing, and reporting.
 
 The current command builder assembles generated curl arguments, operation arguments, request headers, recipe options, and certificate arguments in order. Later call sites append cache conditionals and Python-specific write-out arguments; inspect the complete final invocation. Each `curl_opts` string is one argument, without shell splitting. `URLDownloader` accepts `curl_opts`; `URLDownloaderPython` follows a different path and does not append those options. Preserve that distinction.
 
-Continue honoring [curl discovery and `CURL_PATH`](../crates/platform/src/downloads.rs) and [certificate policy](../crates/processors/src/download_trust.rs). An explicit `CURL_PATH`, including a wrapper executable, selects curl in `auto` until its behavior can be proven equivalent; recognizing the filename alone is insufficient.
+Continue honoring [curl discovery and `CURL_PATH`](../crates/platform/src/downloads.rs) and [certificate policy](../crates/processors/src/processors/url_downloader/trust.rs). An explicit `CURL_PATH`, including a wrapper executable, selects curl in `auto` until its behavior can be proven equivalent; recognizing the filename alone is insufficient.
 
 Use the existing processor dispatch for both aliases; support both recipe execution and standalone processor runs without introducing another processor name. Keep recipe and processor execution sequential in this project. Parallelism is inside one eligible transfer, with shared limits that remain safe if recipe concurrency is added later.
 
 ## Proposed module boundaries
 
-All new paths below are proposals. Keep them inside the processors crate initially; extract a library only if an independent consumer emerges. Use `download_transport` to avoid colliding with the existing `download.rs` module for text fetching and other download processors.
+All new paths below are proposals. Keep them inside the processors crate initially; extract a library only if an independent consumer emerges. Use `download_transport` to avoid colliding with the `url_getter.rs` module for text fetching and the other download processors.
 
 | File or area | Responsibility |
 | --- | --- |
-| `crates/processors/src/downloader.rs` | Existing processor behavior; create requests and consume transfer results. |
+| `crates/processors/src/processors/url_downloader.rs` | Existing processor behavior; create requests and consume transfer results. |
 | `crates/processors/src/download_transport/mod.rs` | Transfer interface, backend selection, shared runtime and client ownership. |
 | `crates/processors/src/download_transport/curl.rs` | Existing curl invocation and response adaptation, preserved during extraction. |
 | `crates/processors/src/download_transport/options.rs` | Ordered invocation inspection, semantic registry, eligibility decisions. |
 | `crates/processors/src/download_transport/native.rs` | Native single-stream HTTP transfer, redirects, bounded streaming. |
 | `crates/processors/src/download_transport/chunks.rs` | Range eligibility, scheduling, validation, retry budgets. |
 | `crates/processors/src/download_transport/resume.rs` | Locked partial artifacts, durable sidecars, recovery and publication. |
-| `crates/processors/src/download_trust.rs` | Existing trust policy plus explicit native adapter. |
+| `crates/processors/src/processors/url_downloader/trust.rs` | Existing trust policy plus explicit native adapter. |
 | `crates/processors/src/lib.rs` | Module registration and the smallest necessary execution-context changes. |
 | `crates/processors/Cargo.toml`, `Cargo.lock` | Pinned transport/runtime dependencies and selected features. |
 | `crates/processors/tests/` | Differential fixtures, local HTTP/TLS servers, crash and resume tests. |

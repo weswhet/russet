@@ -1,5 +1,4 @@
 //! Built-in portable processors. Unsupported workflows fail explicitly.
-mod archive;
 mod clients;
 mod community_builders;
 mod community_legacy;
@@ -9,15 +8,13 @@ pub use registry::{
     canonical_name, community_contract, community_source, contract, processor_order,
 };
 mod dmg;
-mod download;
 mod download_transport;
-mod downloader;
 mod package;
 #[cfg(any(not(target_os = "macos"), test))]
 mod predicate;
+mod processors;
 mod python_glob;
 mod python_regex;
-mod sparkle;
 use plist::{Dictionary, Value};
 use std::{
     fs,
@@ -427,33 +424,6 @@ fn visible_path(path: &Path) -> String {
     }
     text.into_owned()
 }
-fn warning(env: &mut Dictionary, message: String) -> Result<()> {
-    let recipe = Path::new(string(env, "RECIPE_PATH")?)
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy();
-    let name = [".recipe.yaml", ".recipe.plist", ".recipe"]
-        .iter()
-        .find_map(|extension| recipe.strip_suffix(extension))
-        .unwrap_or(&recipe)
-        .to_string();
-    let mut data = Dictionary::new();
-    data.insert("name".into(), name.into());
-    data.insert("warning".into(), message.clone().into());
-    let mut summary = Dictionary::new();
-    summary.insert(
-        "summary_text".into(),
-        "The following recipes have deprecation warnings:".into(),
-    );
-    summary.insert(
-        "report_fields".into(),
-        Value::Array(vec!["name".into(), "warning".into()]),
-    );
-    summary.insert("data".into(), data.into());
-    env.insert("deprecation_summary_result".into(), summary.into());
-    autopkg_platform::processor_output(1, format!("WARNING: {message}"));
-    Ok(())
-}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FailureKind {
     Processor,
@@ -530,36 +500,28 @@ fn execute_standalone_context(
         prepare(name, env)?;
     }
     match name {
-        "AdobeReaderURLProvider" | "AdobeAcrobatProUpdateInfoProvider" => {
-            community_legacy::execute_typed(name, env)
+        "AdobeAcrobatProUpdateInfoProvider" => {
+            processors::adobe_acrobat_pro_update_info_provider::execute_typed(env)
         }
+        "AdobeReaderURLProvider" => processors::adobe_reader_url_provider::execute_typed(env),
         "URLGetter" | "DmgMounter" => Err(ExecutionFailure::unexpected(format!(
             "'{name}' object has no attribute 'input_variables'"
         ))),
-        "FileMover" => {
-            let source = string(env, "source")?;
-            let target = string(env, "target")?;
-            python_rename(source, target)
-                .map_err(|e| ExecutionFailure::unexpected(e.to_string()))?;
-            processor_output(
-                name,
-                env,
-                1,
-                &format!("File {source} moved to {target}"),
-                true,
-            );
-            Ok(())
-        }
-        "URLDownloader" | "URLDownloaderPython" => downloader::execute_typed(name, env),
-        "URLTextSearcher" => download::execute_typed(env).map(|_| ()),
-        "MunkiImporter" => {
-            autopkg_munki::importer::execute_classified(env).map_err(|error| match error {
-                autopkg_munki::importer::ImportFailure::Processor(message) => message.into(),
-                autopkg_munki::importer::ImportFailure::Unexpected(message) => {
+        "FileMover" => processors::file_mover::execute_standalone(env, &|env, level, message| {
+            processor_output(name, env, level, &message, true)
+        }),
+        "URLDownloader" => processors::url_downloader::execute_typed(name, env),
+        "URLDownloaderPython" => processors::url_downloader_python::execute_typed(env),
+        "URLTextSearcher" => processors::url_text_searcher::execute_typed(env).map(|_| ()),
+        "MunkiImporter" => autopkg_munki::processors::munki_importer::execute_classified(env)
+            .map_err(|error| match error {
+                autopkg_munki::processors::munki_importer::ImportFailure::Processor(message) => {
+                    message.into()
+                }
+                autopkg_munki::processors::munki_importer::ImportFailure::Unexpected(message) => {
                     ExecutionFailure::unexpected(message)
                 }
-            })
-        }
+            }),
         _ => execute_outputs_context(name, env, preferences, true)
             .map(|_| ())
             .map_err(Into::into),
@@ -593,15 +555,11 @@ fn execute_outputs_context(
     let _output_scope = autopkg_platform::processor_output::scope(name, env, standalone);
     if name == "URLTextSearcher" {
         prepare(name, env)?;
-        return download::execute(env);
+        return processors::url_text_searcher::execute(env);
     }
     // A custom output may overwrite its own selector, so capture its name first.
-    let custom_output = (name == "FindAndReplace").then(|| {
-        env.get("result_output_var_name")
-            .and_then(Value::as_string)
-            .unwrap_or("output_string")
-            .to_owned()
-    });
+    let custom_output =
+        (name == "FindAndReplace").then(|| processors::find_and_replace::output_name(env));
     execute_builtin(name, env, preferences, standalone)?;
     let manifest = contract();
     let mut outputs: Vec<String> = manifest["processors"][name]["output_variables"]
@@ -615,7 +573,7 @@ fn execute_outputs_context(
     }
     let emitted_deprecation = matches!(name, "DeprecationWarning" | "MunkiCatalogBuilder")
         || (name == "MSOfficeMacURLandUpdateInfoProvider"
-            && community_modern::office_is_deprecated(env));
+            && processors::ms_office_mac_url_and_update_info_provider::office_is_deprecated(env));
     if emitted_deprecation
         && !outputs
             .iter()
@@ -653,414 +611,85 @@ fn execute_builtin(
     let output = |env: &Dictionary, level: i64, message: String| {
         processor_output(name, env, level, &message, standalone)
     };
-    if name == "Installer" && clients::installer_skip(env) {
+    if name == "Installer" && processors::installer::skip(env) {
         return Ok(());
     }
     if let Some(result) = dmg::run_mounted(name, env, preferences, standalone) {
         return result;
     }
+    let output: processors::Output = &output;
     match canonical_name(name) {
-        "AutoPkgSourceFinder" | "GenerateRelocatablePython" | "MakeCatalogsProcessor" => community_builders::execute(canonical_name(name), env, preferences),
-        "MSOfficeMacURLandUpdateInfoProvider" | "MozillaURLProvider" | "BarebonesURLProvider" => community_modern::execute(canonical_name(name), env, preferences),
-        "AdobeAcrobatProUpdateInfoProvider" | "AdobeFlashURLProvider" | "AdobeReaderURLProvider" | "AdobeReaderRepackager" | "PuppetlabsProductsURLProvider" | "SassafrasK2ClientCustomizer" => community_legacy::execute(canonical_name(name), env, preferences),
-        "CodeSignatureVerifier" => {
-            let matches = match env.get("input_path") {
-                Some(Value::String(pattern)) => python_glob::paths_with_recursion(pattern, false)?,
-                _ => Vec::new(),
-            };
-            autopkg_platform::signature::verify_code_signature(env, matches)
+        "AdobeAcrobatProUpdateInfoProvider" => {
+            processors::adobe_acrobat_pro_update_info_provider::execute(env)
         }
-        "SignToolVerifier" => autopkg_platform::signature::verify_authenticode(env),
-        "GitHubReleasesInfoProvider" => autopkg_platform::github::execute_with_preferences(env, preferences),
-        "SparkleUpdateInfoProvider" => sparkle::execute(env),
-        "AppDmgVersioner" => dmg::app_version(env),
-        "DmgMounter" => Err("'DmgMounter' object has no attribute 'input_variables'".into()),
-        "DmgCreator" => dmg::create(env),
-        "Unarchiver" => archive::execute(env),
-        "PkgCopier" => package::copy(env),
-        "PkgCreator" => clients::package(env),
-        "AppPkgCreator" => clients::app(env),
-        "Installer" => clients::install(env),
-        "InstallFromDMG" => clients::install_dmg(env),
-        "ChocolateyPackager" => autopkg_platform::chocolatey::execute(env),
-        "PkgPayloadUnpacker" => package::unpack_payload(env),
-        "PkgExtractor" => package::extract_bundle(env),
-        "PkgInfoCreator" | "FlatPkgPacker" | "FlatPkgUnpacker" => package::execute(name, env),
-        "URLDownloader" | "URLDownloaderPython" => downloader::execute(name, env),
-        "URLGetter" => Err("'URLGetter' object has no attribute 'input_variables'".into()),
-        "URLTextSearcher" => download::execute(env).map(|_| ()),
-        "MunkiInfoCreator"
-        | "MunkiImporter"
+        "AdobeFlashURLProvider" => processors::adobe_flash_url_provider::execute(env),
+        "AdobeReaderRepackager" => processors::adobe_reader_repackager::execute(env),
+        "AdobeReaderURLProvider" => processors::adobe_reader_url_provider::execute(env),
+        "AppDmgVersioner" => processors::app_dmg_versioner::execute(env),
+        "AppPkgCreator" => processors::app_pkg_creator::execute(env),
+        "AutoPkgSourceFinder" => processors::autopkg_source_finder::execute(env),
+        "BarebonesURLProvider" => processors::barebones_url_provider::execute(env),
+        "ChocolateyPackager" => processors::chocolatey_packager::execute(env),
+        "CodeSignatureVerifier" => processors::code_signature_verifier::execute(env),
+        "Copier" => processors::copier::execute(env, output),
+        "DeprecationWarning" => processors::deprecation_warning::execute(env),
+        "DmgCreator" => processors::dmg_creator::execute(env),
+        "DmgMounter" => processors::dmg_mounter::execute(),
+        "EndOfCheckPhase" => processors::end_of_check_phase::execute(),
+        "FileCreator" => processors::file_creator::execute(env, output),
+        "FileFinder" => processors::file_finder::execute(env, output),
+        "FileMover" => processors::file_mover::execute(env, output),
+        "FindAndReplace" => processors::find_and_replace::execute(env, output),
+        "FlatPkgPacker" => processors::flat_pkg_packer::execute(env),
+        "FlatPkgUnpacker" => processors::flat_pkg_unpacker::execute(env),
+        "GenerateRelocatablePython" => processors::generate_relocatable_python::execute(env),
+        "GitHubReleasesInfoProvider" => {
+            processors::github_releases_info_provider::execute(env, preferences)
+        }
+        "InstallFromDMG" => processors::install_from_dmg::execute(env),
+        "Installer" => processors::installer::execute(env),
+        "MakeCatalogsProcessor" => processors::make_catalogs_processor::execute(env, preferences),
+        "MozillaURLProvider" => processors::mozilla_url_provider::execute(env),
+        "MSOfficeMacURLandUpdateInfoProvider" => {
+            processors::ms_office_mac_url_and_update_info_provider::execute(env)
+        }
+        "MunkiCatalogBuilder" => processors::munki_catalog_builder::execute(env),
+        "MunkiImporter"
+        | "MunkiInfoCreator"
         | "MunkiInstallsItemsCreator"
-        | "MunkiSetDefaultCatalog"
+        | "MunkiOptionalReceiptEditor"
         | "MunkiPkginfoMerger"
-        | "MunkiOptionalReceiptEditor" => autopkg_munki::execute(name, env),
-        "StopProcessingIf" => {
-            #[cfg(target_os = "macos")]
-            let result = autopkg_platform::predicate(string(env, "predicate")?, env)?;
-            #[cfg(not(target_os = "macos"))]
-            let result = predicate::evaluate(string(env, "predicate")?, env)?;
-            output(env, 1, format!("({}) is {}", string(env, "predicate")?, if result { "True" } else { "False" }));
-            env.insert("stop_processing_recipe".into(), result.into());
-            Ok(())
+        | "MunkiSetDefaultCatalog" => autopkg_munki::execute(name, env),
+        "PackageRequired" => processors::package_required::execute(env),
+        "PathDeleter" => processors::path_deleter::execute(env, output),
+        "PkgCopier" => processors::pkg_copier::execute(env),
+        "PkgCreator" => processors::pkg_creator::execute(env),
+        "PkgExtractor" => processors::pkg_extractor::execute(env),
+        "PkgInfoCreator" => processors::pkg_info_creator::execute(env),
+        "PkgPayloadUnpacker" => processors::pkg_payload_unpacker::execute(env),
+        "PkgRootCreator" => processors::pkg_root_creator::execute(env, output),
+        "PlistEditor" => processors::plist_editor::execute(env, output),
+        "PlistReader" => processors::plist_reader::execute(env, output),
+        "PuppetlabsProductsURLProvider" => {
+            processors::puppetlabs_products_url_provider::execute(env)
         }
-        "VariableSetter" | "EndOfCheckPhase" => Ok(()),
-        "DeprecationWarning" => warning(
-            env,
-            env.get("warning_message")
-                .and_then(Value::as_string)
-                .unwrap_or("### This recipe has been deprecated. It may be removed soon. ###")
-                .to_string(),
-        ),
-        "MunkiCatalogBuilder" => warning(env, "MunkiCatalogBuilder was deprecated in AutoPkg version 2.7.5 and may be removed in a future release.".into()),
-        "PackageRequired" => {
-            let pkg = string(env, "PKG").map_err(|_| "This recipe requires a package or disk image to be pre-downloaded and supplied to autopkg (\"-p\" command-line switch). This is likely due to required login credentials to download the software.".to_string())?;
-            if pkg.is_empty() || !Path::new(pkg).exists() {
-                return Err(format!(
-                    "Path to package or disk image does not exist: {pkg}"
-                ));
-            }
-            Ok(())
-        }
-        "FileCreator" => {
-            let p = string(env, "file_path")?;
-            io(write_python_text(p, string(env, "file_content")?))?;
-            output(env, 1, format!("Created file at {p}"));
-            if env.contains_key("file_mode") {
-                mode(Path::new(p), string(env, "file_mode")?)?;
-            }
-            Ok(())
-        }
-        "FileMover" => {
-            let source = string(env, "source")?;
-            let target = string(env, "target")?;
-            io(python_rename(source, target))?;
-            output(env, 1, format!("File {source} moved to {target}"));
-            Ok(())
-        },
-        "FindAndReplace" => {
-            let result =
-                string(env, "input_string")?.replace(string(env, "find")?, string(env, "replace")?);
-            let key = env
-                .get("result_output_var_name")
-                .and_then(Value::as_string)
-                .unwrap_or("output_string")
-                .to_string();
-            output(env, 1, format!("Replacing \"{}\" with \"{}\" in \"{}\" and saving result to \"{key}\" variable.", string(env, "find")?, string(env, "replace")?, string(env, "input_string")?));
-            env.insert(key, result.into());
-            Ok(())
-        }
-        "Symlinker" => {
-            let source = Path::new(string(env, "source_path")?);
-            let dest = Path::new(string(env, "destination_path")?);
-            if dest.exists() && truth(env.get("overwrite")) {
-                io(fs::remove_file(dest))?;
-            }
-            symlink(source, dest)?;
-            output(env, 1, format!("Symlinked {} to {}", source.display(), dest.display()));
-            Ok(())
-        }
-        "Copier" => {
-            let pattern = string(env, "source_path")?;
-            let paths = matches(pattern)?;
-            let source = paths
-                .first()
-                .ok_or("Error processing source_path with glob")?;
-            if paths.len() > 1 {
-                output(env, 1, format!("WARNING: Multiple paths match 'source_path' glob '{pattern}':"));
-                for path in &paths { output(env, 1, format!("  - {}", path.display())); }
-            }
-            if pattern.contains(['*', '?', '[', ']', '!']) { output(env, 1, format!("Using path '{}' matched from globbed '{pattern}'.", source.display())); }
-            let dest = Path::new(string(env, "destination_path")?);
-            if dest.exists() && truth(env.get("overwrite")) {
-                remove(dest)?;
-            }
-            if source.is_dir() {
-                copy_tree(source, dest)?;
-                output(env, 1, format!("Copied {} to {}", source.display(), dest.display()));
-                Ok(())
-            } else {
-                let target = if dest.is_dir() {
-                    dest.join(source.file_name().ok_or("Source has no filename")?)
-                } else {
-                    dest.to_path_buf()
-                };
-                // copyfile does not transfer permissions when the destination is a file.
-                let permissions = fs::metadata(&target).ok().map(|m| m.permissions());
-                if source.canonicalize().ok() == target.canonicalize().ok() && target.exists() {
-                    return Err("Source and destination are the same file".into());
-                }
-                let bytes = io(fs::read(source))?;
-                io(fs::write(&target, bytes))?;
-                if dest.is_dir() {
-                    io(fs::set_permissions(
-                        &target,
-                        io(fs::metadata(source))?.permissions(),
-                    ))?;
-                } else if let Some(p) = permissions {
-                    io(fs::set_permissions(&target, p))?;
-                }
-                output(env, 1, format!("Copied {} to {}", source.display(), dest.display()));
-                Ok(())
-            }
-        }
-        "FileFinder" => {
-            let method = env
-                .get("find_method")
-                .and_then(Value::as_string)
-                .unwrap_or("glob");
-            if method != "glob" {
-                return Err(format!("Unsupported find_method: {method}"));
-            }
-            let mut paths = matches(string(env, "pattern")?)?;
-            paths.sort();
-            let path = paths.last().ok_or("No matching filename found")?;
-            env.insert(
-                "found_filename".into(),
-                path.to_string_lossy().into_owned().into(),
-            );
-            output(env, 1, format!("Found file match: '{}' from globbed '{}'", path.display(), string(env, "pattern")?));
-            env.insert(
-                "found_basename".into(),
-                path.file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into_owned()
-                    .into(),
-            );
-            output(env, 1, format!("Basename match: '{}'", string(env, "found_basename")?));
-            Ok(())
-        }
-        "PathDeleter" => {
-            if let Some(Value::String(path)) = env.get("path_list") {
-                env.insert("path_list".into(), Value::Array(vec![path.clone().into()]));
-            }
-            let paths = env
-                .get("path_list")
-                .and_then(Value::as_array)
-                .ok_or("path_list must be an array")?;
-            for value in paths {
-                let path = Path::new(
-                    value
-                        .as_string()
-                        .ok_or("path_list entries must be strings")?,
-                );
-                let existed = fs::symlink_metadata(path).is_ok();
-                if !existed && !path.exists() {
-                    if truth(env.get("continue_on_error")) {
-                        output(env, 1, format!("Path does not exist, skipping: {}", path.display()));
-                        continue;
-                    }
-                    return Err(format!("Could not remove {} - it does not exist! Set continue_on_error=True to skip missing paths.", path.display()));
-                }
-                let directory = path.is_dir() && !path.is_symlink();
-                let mut result = remove(path);
-                if directory {
-                    for (attempt, delay) in [(1, 1), (2, 2)] {
-                        if result.is_ok() {
-                            break;
-                        }
-                        output(env, 1, format!("Unable to remove {} (attempt {attempt} of 3); retrying in {delay}s", path.display()));
-                        std::thread::sleep(std::time::Duration::from_secs(delay));
-                        result = remove(path);
-                    }
-                    if let Err(error) = &result {
-                        if truth(env.get("continue_on_error")) {
-                            output(env, 1, format!("Ignoring errors on final removal of {}", path.display()));
-                            let _ = remove(path);
-                            continue;
-                        }
-                        return Err(format!("Could not remove {} after 3 attempts: {error}", path.display()));
-                    }
-                }
-                match &result {
-                    Ok(()) => output(env, 1, format!("Deleted {}", path.display())),
-                    Err(error) if truth(env.get("continue_on_error")) => output(env, 1, format!("Ignoring error removing {}: {error}", path.display())),
-                    Err(_) => {},
-                }
-                if !truth(env.get("continue_on_error")) {
-                    result?;
-                }
-            }
-            Ok(())
-        }
-        "PlistEditor" => {
-            let mut data = match env.get("input_plist_path").and_then(Value::as_string) {
-                Some(p) if !p.is_empty() => read_dict(Path::new(p))?,
-                _ => Dictionary::new(),
-            };
-            let edits = env
-                .get("plist_data")
-                .and_then(Value::as_dictionary)
-                .ok_or("plist_data must be a dictionary")?;
-            for (k, v) in edits {
-                data.insert(k.clone(), v.clone());
-            }
-            Value::Dictionary(data)
-                .to_file_xml(string(env, "output_plist_path")?)
-                .map_err(|e| e.to_string())?;
-            output(env, 1, format!("Updated plist at {}", string(env, "output_plist_path")?));
-            Ok(())
-        }
-        "PlistReader" => {
-            let normalized = normalized_path(string(env, "info_path")?);
-            let p = info_path(&normalized.to_string_lossy())?;
-            output(env, 1, format!("Reading: {}", p.display()));
-            let data = read_dict(&p)?;
-            let mut default = Dictionary::new();
-            default.insert("CFBundleShortVersionString".into(), "version".into());
-            let keys = env
-                .get("plist_keys")
-                .and_then(Value::as_dictionary)
-                .unwrap_or(&default)
-                .clone();
-            env.insert(
-                "plist_reader_output_variables".into(),
-                Dictionary::new().into(),
-            );
-            for (key, target) in keys {
-                let target = target
-                    .as_string()
-                    .ok_or("plist_keys values must be strings")?;
-                let value = data
-                    .get(&key)
-                    .ok_or_else(|| {
-                        format!(
-                            "Key '{key}' could not be found in the plist {}!",
-                            p.display()
-                        )
-                    })?
-                    .clone();
-                env.insert(target.into(), value.clone());
-                output(env, 1, format!("Assigning value of '{}' to output variable '{target}'", plist::python_str(&value)));
-                env.get_mut("plist_reader_output_variables")
-                    .unwrap()
-                    .as_dictionary_mut()
-                    .unwrap()
-                    .insert(target.into(), value);
-            }
-            Ok(())
-        }
-        "Versioner" => {
-            let path = string(env, "input_plist_path")?;
-            let data = if path.to_lowercase().contains(".zip/")
-                || path.to_lowercase().contains(".zip\\")
-            {
-                archive::zip_plist(path, truth(env.get("skip_single_root_dir")))?
-                    .ok_or_else(|| format!("File '{path}' was not found."))?
-            } else {
-                portable_path(path)?;
-                read_dict(Path::new(path))?
-            };
-            let key = env
-                .get("plist_version_key")
-                .and_then(Value::as_string)
-                .unwrap_or("CFBundleShortVersionString");
-            env.insert(
-                "version".into(),
-                data.get(key)
-                    .cloned()
-                    .unwrap_or_else(|| "UNKNOWN_VERSION".into()),
-            );
-            output(env, 1, format!("Found version {} in file {}", plist::python_str(&env["version"]), string(env, "input_plist_path")?));
-            Ok(())
-        }
-        "PkgRootCreator" => {
-            let root = PathBuf::from(string(env, "pkgroot")?);
-            if fs::symlink_metadata(&root).is_ok() {
-                remove(&root)?;
-            }
-            io(fs::create_dir_all(&root))?;
-            output(env, 1, format!("Created {}", root.display()));
-            let root = io(root.canonicalize())?;
-            let dirs = env
-                .get("pkgdirs")
-                .and_then(Value::as_dictionary)
-                .ok_or("pkgdirs must be a dictionary")?;
-            let mut sorted: Vec<_> = dirs.iter().collect();
-            sorted.sort_by_key(|(k, _)| *k);
-            for (dir, permissions) in sorted {
-                output(env, 2, format!("Creating {dir}"));
-                let mut relative = PathBuf::new();
-                for part in Path::new(dir).components() {
-                    use std::path::Component;
-                    match part {
-                        Component::Normal(p) => relative.push(p),
-                        Component::CurDir => (),
-                        Component::ParentDir => {
-                            if !relative.pop() {
-                                return Err(format!("{dir} is outside pkgroot"));
-                            }
-                        }
-                        _ => return Err(format!("{dir} in pkgroot is absolute.")),
-                    }
-                }
-                if relative.as_os_str().is_empty() {
-                    return Err(format!("{dir} is outside pkgroot"));
-                }
-                let path = root.join(relative);
-                if path.exists() {
-                    return Err(format!("{} already exists", path.display()));
-                }
-                io(fs::create_dir_all(&path))?;
-                mode(
-                    &path,
-                    permissions
-                        .as_string()
-                        .ok_or("pkgdirs modes must be strings")?,
-                )?;
-                output(env, 1, format!("Created {}", visible_path(&path)));
-            }
-            Ok(())
-        }
+        "SassafrasK2ClientCustomizer" => processors::sassafras_k2_client_customizer::execute(env),
+        "SignToolVerifier" => processors::sign_tool_verifier::execute(env),
+        "SparkleUpdateInfoProvider" => processors::sparkle_update_info_provider::execute(env),
+        "StopProcessingIf" => processors::stop_processing_if::execute(env, output),
+        "Symlinker" => processors::symlinker::execute(env, output),
+        "Unarchiver" => processors::unarchiver::execute(env),
+        "URLDownloader" => processors::url_downloader::execute(name, env),
+        "URLDownloaderPython" => processors::url_downloader_python::execute(env),
+        "URLGetter" => processors::url_getter::execute(),
+        "URLTextSearcher" => processors::url_text_searcher::execute(env).map(|_| ()),
+        "VariableSetter" => processors::variable_setter::execute(),
+        "Versioner" => processors::versioner::execute(env, output),
         _ => Err(format!(
             "Processor {name} is not implemented in this Rust build"
         )),
     }
 }
-
-fn write_python_text(path: &str, content: &str) -> std::io::Result<()> {
-    #[cfg(windows)]
-    let content = content.replace('\n', "\r\n");
-    fs::write(path, content)
-}
-
-#[cfg(not(windows))]
-fn python_rename(source: &str, target: &str) -> std::io::Result<()> {
-    fs::rename(source, target)
-}
-
-#[cfg(windows)]
-fn python_rename(source: &str, target: &str) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    // Python os.rename uses MoveFileExW without MOVEFILE_REPLACE_EXISTING.
-    // std::fs::rename replaces the destination, which changes Python behavior.
-    #[link(name = "kernel32")]
-    unsafe extern "system" {
-        fn MoveFileExW(existing: *const u16, new: *const u16, flags: u32) -> i32;
-    }
-    let wide = |path: &str| -> std::io::Result<Vec<u16>> {
-        if path.contains('\0') {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "embedded null character",
-            ));
-        }
-        Ok(std::ffi::OsStr::new(path)
-            .encode_wide()
-            .chain(Some(0))
-            .collect())
-    };
-    let source = wide(source)?;
-    let target = wide(target)?;
-    // Both pointers refer to terminated UTF-16 buffers retained through this call.
-    if unsafe { MoveFileExW(source.as_ptr(), target.as_ptr(), 0) } == 0 {
-        Err(std::io::Error::last_os_error())
-    } else {
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

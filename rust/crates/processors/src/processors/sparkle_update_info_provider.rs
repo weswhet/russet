@@ -1,4 +1,9 @@
-use super::{string, truth, Result};
+//! `SparkleUpdateInfoProvider`: read a Sparkle appcast and find the latest
+//! version and its download URL.
+//!
+//! Inputs and outputs: run `russet processor-info SparkleUpdateInfoProvider`, or see
+//! `SparkleUpdateInfoProvider` in `compatibility/reference.json`.
+use crate::{string, truth, Result};
 use plist::{Dictionary, Value};
 use std::{cmp::Ordering, collections::BTreeMap};
 const NAMESPACE: &str = "http://www.andymatuschak.org/xml-namespaces/sparkle";
@@ -55,7 +60,7 @@ fn parts(version: &str) -> Vec<String> {
     }
     parts
 }
-pub(super) fn version_cmp(a: &str, b: &str) -> Ordering {
+pub(crate) fn version_cmp(a: &str, b: &str) -> Ordering {
     let a = parts(a);
     let b = parts(b);
     for i in 0..a.len().max(b.len()) {
@@ -181,7 +186,7 @@ fn fetch(env: &Dictionary, url: &str, extra: Option<&Dictionary>) -> Result<Stri
         }
         request.insert("request_headers".into(), headers.into());
     }
-    super::download::fetch(&request)
+    super::url_getter::fetch(&request)
 }
 fn description_url(value: &str) -> Result<()> {
     let url = url::Url::parse(value).map_err(|_| {
@@ -209,7 +214,7 @@ fn description_url(value: &str) -> Result<()> {
     }
     Ok(())
 }
-pub(super) fn execute(env: &mut Dictionary) -> Result<()> {
+pub(crate) fn execute(env: &mut Dictionary) -> Result<()> {
     if let Some(pkg) = env.get("PKG") {
         autopkg_platform::processor_output(1, "Local PKG provided, no downloaded needed.");
         autopkg_platform::processor_output(1, "WARNING: Skipping this processor means output variables 'version', 'additional_pkginfo' will not contain useful info. If these are needed in other recipe steps, this may give unexpected results.");
@@ -380,7 +385,7 @@ fn appcast_http_query_channel_and_metadata() {
         "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
-    let (url, server) = crate::downloader::tests::server(vec![response]);
+    let (url, server) = crate::processors::url_downloader::tests::server(vec![response]);
     let mut env = crate::tests::env(&[("appcast_url", &url), ("update_channel", "beta")]);
     let mut query = Dictionary::new();
     query.insert("channel name".into(), "beta test".into());

@@ -1,18 +1,10 @@
 //! Scoped disk-image mounts are detached on success and on processor errors.
-use super::{io, string, truth, Result};
+use super::Result;
 #[cfg(all(test, target_os = "macos"))]
 use autopkg_platform::dmg::parse_hdiutil_plist as first_plist;
-pub(super) use autopkg_platform::dmg::Mount;
+pub(crate) use autopkg_platform::dmg::Mount;
 use plist::{Dictionary, Value};
-use std::{path::Path, process::Command};
-fn mac() -> Result<()> {
-    if cfg!(target_os = "macos") {
-        Ok(())
-    } else {
-        Err("Disk image operations are only supported on macOS; hdiutil is unavailable on this platform".into())
-    }
-}
-pub(super) fn split(path: &str) -> Option<(&str, &str)> {
+pub(crate) fn split(path: &str) -> Option<(&str, &str)> {
     for extension in [".dmg", ".iso", ".DMG", ".ISO"] {
         for separator in ['/', '\\'] {
             if let Some(index) = path.find(&format!("{extension}{separator}")) {
@@ -23,7 +15,7 @@ pub(super) fn split(path: &str) -> Option<(&str, &str)> {
     }
     None
 }
-pub(super) fn input_key(name: &str) -> Option<&'static str> {
+pub(crate) fn input_key(name: &str) -> Option<&'static str> {
     match name {
         "CodeSignatureVerifier" => Some("input_path"),
         "Copier" => Some("source_path"),
@@ -43,7 +35,7 @@ impl Drop for ResolvedInput {
         RESOLVING_INPUT.with(|value| value.set(self.0));
     }
 }
-pub(super) fn run_mounted(
+pub(crate) fn run_mounted(
     name: &str,
     env: &mut Dictionary,
     preferences: Option<&Dictionary>,
@@ -146,185 +138,13 @@ fn flat_package_path(pattern: &str, original: &str) -> Result<String> {
         )),
     }
 }
-fn number(value: &Value) -> Result<String> {
-    match value {
-        Value::String(s) => Ok(s.clone()),
-        Value::Integer(i) => Ok(i.to_string()),
-        Value::Real(n) => Ok(n.to_string()),
-        _ => Err("Expected numeric value".into()),
-    }
-}
-pub(super) fn create(env: &Dictionary) -> Result<()> {
-    use autopkg_platform::backend::{select, Backend, Tool};
-    let backend = select(Tool::Hdiutil);
-    if backend == Backend::Unsupported {
-        mac()?;
-    }
-    let path = string(env, "dmg_path")?;
-    if Path::new(path).exists() {
-        io(std::fs::remove_file(path))?;
-    }
-    let format = string(env, "dmg_format")?;
-    if ![
-        "UDRW", "UDRO", "UDCO", "UDZO", "UDBZ", "UFBI", "UDTO", "UDxx", "UDSP", "UDSB", "ULFO",
-        "ULMO",
-    ]
-    .contains(&format)
-    {
-        return Err(format!("dmg format '{format}' is invalid"));
-    }
-    let level = number(env.get("dmg_zlib_level").ok_or("Missing dmg_zlib_level")?)?
-        .parse::<i64>()
-        .map_err(|e| e.to_string())?;
-    if !(1..=9).contains(&level) {
-        return Err("dmg_zlib_level must be a value between 1 and 9.".into());
-    }
-    let filesystem = string(env, "dmg_filesystem")?;
-    if ![
-        "APFS",
-        "Case-insensitive APFS",
-        "Case-sensitive APFS",
-        "Case-sensitive HFS+",
-        "Case-sensitive Journaled HFS+",
-        "ExFAT",
-        "HFS+",
-        "Journaled HFS+",
-        "MS-DOS FAT12",
-        "MS-DOS FAT16",
-        "MS-DOS FAT32",
-        "MS-DOS",
-        "UDF",
-    ]
-    .contains(&filesystem)
-    {
-        return Err(format!("dmg filesystem '{filesystem}' is invalid"));
-    }
-    if backend == Backend::Native {
-        let megabytes = if truth(env.get("dmg_megabytes")) {
-            Some(
-                number(&env["dmg_megabytes"])?
-                    .parse::<u64>()
-                    .map_err(|e| e.to_string())?,
-            )
-        } else {
-            None
-        };
-        let written = native_create(
-            string(env, "dmg_root")?,
-            path,
-            filesystem,
-            format,
-            level as u32,
-            megabytes,
-        )?;
-        if written != filesystem {
-            autopkg_platform::processor_output(
-                0,
-                format!(
-                    "WARNING: {filesystem} disk images can't be created natively; created {written} instead"
-                ),
-            );
-        }
-        autopkg_platform::processor_output(
-            1,
-            format!("Created dmg from {} at {path}", string(env, "dmg_root")?),
-        );
-        return Ok(());
-    }
-    let mut command = Command::new("/usr/bin/hdiutil");
-    command.args(["create", "-plist", "-fs", filesystem, "-format", format]);
-    if format == "UDZO" {
-        command.args(["-imagekey", &format!("zlib-level={level}")]);
-    }
-    if truth(env.get("dmg_megabytes")) {
-        command
-            .arg("-megabytes")
-            .arg(number(&env["dmg_megabytes"])?);
-    }
-    command.args(["-srcfolder", string(env, "dmg_root")?, path]);
-    let output = command.output().map_err(|e| e.to_string())?;
-    if output.status.success() {
-        autopkg_platform::processor_output(
-            1,
-            format!("Created dmg from {} at {path}", string(env, "dmg_root")?),
-        );
-        Ok(())
-    } else {
-        Err(format!(
-            "creation of {path} failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ))
-    }
-}
-#[cfg(unix)]
-fn native_create(
-    root: &str,
-    path: &str,
-    filesystem: &str,
-    format: &str,
-    zlib_level: u32,
-    megabytes: Option<u64>,
-) -> Result<&'static str> {
-    russet_hdiutil::create(
-        Path::new(root),
-        Path::new(path),
-        &russet_hdiutil::CreateOptions {
-            filesystem,
-            format,
-            zlib_level,
-            megabytes,
-        },
-    )
-    .map_err(|e| format!("creation of {path} failed: {e}"))
-}
-
-#[cfg(not(unix))]
-fn native_create(
-    _: &str,
-    _: &str,
-    _: &str,
-    _: &str,
-    _: u32,
-    _: Option<u64>,
-) -> Result<&'static str> {
-    Err("Native disk image creation requires macOS or Linux".into())
-}
-
-pub(super) fn app_version(env: &mut Dictionary) -> Result<()> {
-    let mut mount = Mount::new(string(env, "dmg_path")?)?;
-    let result = (|| {
-        let pattern = mount.resolve("*.app")?;
-        let paths = super::matches(&pattern)?;
-        let app = paths.first().ok_or("No app found in dmg")?;
-        let info = super::read_dict(&app.join("Contents/Info.plist"))?;
-        env.insert(
-            "app_name".into(),
-            app.file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned()
-                .into(),
-        );
-        let id = info
-            .get("CFBundleIdentifier")
-            .ok_or("Can't read bundle info: missing CFBundleIdentifier")?;
-        env.insert("bundleid".into(), id.clone());
-        let version = info
-            .get("CFBundleShortVersionString")
-            .ok_or("Can't read bundle info: missing CFBundleShortVersionString")?;
-        env.insert("version".into(), version.clone());
-        autopkg_platform::processor_output(1, format!("BundleID: {}", plist::python_str(id)));
-        autopkg_platform::processor_output(1, format!("Version: {}", plist::python_str(version)));
-        Ok(())
-    })();
-    mount.detach().and(result)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     #[cfg(target_os = "macos")]
     use crate::tests::{env, Temp};
+    #[allow(unused_imports)]
+    use std::process::Command;
     #[test]
     fn splitting_handles_paths_and_case() {
         assert_eq!(split("/tmp/a.DMG/thing"), Some(("/tmp/a.DMG", "thing")));

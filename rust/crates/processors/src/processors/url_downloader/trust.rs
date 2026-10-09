@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const CERTIFI: &[u8] = include_bytes!("../data/certifi/cacert.pem");
+const CERTIFI: &[u8] = include_bytes!("../../../data/certifi/cacert.pem");
 
 // AutoPkg's shipped macOS Python sitecustomize replaces absent, empty, and
 // non-file overrides with certifi. Preserve that policy without changing env.
@@ -450,7 +450,7 @@ mod tests {
     #[test]
     fn schannel_bundle_compaction_preserves_unique_roots() {
         let mut duplicated = CERTIFI.repeat(5);
-        duplicated.extend_from_slice(include_bytes!("../data/trust-fixtures/custom.pem"));
+        duplicated.extend_from_slice(include_bytes!("../../../data/trust-fixtures/custom.pem"));
         assert!(duplicated.len() > 1_048_576);
         let compact = compact_certificates(&duplicated).unwrap();
         assert!(compact.len() < 1_048_576);
@@ -487,8 +487,8 @@ mod tests {
         let mut pem = CERTIFI;
         assert_eq!(rustls_pemfile::certs(&mut pem).count(), 147);
         validated(CERTIFI).unwrap();
-        let default = include_bytes!("../data/trust-fixtures/default.pem");
-        let custom = include_bytes!("../data/trust-fixtures/custom.pem");
+        let default = include_bytes!("../../../data/trust-fixtures/default.pem");
+        let custom = include_bytes!("../../../data/trust-fixtures/custom.pem");
         let bytes = combined(Some(default), &[], Some(custom));
         validated(&bytes).unwrap();
         let fingerprints = |bytes: &[u8]| {
@@ -519,7 +519,7 @@ mod tests {
     #[ignore = "requires the OpenSSL executable used for Windows CApath imports"]
     fn hashed_directory_ignores_unindexed_wrong_hash_and_accepts_gaps() {
         let root = tempfile::tempdir().unwrap();
-        let pem = include_bytes!("../data/trust-fixtures/custom.pem");
+        let pem = include_bytes!("../../../data/trust-fixtures/custom.pem");
         let plain = root.path().join("arbitrary.pem");
         fs::write(&plain, pem).unwrap();
         assert!(hashed_directory(root.path(), false).unwrap().is_empty());
