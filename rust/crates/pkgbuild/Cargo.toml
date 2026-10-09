@@ -12,6 +12,6 @@ russet-ditto = { path = "../ditto" }
 russet-fs = { path = "../fs" }
 flate2 = "1"
 regex = "1"
-roxmltree = "0.20"
+roxmltree = "0.21"
 plist = "1"
 tempfile = "3"

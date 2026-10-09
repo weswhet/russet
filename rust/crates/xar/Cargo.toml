@@ -7,11 +7,11 @@ description = "Native replacement for the xar operations Russet uses: reading an
 
 [target.'cfg(unix)'.dependencies]
 russet-fs = { path = "../fs" }
-roxmltree = "0.20"
+roxmltree = "0.21"
 flate2 = "1"
-bzip2 = "0.5"
+bzip2 = "0.6"
 xz2 = { version = "0.1", features = ["static"] }
-sha1 = "0.10"
-sha2 = "0.10"
-md-5 = "0.10"
+sha1 = "0.11"
+sha2 = "0.11"
+md-5 = "0.11"
 tempfile = "3"

@@ -7,10 +7,10 @@ license.workspace = true
 [dependencies]
 plist = { package = "autopkg-value", path = "../value" }
 autopkg-platform = { path = "../platform" }
-md-5 = "0.10"
-sha2 = "0.10"
+md-5 = "0.11"
+sha2 = "0.11"
 serde_json = "1"
-roxmltree = "0.20"
+roxmltree = "0.21"
 tempfile = "3"
 regex = "1"
 encoding_rs = "0.8"
