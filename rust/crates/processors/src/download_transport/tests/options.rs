@@ -120,6 +120,21 @@ fn unverified_invocations_stay_on_curl_with_a_redacted_reason() {
         .contains("environment"));
 }
 
+/// curl adds SSL_CERT_DIR to its bundle; GitHub's Ubuntu images set it.
+#[cfg(not(windows))]
+#[test]
+fn ssl_cert_dir_adds_a_directory_to_the_bundle() {
+    let mut command = generated(&[]);
+    command.env("SSL_CERT_DIR", "/tmp/certs");
+    assert_eq!(
+        inspect(&command, false).unwrap().trust,
+        super::super::options::Trust::Files {
+            files: vec!["/tmp/bundle.pem".into()],
+            directories: vec!["/tmp/certs".into()],
+        }
+    );
+}
+
 #[test]
 fn python_requests_use_their_generated_bundle() {
     let mut command = generated(&[

@@ -71,7 +71,11 @@ fn observe(
     for (index, server) in scenario.servers.iter().enumerate() {
         record = record.replace(server.authority(), &format!("server{index}"));
     }
-    record.replace(&directory.path().to_string_lossy().into_owned(), "<dir>")
+    // Property-list representations escape backslashes in Windows paths.
+    let directory = directory.path().to_string_lossy().into_owned();
+    record
+        .replace(&directory.replace('\\', "\\\\"), "<dir>")
+        .replace(&directory, "<dir>")
 }
 
 /// Runs a scenario on both backends and requires identical observations.

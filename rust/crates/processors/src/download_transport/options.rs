@@ -426,7 +426,7 @@ fn trust(
     directories: Vec<PathBuf>,
 ) -> Result<Trust, Reason> {
     for (key, _) in command.get_envs() {
-        if key != OsStr::new("SSL_CERT_FILE") {
+        if key != OsStr::new("SSL_CERT_FILE") && key != OsStr::new("SSL_CERT_DIR") {
             return Err("a changed curl environment".into());
         }
     }
@@ -436,21 +436,48 @@ fn trust(
         }
         return Ok(Trust::Files { files, directories });
     }
-    // The curl tool reads these before its compiled-in defaults.
-    for name in ["CURL_CA_BUNDLE", "SSL_CERT_DIR"] {
-        if variable(command, name).is_some_and(|v| !v.is_empty()) {
-            return Err(format!("the {name} environment variable"));
-        }
+    // The curl tool reads CURL_CA_BUNDLE instead of its compiled-in bundle.
+    // Otherwise SSL_CERT_FILE replaces that bundle, and SSL_CERT_DIR adds a
+    // CA directory to whichever bundle is in use.
+    if variable(command, "CURL_CA_BUNDLE").is_some_and(|v| !v.is_empty()) {
+        return Err("the CURL_CA_BUNDLE environment variable".into());
     }
-    match variable(command, "SSL_CERT_FILE").filter(|v| !v.is_empty()) {
-        Some(file) => Ok(Trust::Files {
-            files: vec![PathBuf::from(file)],
-            directories: Vec::new(),
-        }),
+    let directories = variable(command, "SSL_CERT_DIR")
+        .map(|v| {
+            std::env::split_paths(&v)
+                .filter(|p| !p.as_os_str().is_empty())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    // Schannel curl doesn't support CA directories.
+    if cfg!(windows) && !directories.is_empty() {
+        return Err("the SSL_CERT_DIR environment variable".into());
+    }
+    let file = match variable(command, "SSL_CERT_FILE").filter(|v| !v.is_empty()) {
+        Some(file) => PathBuf::from(file),
         // macOS always sets a bundle for curl; see download_trust.rs.
-        None if cfg!(target_os = "macos") => Err("macOS curl without a CA bundle".into()),
-        None => Ok(Trust::Platform),
-    }
+        None if cfg!(target_os = "macos") => return Err("macOS curl without a CA bundle".into()),
+        None if directories.is_empty() => return Ok(Trust::Platform),
+        None => default_bundle().ok_or("no default CA bundle for SSL_CERT_DIR")?,
+    };
+    Ok(Trust::Files {
+        files: vec![file],
+        directories,
+    })
+}
+
+/// The CA bundle that distribution curl builds use by default.
+fn default_bundle() -> Option<PathBuf> {
+    [
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/usr/share/ssl/certs/ca-bundle.crt",
+        "/usr/local/share/certs/ca-root-nss.crt",
+        "/etc/ssl/cert.pem",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .find(|path| path.is_file())
 }
 
 /// Configuration curl reads that the engine does not interpret. Any of it
