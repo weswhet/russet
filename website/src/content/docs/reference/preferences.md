@@ -65,7 +65,8 @@ Windows.
 | `DISABLE_RECIPE_MAP` | `false` | If `true`, Russet doesn't create or refresh the recipe map. |
 | `CACHE_DIR` | `~/Library/AutoPkg/Cache` | Folder for downloads, build products, receipts, and run results. |
 | `GIT_PATH` | `git` from `PATH` | Git executable that recipe repository commands use. |
-| `CURL_PATH` | `curl` from `PATH`, then `/usr/bin/curl` | curl executable for downloads and GitHub requests. |
+| `CURL_PATH` | `curl` from `PATH`, then `/usr/bin/curl` | curl executable for downloads and GitHub requests. If you set this key, `URLDownloader` and `URLDownloaderPython` use this executable for every download instead of Russet's downloader. |
+| `UseRussetDownloader` | `true` | If `false`, `URLDownloader` and `URLDownloaderPython` use curl for every download instead of Russet's downloader. For details, see [Downloads](#downloads). |
 | `GITHUB_TOKEN` | None | GitHub token for API requests. Russet reads this token only from preferences. |
 | `GITHUB_TOKEN_PATH` | `~/.autopkg_gh_token` | File that contains a GitHub token, used when `GITHUB_TOKEN` isn't set. |
 | `FAIL_RECIPES_WITHOUT_TRUST_INFO` | `false` | If `true`, a recipe override without trust information is an error instead of a warning. |
@@ -81,7 +82,45 @@ If `MUNKI_REPO_PLUGIN` names a backend other than `FileRepo`, or if
 that you run, including recipes that don't use Munki.
 :::
 
+## Downloads
+
+By default, `URLDownloader` and `URLDownloaderPython` download files with
+Russet's built-in HTTP downloader. The downloader reuses connections between
+downloads. For a file of 64 MiB or more, it can download several parts of the
+file at once when the server supports it. Downloads keep the caching, file
+names, and recipe variables that curl downloads produce.
+
+Russet uses curl for a download when the downloader can't reproduce curl's
+behavior exactly. Russet makes this choice before it connects to the server.
+The download uses curl in the following cases:
+
+- The recipe's `curl_opts` contains an option other than `--location`,
+  `--fail`, `--silent`, `--show-error`, `--header`, `--user-agent`, or
+  `--referer`, or their short forms.
+- The URL doesn't use HTTP or HTTPS, or it contains a user name or password.
+- You set `CURL_PATH`.
+- You set a proxy environment variable, such as `https_proxy`.
+- A curl configuration file, such as `~/.curlrc`, exists.
+
+The downloader sends the same `User-Agent` header as the curl that Russet
+would otherwise run, such as `curl/8.7.1`, unless the recipe supplies its own.
+It trusts the same certificates as curl. On macOS, these are the bundled
+certificates or the file that `SSL_CERT_FILE` names. On Linux and Windows,
+these are the operating system's certificates.
+
+To use curl for every download, set `UseRussetDownloader` to `false`. The
+value can be a Boolean or a string such as `false`, `no`, or `0`. You can also
+set it for one run with the `AUTOPKG_UseRussetDownloader` environment
+variable or with `--key UseRussetDownloader=false`.
+
 ## Examples
+
+To use curl instead of Russet's downloader on macOS, run the following
+command:
+
+```sh
+defaults write com.github.autopkg UseRussetDownloader -bool false
+```
 
 To set the Munki repository path on macOS, run the following command:
 

@@ -1,6 +1,40 @@
 # Native download implementation plan
 
-Proposed October 8, 2026. This document describes future work; none of these settings or behaviors are implemented by this plan.
+Proposed October 8, 2026. Phases 1 through 4 are implemented; phase 5 (durable resume) is not. The sections after the status describe the original proposal.
+
+## Status
+
+Updated October 9, 2026.
+
+| Phase | Status |
+| --- | --- |
+| 1. Capture compatibility | Done. See the [curl option inventory](download-curl-inventory.md) and the generated-argument baseline test in `downloader.rs`. |
+| 2. Extract the backend boundary | Done. Every download goes through `download_transport::run`. |
+| 3. Native single-stream | Done, and on by default. See the deviations below. |
+| 4. Parallel chunks | Done, for resources of 64 MiB or more with a strong ETag. |
+| 5. Durable resume | Not started. A failed transfer leaves no reusable partial state. |
+| 6. Benchmark and expand coverage | Live-recipe comparison only; no controlled benchmark yet. |
+| 7. `auto` by default | Done early, at the user's request; see below. |
+
+### What shipped
+
+- `download_transport/options.rs` inspects the exact curl command the downloader built. It admits the generated options, `--cacert`, `--capath`, and the effective-URL `--write-out` for `URLDownloaderPython`, and these recipe options: `--location`/`-L`, `--fail`/`-f`, `--silent`/`-s`, `--show-error`/`-S`, `--no-buffer`/`-N`, `--header`/`-H`, `--user-agent`/`-A`, and `--referer`/`-e`, including short-option groups and attached values. Everything else, including `--name=value` spellings, file-sourced headers, unsupported header names, removal of `Accept`, automatic referers, multiple URLs, non-HTTP(S) URLs, URLs with credentials or glob characters, proxy and CA environment variables, curl configuration files, and an explicit `CURL_PATH`, runs the original curl command unchanged. The decision, trust loading, and client construction happen before any network activity; a native request is never replayed through curl.
+- `download_transport/native.rs` owns one multi-threaded Tokio runtime and a pool of reqwest clients over rustls with the ring provider, keyed by trust roots and low-speed timeout. It follows redirects manually to reproduce curl's header dump (`http_redirected`, final headers, HTTP/2 status lines without a reason phrase), drops recipe `Authorization` and `Cookie` headers on cross-origin redirects as curl does, applies `--fail`, `--speed-time`, curl's 50-redirect limit, and identity encoding, and reports failures with curl's exit codes and messages so `curl::check_exit` handles both backends identically.
+- Trust follows each processor variant. `URLDownloaderPython` uses the generated bundle and CA path. `URLDownloader` uses the `SSL_CERT_FILE` the curl child would see (the certifi bundle on macOS), and the platform verifier on Linux and Windows.
+- The default `User-Agent` is the one the fallback curl sends, read once from `curl --version` (for example, `curl/8.7.1`), so vendor servers that check the user agent see no change. A recipe user agent or `User-Agent` header replaces it.
+- `download_transport/chunks.rs` splits a `200` response with a known length of at least 64 MiB, a strong ETag, and no content coding into 8 MiB chunks. The original response keeps streaming from the start while up to three HTTP/1.1 range workers take chunks from the end, with `Range` and `If-Range` on every request, positional writes, exact `206`, `Content-Range`, ETag, and length validation, and caps of eight range requests overall and three per origin. On any anomaly, the workers are cancelled and joined and the original response takes over the remaining chunks; if it has already stopped, the transfer restarts once as a single stream.
+- `AUTOPKG_RS_DEBUG=1` prints the backend chosen, the redacted fallback reason, the transfer mode, and the elapsed time.
+
+### Deviations from the proposal
+
+- There is one preference, `UseRussetDownloader` (default `true`), instead of `DOWNLOAD_BACKEND` modes. `true` behaves like the proposed `auto`; `false` behaves like `curl`. There is no strict `native` mode. The preference is read like `CURL_PATH`: from the recipe environment (preferences, `AUTOPKG_` variables, and `--key`), then the macOS preference domain.
+- The chunk size, minimum size, and worker count are constants, not settings.
+- The native default shipped before a controlled benchmark, because the user requested it. The release gates in [Benchmark and release criteria](#benchmark-and-release-criteria) still apply to further expansion.
+- A TLS handshake that rustls can't complete (for example, a server that offers only TLS 1.0 or CBC cipher suites) fails instead of falling back, because the decision is made before network activity. Set `UseRussetDownloader` to `false` for such servers.
+
+### Tests
+
+`download_transport/tests/` holds deterministic local HTTP and HTTPS fixtures. `parity.rs` runs each scenario through both processors with curl and with the native engine and requires identical processor outputs, errors, cached files, metadata, and server-side requests: conditional caching and `304`, header capture with duplicates and custom reason phrases, request header overrides and removal, redirect chains with cross-origin credential stripping, `404`/`500`/`403` with `--fail`, short bodies, `Content-Disposition` and `Location` prefetch, and verified `curl_opts`. `ranges.rs` covers parallel reassembly, ignored ranges, changed ETags, mismatched `Content-Range`, a late worker failure that forces a restart, a short original stream, small files, weak validators, and TLS trust for both processor variants. `options.rs` covers admission, redacted fallback reasons, and the preferences.
 
 ## Outcome and compatibility contract
 

@@ -69,8 +69,8 @@ Russet implements the 46 processors that AutoPkg 3.0.0 includes:
 | `SparkleUpdateInfoProvider` | Gets the download URL and version from a Sparkle feed. | All | Uses curl. |
 | `StopProcessingIf` | Stops a recipe when a predicate is true. | All | On Linux and Windows, supports a subset of the predicate syntax. |
 | `Symlinker` | Creates a symbolic link. | All | Behavior on Windows depends on your permission to create symbolic links. |
-| `URLDownloader` | Downloads a file with curl. | All | Caches downloads and skips unchanged files. |
-| `URLDownloaderPython` | Downloads a file. | All | Kept for recipes that use this name. Russet runs curl instead of Python and ignores `curl_opts`. |
+| `URLDownloader` | Downloads a file. | All | Caches downloads and skips unchanged files. Uses Russet's downloader, or curl when the [`UseRussetDownloader`](/reference/preferences/#downloads) preference or the recipe's `curl_opts` require it. |
+| `URLDownloaderPython` | Downloads a file. | All | Kept for recipes that use this name. Russet uses its downloader or curl instead of Python, and ignores `curl_opts`. |
 | `URLGetter` | Base class for processors that use curl. | None | Fails if a recipe runs it directly. |
 | `URLTextSearcher` | Downloads text and matches a regular expression against it. | All | Uses curl. Follows Python regular expression syntax. |
 | `Unarchiver` | Extracts zip and tar archives. | All | On macOS, uses `ditto` and `tar`. On Linux, uses a built-in replacement for `ditto` that keeps file modes, symbolic links, and extended attributes. On Windows, uses a built-in extractor that doesn't support `archive_format` `gzip`. |
