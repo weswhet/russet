@@ -172,6 +172,119 @@ fn zip_size_limit_stops_extraction() {
 }
 
 /// Builds an odc cpio member.
+/// macOS `tar -x` merges `._name` members into `name`'s attributes, so a
+/// signed app archived with macOS `tar` (QuickBooks) extracts without
+/// stray files its seal doesn't list.
+#[test]
+fn tar_merges_apple_double_members_like_macos_tar() {
+    let mut builder = tar::Builder::new(Vec::new());
+    let mut add = |path: &str, kind: tar::EntryType, mode: u32, data: &[u8], link: Option<&str>| {
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(kind);
+        header.set_mode(mode);
+        header.set_size(data.len() as u64);
+        if let Some(link) = link {
+            header.set_link_name(link).unwrap();
+        }
+        builder.append_data(&mut header, path, data).unwrap();
+    };
+    add(
+        "App.app/Contents/",
+        tar::EntryType::Directory,
+        0o755,
+        b"",
+        None,
+    );
+    // bsdtar writes the metadata right before the entry it describes.
+    let double = apple_double([0; 32], &[("com.example.test", b"hello")], b"");
+    add(
+        "App.app/Contents/._Frameworks",
+        tar::EntryType::Regular,
+        0o644,
+        &double,
+        None,
+    );
+    add(
+        "App.app/Contents/Frameworks/",
+        tar::EntryType::Directory,
+        0o700,
+        b"",
+        None,
+    );
+    add(
+        "App.app/Contents/MacOS/App",
+        tar::EntryType::Regular,
+        0o755,
+        b"binary",
+        None,
+    );
+    add(
+        "App.app/Contents/Current",
+        tar::EntryType::Symlink,
+        0o755,
+        b"",
+        Some("MacOS"),
+    );
+    add(
+        "App.app/Contents/MacOS/Copy",
+        tar::EntryType::Link,
+        0o755,
+        b"",
+        Some("App.app/Contents/MacOS/App"),
+    );
+    add(
+        "App.app/._notes",
+        tar::EntryType::Regular,
+        0o644,
+        b"plain text",
+        None,
+    );
+    let archive = builder.into_inner().unwrap();
+
+    let temp = tempfile::tempdir().unwrap();
+    let out = temp.path().join("out");
+    crate::extract_tar(archive.as_slice(), &out, Limits::default()).unwrap();
+    let entries = manifest(&out).unwrap();
+    let find = |p: &str| {
+        entries
+            .iter()
+            .find(|e| e.path == p)
+            .unwrap_or_else(|| panic!("{p}"))
+    };
+    assert!(entries.iter().all(|e| !e.path.ends_with("._Frameworks")));
+    let frameworks = find("App.app/Contents/Frameworks");
+    assert_eq!(frameworks.mode, 0o700);
+    assert!(frameworks.xattrs.contains_key("com.example.test"));
+    assert_eq!(find("App.app/Contents/MacOS/App").mode, 0o755);
+    assert_eq!(
+        fs::read(out.join("App.app/Contents/MacOS/Copy")).unwrap(),
+        b"binary"
+    );
+    let link = find("App.app/Contents/Current");
+    assert_eq!(
+        (link.kind, link.target.as_deref()),
+        (EntryKind::Symlink, Some("MacOS"))
+    );
+    assert_eq!(find("App.app/._notes").size, Some(10));
+}
+
+#[test]
+fn tar_rejects_escapes() {
+    let mut builder = tar::Builder::new(Vec::new());
+    let mut header = tar::Header::new_gnu();
+    header.set_size(1);
+    header.set_mode(0o644);
+    // append_data refuses `..`, so write the name directly.
+    header.as_gnu_mut().unwrap().name[..9].copy_from_slice(b"../escape");
+    header.set_cksum();
+    builder.append(&header, &b"x"[..]).unwrap();
+    let archive = builder.into_inner().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let out = temp.path().join("out");
+    assert!(crate::extract_tar(archive.as_slice(), &out, Limits::default()).is_err());
+    assert!(!temp.path().join("escape").exists());
+}
+
 fn odc(out: &mut Vec<u8>, name: &str, mode: u32, ino: u64, nlink: u64, data: &[u8]) {
     write!(
         out,

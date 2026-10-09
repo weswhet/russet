@@ -10,6 +10,7 @@ russet-fs = { path = "../fs" }
 russet-aa = { path = "../aa" }
 zip = { version = "2", default-features = false, features = ["deflate", "bzip2"] }
 flate2 = "1"
+tar = "0.4"
 xz2 = { version = "0.1", features = ["static"] }
 
 [target.'cfg(unix)'.dev-dependencies]

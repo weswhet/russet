@@ -6,9 +6,11 @@
 //! - [`extract_cpio`] matches `ditto -x --noqtn` for cpio archives, plain or
 //!   gzip-compressed, as found in package payloads and `.cpgz` files. It
 //!   also reads pbzx payloads, which `ditto` can't but `aa extract` can.
+//! - [`extract_tar`] matches macOS `tar -x`, which merges `._name`
+//!   AppleDouble members into extended attributes the same way.
 //!
-//! Both write through [`russet_fs::TreeWriter`], so archive content can't
-//! escape the destination.
+//! All of them write through [`russet_fs::TreeWriter`], so archive content
+//! can't escape the destination.
 #![forbid(unsafe_code)]
 
 #[cfg(unix)]
@@ -19,6 +21,8 @@ mod cpio;
 mod cpio_write;
 #[cfg(unix)]
 mod pbzx;
+#[cfg(unix)]
+mod tar;
 #[cfg(all(test, unix))]
 mod tests;
 #[cfg(unix)]
@@ -52,6 +56,21 @@ mod imp {
         fs::create_dir_all(destination)?;
         Ok(Report {
             skipped_xattrs: crate::zip::extract(source, destination, limits)?,
+        })
+    }
+
+    /// Extracts a tar stream (already decompressed) like macOS
+    /// `tar -x -f source -C destination`, which merges `._name` AppleDouble
+    /// members into extended attributes. `destination` is created when
+    /// missing.
+    pub fn extract_tar(
+        reader: impl Read,
+        destination: &Path,
+        limits: Limits,
+    ) -> io::Result<Report> {
+        fs::create_dir_all(destination)?;
+        Ok(Report {
+            skipped_xattrs: crate::tar::extract(reader, destination, limits)?,
         })
     }
 

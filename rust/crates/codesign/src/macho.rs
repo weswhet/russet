@@ -10,34 +10,44 @@ const LC_CODE_SIGNATURE: u32 = 0x1d;
 const LC_SEGMENT: u32 = 0x1;
 const LC_SEGMENT_64: u32 = 0x19;
 
+/// Reads a 32-bit Mach-O header field in the slice's byte order.
+fn field(image: &[u8], at: usize, big: bool) -> Result<u32, String> {
+    image
+        .get(at..at + 4)
+        .map(|b| {
+            let b = b.try_into().unwrap();
+            if big {
+                u32::from_be_bytes(b)
+            } else {
+                u32::from_le_bytes(b)
+            }
+        })
+        .ok_or_else(|| error("truncated load commands"))
+}
+
 /// Finds `__TEXT,__info_plist` in the segment command at `at`.
-fn info_section(image: &[u8], at: usize, wide: bool) -> Result<Option<&[u8]>, String> {
+fn info_section(image: &[u8], at: usize, wide: bool, big: bool) -> Result<Option<&[u8]>, String> {
     let name = |offset: usize| -> &[u8] {
         let bytes = image.get(offset..offset + 16).unwrap_or_default();
         let end = bytes.iter().position(|b| *b == 0).unwrap_or(bytes.len());
         &bytes[..end]
     };
-    let le32 = |offset: usize| -> Result<u32, String> {
-        image
-            .get(offset..offset + 4)
-            .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
-            .ok_or_else(|| error("truncated segment"))
-    };
+    let read = |offset: usize| field(image, offset, big);
     if name(at + 8) != b"__TEXT" {
         return Ok(None);
     }
     let (sections, first, stride) = if wide {
-        (le32(at + 64)? as usize, at + 72, 80)
+        (read(at + 64)? as usize, at + 72, 80)
     } else {
-        (le32(at + 48)? as usize, at + 56, 68)
+        (read(at + 48)? as usize, at + 56, 68)
     };
     for i in 0..sections.min(256) {
         let section = first + i * stride;
         if name(section) == b"__info_plist" {
             let (size, offset) = if wide {
-                (le32(section + 40)? as usize, le32(section + 48)? as usize)
+                (read(section + 40)? as usize, read(section + 48)? as usize)
             } else {
-                (le32(section + 36)? as usize, le32(section + 40)? as usize)
+                (read(section + 36)? as usize, read(section + 40)? as usize)
             };
             return Ok(image.get(offset..offset + size));
         }
@@ -116,34 +126,31 @@ pub fn slices(file: &[u8]) -> Result<Vec<Slice<'_>>, String> {
 }
 
 fn thin(image: &[u8]) -> Result<Slice<'_>, String> {
-    let magic = image
-        .get(0..4)
-        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
-        .ok_or_else(|| error("not a Mach-O file"))?;
-    let header = match magic {
-        MH_MAGIC_64 => 32,
-        MH_MAGIC => 28,
-        _ => return Err(error("not a little-endian Mach-O file")),
+    let magic = be32(image, 0).map_err(|_| error("not a Mach-O file"))?;
+    // PowerPC slices in older universal binaries are big-endian. codesign
+    // signs and verifies them like any other slice; the signature blobs
+    // themselves are big-endian either way.
+    let (header, big) = match magic {
+        m if m == MH_MAGIC_64.swap_bytes() => (32, false),
+        m if m == MH_MAGIC.swap_bytes() => (28, false),
+        MH_MAGIC_64 => (32, true),
+        MH_MAGIC => (28, true),
+        _ => return Err(error("not a Mach-O file")),
     };
-    let le32 = |at: usize| -> Result<u32, String> {
-        image
-            .get(at..at + 4)
-            .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
-            .ok_or_else(|| error("truncated load commands"))
-    };
-    let count = le32(16)? as usize;
+    let read = |at: usize| field(image, at, big);
+    let count = read(16)? as usize;
     let mut at = header;
     let mut found = None;
     let mut info_plist = None;
     for _ in 0..count {
-        let command = le32(at)?;
-        let size = le32(at + 4)? as usize;
+        let command = read(at)?;
+        let size = read(at + 4)? as usize;
         if size < 8 {
             return Err(error("bad load command"));
         }
         if command == LC_CODE_SIGNATURE {
-            let offset = le32(at + 8)? as usize;
-            let length = le32(at + 12)? as usize;
+            let offset = read(at + 8)? as usize;
+            let length = read(at + 12)? as usize;
             let end = offset
                 .checked_add(length)
                 .ok_or_else(|| error("bad signature range"))?;
@@ -152,7 +159,7 @@ fn thin(image: &[u8]) -> Result<Slice<'_>, String> {
                 .ok_or_else(|| error("signature out of range"))?;
             found = Some((offset, signature));
         } else if (command == LC_SEGMENT_64 || command == LC_SEGMENT) && info_plist.is_none() {
-            info_plist = info_section(image, at, command == LC_SEGMENT_64)?;
+            info_plist = info_section(image, at, command == LC_SEGMENT_64, big)?;
         }
         at = at
             .checked_add(size)
@@ -339,5 +346,48 @@ impl<'a> CodeDirectory<'a> {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A 32-bit thin image with only an LC_CODE_SIGNATURE command, in either
+    /// byte order. The superblob stays big-endian, as Mach-O requires.
+    fn image(big: bool) -> Vec<u8> {
+        let word = |v: u32| {
+            if big {
+                v.to_be_bytes()
+            } else {
+                v.to_le_bytes()
+            }
+        };
+        let mut out = Vec::new();
+        // Header: magic, cputype (ppc or i386), subtype, filetype, ncmds,
+        // sizeofcmds, flags.
+        for v in [MH_MAGIC, if big { 18 } else { 7 }, 0, 2, 1, 16, 0] {
+            out.extend(word(v));
+        }
+        // LC_CODE_SIGNATURE: the signature starts right after it.
+        for v in [LC_CODE_SIGNATURE, 16, 44, 12] {
+            out.extend(word(v));
+        }
+        out.extend(SUPERBLOB.to_be_bytes());
+        out.extend(12u32.to_be_bytes());
+        out.extend(0u32.to_be_bytes());
+        out
+    }
+
+    #[test]
+    fn reads_big_endian_powerpc_slices() {
+        for big in [false, true] {
+            let file = image(big);
+            let slices = slices(&file).unwrap();
+            assert_eq!(slices.len(), 1);
+            assert_eq!(slices[0].signature_offset, 44, "big={big}");
+            assert_eq!(slices[0].signature, &file[44..], "big={big}");
+        }
+        assert!(slices(b"\0\0\0\0").is_err());
     }
 }
