@@ -117,6 +117,37 @@ fn created_images_round_trip() {
             "{format}"
         );
     }
+    // An app given as the source folder goes on the volume as itself, the way
+    // `hdiutil` treats packages, so a Munki import finds it.
+    let app = source.join("App.app");
+    let image = temp.path().join("app.dmg");
+    create(
+        &app,
+        &image,
+        &CreateOptions {
+            filesystem: "HFS+",
+            format: "UDZO",
+            zlib_level: 5,
+            megabytes: None,
+        },
+    )
+    .unwrap();
+    let out = tempfile::tempdir().unwrap();
+    let extraction = extract(&image, out.path(), Limits::default()).unwrap();
+    let mut expected: Vec<_> = strip(manifest(&app).unwrap())
+        .into_iter()
+        .map(|(path, mode, sha, target)| (format!("App.app/{path}"), mode, sha, target))
+        .collect();
+    let top = manifest(&source)
+        .unwrap()
+        .into_iter()
+        .find(|e| e.path == "App.app")
+        .unwrap();
+    expected.push(("App.app".into(), top.mode, None, None));
+    expected.sort();
+    let mut got = strip(manifest(&extraction.volumes[0]).unwrap());
+    got.sort();
+    assert_eq!(got, expected);
     let error = create(
         &source,
         &temp.path().join("x.dmg"),

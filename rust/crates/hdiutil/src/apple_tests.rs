@@ -543,3 +543,62 @@ fn compare_downloaded_images() {
         }
     }
 }
+
+/// `hdiutil create -srcfolder` puts a package, such as an app, on the volume
+/// as itself and copies any other folder's contents; native creation matches.
+#[test]
+fn created_images_hold_packages_like_hdiutil() {
+    use crate::{create, CreateOptions};
+    let temp = tempfile::tempdir().unwrap();
+    for name in [
+        "Foo.app",
+        "Two.dots.app",
+        "UP.APP",
+        "Pk.PKG",
+        "Fw.framework",
+        "Thing.foo",
+    ] {
+        let source = temp.path().join("src").join(name);
+        fs::create_dir_all(source.join("Contents")).unwrap();
+        fs::write(source.join("Contents/Info.plist"), "<plist/>").unwrap();
+        let apple = temp.path().join(format!("apple-{name}.dmg"));
+        run(
+            "/usr/bin/hdiutil",
+            &[
+                "create",
+                "-quiet",
+                "-srcfolder",
+                source.to_str().unwrap(),
+                "-fs",
+                "HFS+",
+                "-format",
+                "UDRO",
+                apple.to_str().unwrap(),
+            ],
+        );
+        let native = temp.path().join(format!("native-{name}.dmg"));
+        create(
+            &source,
+            &native,
+            &CreateOptions {
+                filesystem: "HFS+",
+                format: "UDRO",
+                zlib_level: 5,
+                megabytes: None,
+            },
+        )
+        .unwrap();
+        let strip = |entries: Vec<russet_fs::Entry>| -> Vec<_> {
+            entries
+                .into_iter()
+                .filter(|e| !e.path.starts_with(".fseventsd"))
+                .map(|e| (e.path, e.kind, e.sha256))
+                .collect()
+        };
+        assert_eq!(
+            strip(mounted(&native).remove(0)),
+            strip(mounted(&apple).remove(0)),
+            "{name}"
+        );
+    }
+}

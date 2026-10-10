@@ -89,6 +89,68 @@ fn walk(root: &Path) -> io::Result<Vec<Entry>> {
     Ok(out)
 }
 
+/// Extensions macOS treats as packages: `hdiutil create -srcfolder` puts a
+/// folder with one of these on the volume as itself instead of copying its
+/// contents. The list is what a stock macOS reports; types that only
+/// installed apps declare, such as `.vst`, are copied by contents there too.
+const PACKAGES: &[&str] = &[
+    "action",
+    "app",
+    "appex",
+    "bundle",
+    "dext",
+    "docset",
+    "download",
+    "dsym",
+    "kext",
+    "key",
+    "lpdf",
+    "mdimporter",
+    "menu",
+    "mlmodelc",
+    "mpkg",
+    "nib",
+    "numbers",
+    "pages",
+    "photoslibrary",
+    "pkg",
+    "playground",
+    "plugin",
+    "prefpane",
+    "qlgenerator",
+    "rtfd",
+    "saver",
+    "scptd",
+    "service",
+    "sparsebundle",
+    "systemextension",
+    "wdgt",
+    "workflow",
+    "xcarchive",
+    "xcodeproj",
+    "xpc",
+];
+
+fn is_package(name: &str) -> bool {
+    name.rsplit_once('.')
+        .is_some_and(|(_, ext)| PACKAGES.iter().any(|p| p.eq_ignore_ascii_case(ext)))
+}
+
+/// The volume name `hdiutil` gives a source folder. A package's volume is
+/// named up to its first dot (`Two.dots.app` makes `Two`), except an app
+/// whose extension isn't lowercase, which keeps its whole name.
+fn volume_name(name: &str, package: bool) -> String {
+    let keep = !package
+        || name
+            .rsplit_once('.')
+            .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("app") && ext != "app");
+    if keep {
+        name.to_string()
+    } else {
+        name.split('.').next().unwrap_or(name).to_string()
+    }
+}
+
 fn volume_size(entries: &[Entry], journaled: bool) -> u64 {
     let data: u64 = entries
         .iter()
@@ -114,7 +176,8 @@ fn fs_error(e: fstool::Error) -> io::Error {
 
 /// Creates a disk image at `image` holding `source`'s contents, like
 /// `hdiutil create -srcfolder source -fs FS -format FORMAT image`. The
-/// volume is named after `source`. Extended attributes aren't copied, and a
+/// volume is named after `source`. When `source` is a package, such as an
+/// app, the volume holds the package itself, as `hdiutil` does. Extended attributes aren't copied, and a
 /// journaled file system is written without its journal.
 ///
 /// There's no APFS writer that macOS accepts, so an APFS request writes a
@@ -143,16 +206,31 @@ pub fn create(source: &Path, image: &Path, options: &CreateOptions) -> io::Resul
         )))
         }
     };
-    let entries = walk(source)?;
+    let source_name = source
+        .canonicalize()?
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(str::to_owned);
+    let package = source_name.as_deref().is_some_and(is_package);
+    let mut entries = walk(source)?;
+    if let (true, Some(source_name)) = (package, &source_name) {
+        let top = format!("/{}", hfs_name(source_name));
+        for entry in &mut entries {
+            entry.path = format!("{top}{}", entry.path);
+        }
+        entries.push(Entry {
+            path: top,
+            source: source.to_path_buf(),
+            metadata: fs::metadata(source)?,
+        });
+        entries.sort_by(|a, b| a.path.cmp(&b.path));
+    }
     let size = match options.megabytes {
         Some(megabytes) => megabytes << 20,
         None => volume_size(&entries, journaled),
     };
-    let name = source
-        .canonicalize()?
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(hfs_name)
+    let name = source_name
+        .map(|n| hfs_name(&volume_name(&n, package)))
         .unwrap_or_else(|| "untitled".into());
     let scratch = tempfile::tempdir_in(
         image
@@ -250,4 +328,28 @@ pub fn create(source: &Path, image: &Path, options: &CreateOptions) -> io::Resul
         .map_err(|e| invalid(format!("Can't write the disk image: {e}")))?;
     fs::rename(&staged, image)?;
     Ok(written)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_package, volume_name};
+
+    /// Names `hdiutil create -srcfolder` gives volumes on macOS.
+    #[test]
+    fn volume_names_match_hdiutil() {
+        for (folder, volume) in [
+            ("Foo.app", "Foo"),
+            ("Two.dots.app", "Two"),
+            ("UP.APP", "UP.APP"),
+            ("Mixed.App", "Mixed.App"),
+            ("Pk.PKG", "Pk"),
+            ("Pref.prefPane", "Pref"),
+            ("Fw.framework", "Fw.framework"),
+            ("Thing.foo", "Thing.foo"),
+            ("Plain", "Plain"),
+        ] {
+            assert_eq!(volume_name(folder, is_package(folder)), volume, "{folder}");
+        }
+        assert!(!is_package("Plugin.vst"));
+    }
 }
