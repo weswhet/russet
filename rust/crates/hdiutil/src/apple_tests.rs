@@ -562,20 +562,31 @@ fn created_images_hold_packages_like_hdiutil() {
         fs::create_dir_all(source.join("Contents")).unwrap();
         fs::write(source.join("Contents/Info.plist"), "<plist/>").unwrap();
         let apple = temp.path().join(format!("apple-{name}.dmg"));
-        run(
-            "/usr/bin/hdiutil",
-            &[
-                "create",
-                "-quiet",
-                "-srcfolder",
-                source.to_str().unwrap(),
-                "-fs",
-                "HFS+",
-                "-format",
-                "UDRO",
-                apple.to_str().unwrap(),
-            ],
-        );
+        // hdiutil create sometimes fails without a message on CI runners,
+        // so try it a few times.
+        let mut output = None;
+        for _ in 0..3 {
+            let attempt = Command::new("/usr/bin/hdiutil")
+                .args(["create", "-ov", "-srcfolder"])
+                .arg(&source)
+                .args(["-fs", "HFS+", "-format", "UDRO"])
+                .arg(&apple)
+                .output()
+                .unwrap();
+            if attempt.status.success() {
+                output = None;
+                break;
+            }
+            output = Some(attempt);
+            std::thread::sleep(std::time::Duration::from_secs(5));
+        }
+        if let Some(output) = output {
+            panic!(
+                "hdiutil create {name}: {}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
         let native = temp.path().join(format!("native-{name}.dmg"));
         create(
             &source,
