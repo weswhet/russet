@@ -119,8 +119,12 @@ pub fn create_item(path: &Path) -> Result<Dictionary, String> {
     if !item.contains_key("CFBundleShortVersionString") && !item.contains_key("CFBundleVersion") {
         item.insert("type".into(), Value::String("file".into()));
         if path.is_file() || path.is_symlink() {
-            let hash = std::fs::read(path)
-                .map(|data| format!("{:x}", Md5::digest(data)))
+            let hash = std::fs::File::open(path)
+                .and_then(|mut file| {
+                    let mut hasher = Md5::new();
+                    std::io::copy(&mut file, &mut hasher)?;
+                    Ok(format!("{:x}", hasher.finalize()))
+                })
                 .unwrap_or_default();
             item.insert("md5checksum".into(), Value::String(hash));
         }

@@ -316,13 +316,14 @@ impl Seal<'_> {
             } else {
                 self.check_sideband(&path)?;
                 let entry = self.entry(&key)?;
-                let bytes = fs::read(&path).map_err(|e| failure(&path, e))?;
                 let ok = match (entry.get("hash2"), entry.get("hash")) {
                     (Some(expected), _) => {
-                        expected.as_data() == Some(sha2::Sha256::digest(&bytes).as_slice())
+                        let digest = digest_file::<sha2::Sha256>(&path)?;
+                        expected.as_data() == Some(digest.as_slice())
                     }
                     (None, Some(expected)) => {
-                        expected.as_data() == Some(sha1::Sha1::digest(&bytes).as_slice())
+                        let digest = digest_file::<sha1::Sha1>(&path)?;
+                        expected.as_data() == Some(digest.as_slice())
                     }
                     _ => false,
                 };
@@ -492,6 +493,15 @@ fn normalize(path: &Path) -> PathBuf {
         }
     }
     out
+}
+
+/// Hashes a file in fixed-size reads, so a multi-gigabyte resource doesn't
+/// have to fit in memory.
+fn digest_file<D: Digest + std::io::Write>(path: &Path) -> Result<Vec<u8>, String> {
+    let mut file = fs::File::open(path).map_err(|e| failure(path, e))?;
+    let mut hasher = D::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| failure(path, e))?;
+    Ok(hasher.finalize().to_vec())
 }
 
 /// Verifies a bundle or a single Mach-O file at time `now`.
