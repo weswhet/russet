@@ -151,9 +151,11 @@ pub(crate) fn command(program: &str, args: &[&std::ffi::OsStr]) -> Result<Vec<u8
     autopkg_platform::run(std::ffi::OsStr::new(program), args).map(|o| o.stdout)
 }
 pub(crate) fn hash(path: &Path) -> Result<String, String> {
-    std::fs::read(path)
-        .map(|data| format!("{:x}", Sha256::digest(data)))
-        .map_err(|e| e.to_string())
+    // Packages and disk images can be several gigabytes, so hash as we read.
+    let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
+    Ok(format!("{:x}", hasher.finalize()))
 }
 fn text(d: &Dictionary, key: &str) -> Option<String> {
     d.get(key).and_then(Value::as_string).map(str::to_owned)

@@ -56,8 +56,11 @@ pub(crate) fn execute(env: &mut Dictionary, output: Output) -> Result<()> {
         if source.canonicalize().ok() == target.canonicalize().ok() && target.exists() {
             return Err("Source and destination are the same file".into());
         }
-        let bytes = io(fs::read(source))?;
-        io(fs::write(&target, bytes))?;
+        // Stream the copy so a multi-gigabyte file doesn't have to fit in memory.
+        let mut reader = io(fs::File::open(source))?;
+        let mut writer = io(fs::File::create(&target))?;
+        io(std::io::copy(&mut reader, &mut writer))?;
+        drop(writer);
         if dest.is_dir() {
             io(fs::set_permissions(
                 &target,
