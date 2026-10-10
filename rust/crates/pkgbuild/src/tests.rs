@@ -403,3 +403,96 @@ fn installs_with_apple_installer() {
         std::panic::resume_unwind(panic);
     }
 }
+
+/// Checks `installKBytes` against Apple's `pkgbuild` on trees whose sizes
+/// fall on either side of its 512-byte blocks.
+#[cfg(target_os = "macos")]
+#[test]
+fn install_size_matches_apple_pkgbuild() {
+    use std::process::Command;
+    // Each entry is a file's size, or `None` for a folder.
+    type Shape<'a> = (&'a str, &'a [(&'a str, Option<usize>)]);
+    let shapes: &[Shape] = &[
+        ("empty", &[]),
+        ("zero", &[("a", Some(0))]),
+        ("small", &[("a", Some(10))]),
+        ("two", &[("a", Some(10)), ("b", Some(10))]),
+        (
+            "blocks",
+            &[("a", Some(512)), ("b", Some(513)), ("c", Some(4097))],
+        ),
+        ("folders", &[("d", None), ("d/e", None), ("d/e/f", None)]),
+        (
+            "tool",
+            &[
+                ("usr", None),
+                ("usr/local", None),
+                ("usr/local/bin", None),
+                ("usr/local/bin/tool", Some(5_000_001)),
+            ],
+        ),
+    ];
+    let temp = tempfile::tempdir().unwrap();
+    let kilobytes = |pkg: &Path| {
+        let dir = pkg.with_extension("expanded");
+        let out = Command::new("/usr/sbin/pkgutil")
+            .arg("--expand")
+            .arg(pkg)
+            .arg(&dir)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let info = fs::read_to_string(dir.join("PackageInfo")).unwrap();
+        let start = info.find("installKBytes=\"").unwrap() + 15;
+        let end = start + info[start..].find('"').unwrap();
+        info[start..end].parse::<u64>().unwrap()
+    };
+    for (name, entries) in shapes {
+        let root = temp.path().join(name);
+        fs::create_dir(&root).unwrap();
+        for (path, size) in *entries {
+            match size {
+                Some(size) => fs::write(root.join(path), vec![b'x'; *size]).unwrap(),
+                None => fs::create_dir(root.join(path)).unwrap(),
+            }
+        }
+        if *name == "tool" {
+            std::os::unix::fs::symlink("tool", root.join("usr/local/bin/link")).unwrap();
+        }
+        let native = temp.path().join(format!("{name}-native.pkg"));
+        let options = Options {
+            identifier: "com.example.size",
+            version: "1",
+            install_location: None,
+            min_os_version: None,
+            scripts: None,
+            info_template: None,
+            components: &[],
+        };
+        build(&collect(&root, &[]).unwrap(), &options, &native).unwrap();
+        let apple = temp.path().join(format!("{name}-apple.pkg"));
+        let out = Command::new("/usr/bin/pkgbuild")
+            .args([
+                "--quiet",
+                "--identifier",
+                "com.example.size",
+                "--version",
+                "1",
+                "--root",
+            ])
+            .arg(&root)
+            .arg(&apple)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(kilobytes(&native), kilobytes(&apple), "{name}");
+    }
+}

@@ -115,21 +115,20 @@ pub struct Options<'a> {
     pub components: &'a [Component],
 }
 
-/// Counts bytes passing through, for the payload size.
-struct Counting<W> {
-    inner: W,
-    count: u64,
-}
-
-impl<W: Write> Write for Counting<W> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let count = self.inner.write(buf)?;
-        self.count += count as u64;
-        Ok(count)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
-    }
+/// The installed size in KiB, as `pkgbuild` reports it: each entry but the
+/// root takes whole 512-byte blocks, a folder one block, and AppleDouble
+/// members, which the BOM lists without a size, none.
+fn install_kilobytes(entries: &[russet_mkbom::Entry]) -> u64 {
+    let blocks: u64 = entries
+        .iter()
+        .filter(|e| !e.path.is_empty())
+        .map(|e| match &e.kind {
+            russet_mkbom::Kind::Directory => 1,
+            russet_mkbom::Kind::Symlink { target, .. } => (target.len() as u64).div_ceil(512),
+            russet_mkbom::Kind::File { size, .. } => size.div_ceil(512),
+        })
+        .sum();
+    blocks.div_ceil(2)
 }
 
 fn type_bits(kind: &NodeKind) -> u32 {
@@ -140,14 +139,11 @@ fn type_bits(kind: &NodeKind) -> u32 {
     }
 }
 
-/// Writes the payload and returns its BOM entries and uncompressed size.
-fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, u64)> {
+/// Writes the payload and returns its BOM entries.
+fn payload(nodes: &[Node], out: &Path) -> io::Result<Vec<russet_mkbom::Entry>> {
     let file = fs::File::create(out)?;
     let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
-    let mut writer = russet_ditto::CpioWriter::new(Counting {
-        inner: encoder,
-        count: 0,
-    });
+    let mut writer = russet_ditto::CpioWriter::new(encoder);
     let mut entries = Vec::with_capacity(nodes.len());
     let mut next_ino = nodes.len() as u64;
     for (index, node) in nodes.iter().enumerate() {
@@ -201,10 +197,8 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, 
             apple_double(node, source, &mut writer, header, next_ino, &mut entries)?;
         }
     }
-    let counting = writer.finish()?;
-    let size = counting.count;
-    counting.inner.finish()?.flush()?;
-    Ok((entries, size))
+    writer.finish()?.finish()?.flush()?;
+    Ok(entries)
 }
 
 /// Writes a file's extended attributes, including those kept in an
@@ -467,7 +461,7 @@ pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
         .unwrap_or(Path::new("."));
     let scratch = tempfile::tempdir_in(directory)?;
     let payload_path = scratch.path().join("Payload");
-    let (entries, size) = payload(nodes, &payload_path)?;
+    let entries = payload(nodes, &payload_path)?;
     let bom = russet_mkbom::write(&entries).map_err(invalid)?;
     let mut builder = Builder::new();
     builder.add_file(Path::new("Bom"), 0o644, Content::Bytes(bom), Encoding::Zlib)?;
@@ -500,7 +494,7 @@ pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
             Encoding::None,
         )?;
     }
-    let info = package_info(options, entries.len(), size.div_ceil(1024))?;
+    let info = package_info(options, entries.len(), install_kilobytes(&entries))?;
     builder.add_file(
         Path::new("PackageInfo"),
         0o644,
