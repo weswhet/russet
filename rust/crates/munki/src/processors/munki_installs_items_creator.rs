@@ -6,7 +6,10 @@
 //! `MunkiInstallsItemsCreator` in `compatibility/reference.json`.
 use md5::{Digest, Md5};
 use plist::{Dictionary, Value};
-use std::{cmp::Ordering, path::Path};
+use std::{
+    cmp::Ordering,
+    path::{Path, PathBuf},
+};
 
 fn bundle_info(path: &Path) -> Option<Dictionary> {
     let contents = path.join("Contents/Info.plist");
@@ -160,10 +163,19 @@ pub fn execute(env: &mut Dictionary) -> Result<(), String> {
         if physical != "/" && physical.ends_with('/') {
             physical.pop();
         }
-        if !Path::new(&physical).exists() {
+        // Recipes are written for case-insensitive macOS volumes; the item
+        // keeps the path as written, as it would there.
+        let found = if Path::new(&physical).exists() {
+            Some(PathBuf::from(&physical))
+        } else if cfg!(target_os = "macos") {
+            None
+        } else {
+            autopkg_platform::case_fold::resolve(Path::new(&physical))
+        };
+        let Some(found) = found else {
             continue;
-        }
-        let mut item = create_item(Path::new(&physical))?;
+        };
+        let mut item = create_item(&found)?;
         let logical = physical
             .strip_prefix(faux_root)
             .unwrap_or(&physical)
@@ -244,7 +256,8 @@ mod tests {
                 "installs_item_paths",
                 Value::Array(vec![
                     "/Applications/Test.app".into(),
-                    "/Library/Test.bundle".into(),
+                    // As on a case-insensitive macOS volume.
+                    "/Library/test.bundle".into(),
                     "/missing".into(),
                 ]),
             ),
@@ -263,6 +276,7 @@ mod tests {
         assert_eq!(first["type"].as_string(), Some("application"));
         assert_eq!(first["path"].as_string(), Some("/Applications/Test.app"));
         assert_eq!(second["type"].as_string(), Some("bundle"));
+        assert_eq!(second["path"].as_string(), Some("/Library/test.bundle"));
         assert_eq!(
             second["version_comparison_key"].as_string(),
             Some("CFBundleVersion")

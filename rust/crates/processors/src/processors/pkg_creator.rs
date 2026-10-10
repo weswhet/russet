@@ -28,6 +28,13 @@ fn resolve(env: &Dictionary, relative: &str) -> Result<String> {
         if path.exists() {
             return Ok(path.to_string_lossy().into_owned());
         }
+        // Recipes are written for case-insensitive macOS volumes, so
+        // `Scripts` can name a `scripts` folder.
+        if !cfg!(target_os = "macos") {
+            if let Some(path) = autopkg_platform::case_fold::resolve(&path) {
+                return Ok(path.to_string_lossy().into_owned());
+            }
+        }
     }
     Err(format!("Can't find {relative}"))
 }
@@ -105,4 +112,25 @@ pub(crate) fn execute(env: &mut Dictionary) -> Result<()> {
     env.insert("pkg_path".into(), path.clone().into());
     summary(env, "pkg_creator_summary_result", &request, &path);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve;
+    use plist::Dictionary;
+    use std::path::Path;
+
+    #[test]
+    fn resolves_paths_that_differ_in_case() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(temp.path().join("scripts")).unwrap();
+        let mut env = Dictionary::new();
+        env.insert(
+            "RECIPE_DIR".into(),
+            temp.path().to_string_lossy().into_owned().into(),
+        );
+        let path = resolve(&env, "Scripts").unwrap();
+        assert!(Path::new(&path).is_dir(), "{path}");
+        assert!(resolve(&env, "Missing").is_err());
+    }
 }
