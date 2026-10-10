@@ -15,7 +15,11 @@ fn invalid(message: impl Into<String>) -> io::Error {
 /// What a payload path is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NodeKind {
-    Directory,
+    /// A folder, with the number of entries it holds on disk, including
+    /// ones left out of the payload.
+    Directory {
+        entries: usize,
+    },
     /// A regular file, read from this path when the package is built.
     File(PathBuf),
     Symlink(String),
@@ -58,8 +62,12 @@ pub fn collect(root: &Path, filters: &[regex::Regex]) -> io::Result<Vec<Node>> {
             )
         } else if metadata.is_dir() {
             let mut names = Vec::new();
+            let mut entries = 0;
             for entry in fs::read_dir(&path)? {
                 let name = entry?.file_name();
+                if name != russet_fs::SIDECAR {
+                    entries += 1;
+                }
                 let name = name
                     .to_str()
                     .ok_or_else(|| invalid(format!("A name in {} isn't UTF-8", path.display())))?
@@ -81,7 +89,7 @@ pub fn collect(root: &Path, filters: &[regex::Regex]) -> io::Result<Vec<Node>> {
             }
             names.sort();
             stack.extend(names.into_iter().rev());
-            NodeKind::Directory
+            NodeKind::Directory { entries }
         } else if metadata.is_file() {
             NodeKind::File(path.clone())
         } else {
@@ -116,24 +124,32 @@ pub struct Options<'a> {
 }
 
 /// The installed size in KiB, as `pkgbuild` reports it: each entry but the
-/// root takes whole 512-byte blocks, a folder one block, and AppleDouble
-/// members, which the BOM lists without a size, none.
-fn install_kilobytes(entries: &[russet_mkbom::Entry]) -> u64 {
-    let blocks: u64 = entries
-        .iter()
-        .filter(|e| !e.path.is_empty())
-        .map(|e| match &e.kind {
-            russet_mkbom::Kind::Directory => 1,
-            russet_mkbom::Kind::Symlink { target, .. } => (target.len() as u64).div_ceil(512),
-            russet_mkbom::Kind::File { size, .. } => size.div_ceil(512),
-        })
-        .sum();
-    blocks.div_ceil(2)
+/// root takes whole 512-byte blocks of its size on disk, and a hard-linked
+/// file counts once. `pkgbuild` reads folder sizes from an APFS volume,
+/// which reports 64 bytes plus 32 per entry. AppleDouble members take none.
+fn install_kilobytes(nodes: &[Node]) -> io::Result<u64> {
+    let mut seen = std::collections::HashSet::new();
+    let mut blocks = 0;
+    for node in nodes.iter().filter(|n| !n.path.is_empty()) {
+        let bytes = match &node.kind {
+            NodeKind::Directory { entries } => 64 + 32 * *entries as u64,
+            NodeKind::Symlink(target) => target.len() as u64,
+            NodeKind::File(source) => {
+                let metadata = fs::metadata(source)?;
+                if metadata.nlink() > 1 && !seen.insert((metadata.dev(), metadata.ino())) {
+                    continue;
+                }
+                metadata.len()
+            }
+        };
+        blocks += bytes.div_ceil(512);
+    }
+    Ok(blocks.div_ceil(2))
 }
 
 fn type_bits(kind: &NodeKind) -> u32 {
     match kind {
-        NodeKind::Directory => 0o040000,
+        NodeKind::Directory { .. } => 0o040000,
         NodeKind::File(_) => 0o100000,
         NodeKind::Symlink(_) => 0o120000,
     }
@@ -161,7 +177,7 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<Vec<russet_mkbom::Entry>> {
             nlink: 1,
         };
         let kind = match &node.kind {
-            NodeKind::Directory => {
+            NodeKind::Directory { .. } => {
                 writer.append(&name, header, io::empty(), 0)?;
                 russet_mkbom::Kind::Directory
             }
@@ -451,7 +467,7 @@ fn package_info(options: &Options, files: usize, kilobytes: u64) -> io::Result<S
 pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
     if nodes
         .first()
-        .is_none_or(|n| !n.path.is_empty() || n.kind != NodeKind::Directory)
+        .is_none_or(|n| !n.path.is_empty() || !matches!(n.kind, NodeKind::Directory { .. }))
     {
         return Err(invalid("The payload must start with its root folder"));
     }
@@ -494,7 +510,7 @@ pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
             Encoding::None,
         )?;
     }
-    let info = package_info(options, entries.len(), install_kilobytes(&entries))?;
+    let info = package_info(options, entries.len(), install_kilobytes(nodes)?)?;
     builder.add_file(
         Path::new("PackageInfo"),
         0o644,

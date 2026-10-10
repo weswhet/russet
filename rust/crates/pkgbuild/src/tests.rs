@@ -422,6 +422,9 @@ fn install_size_matches_apple_pkgbuild() {
             &[("a", Some(512)), ("b", Some(513)), ("c", Some(4097))],
         ),
         ("folders", &[("d", None), ("d/e", None), ("d/e/f", None)]),
+        ("wide", &[("d", None), ("e", None)]),
+        ("hidden", &[("d", None), ("e", None)]),
+        ("hard", &[("a", Some(2000))]),
         (
             "tool",
             &[
@@ -460,8 +463,21 @@ fn install_size_matches_apple_pkgbuild() {
                 None => fs::create_dir(root.join(path)).unwrap(),
             }
         }
-        if *name == "tool" {
-            std::os::unix::fs::symlink("tool", root.join("usr/local/bin/link")).unwrap();
+        match *name {
+            "tool" => std::os::unix::fs::symlink("tool", root.join("usr/local/bin/link")).unwrap(),
+            // Folders with more entries take more blocks, counting
+            // entries left out of the payload.
+            "wide" | "hidden" => {
+                let count = if *name == "wide" { 300 } else { 14 };
+                for i in 0..count {
+                    fs::write(root.join(format!("d/f{i}")), "").unwrap();
+                }
+                if *name == "hidden" {
+                    fs::write(root.join("d/.DS_Store"), "").unwrap();
+                }
+            }
+            "hard" => fs::hard_link(root.join("a"), root.join("b")).unwrap(),
+            _ => (),
         }
         let native = temp.path().join(format!("{name}-native.pkg"));
         let options = Options {
