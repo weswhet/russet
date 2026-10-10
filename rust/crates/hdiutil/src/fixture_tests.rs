@@ -80,6 +80,9 @@ fn created_images_round_trip() {
     std::fs::write(source.join("Español.txt"), "accent").unwrap();
     std::os::unix::fs::symlink("App.app", source.join("Link")).unwrap();
     std::fs::write(source.join("big.bin"), vec![7u8; 300_000]).unwrap();
+    // A Linux extraction's attribute sidecar stays off the volume.
+    std::fs::create_dir_all(source.join(".russet-xattrs/big.bin")).unwrap();
+    std::fs::write(source.join(".russet-xattrs/big.bin/user.test"), "x").unwrap();
     let strip =
         |entries: Vec<russet_fs::Entry>| -> Vec<(String, u32, Option<String>, Option<String>)> {
             use unicode_normalization::UnicodeNormalization;

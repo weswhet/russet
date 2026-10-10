@@ -66,6 +66,11 @@ fn walk(root: &Path) -> io::Result<Vec<Entry>> {
             let name = name
                 .to_str()
                 .ok_or_else(|| invalid(format!("A name in {} isn't UTF-8", dir.display())))?;
+            // An extraction's attribute sidecar isn't content, and
+            // attributes aren't copied.
+            if name == russet_fs::SIDECAR {
+                continue;
+            }
             if name.contains(':') {
                 return Err(invalid(format!(
                     "{name:?} contains ':', which HFS+ names can't hold"
