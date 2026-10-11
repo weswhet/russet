@@ -344,8 +344,11 @@ impl Default for RecipeScope {
 impl Drop for RecipeScope {
     fn drop(&mut self) {
         SCOPE.with(|scope| scope.set(self.previous));
+        let released = (!self.all).then_some(self.id);
         #[cfg(unix)]
-        native::clear_cache((!self.all).then_some(self.id));
+        native::clear_cache(released);
+        #[cfg(not(unix))]
+        let _ = released;
     }
 }
 
