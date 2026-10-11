@@ -2,6 +2,7 @@ use plist::{Dictionary, Value};
 mod audit;
 mod cache;
 mod discovery;
+mod jobs;
 mod manage;
 mod options;
 mod search;
@@ -164,6 +165,7 @@ fn run_arguments(args: &[String]) -> Result<Vec<String>, String> {
         "--report-plist",
         "--pkg",
         "--key",
+        "--jobs",
     ];
     let flags = [
         "--check",
@@ -218,7 +220,7 @@ fn run_arguments(args: &[String]) -> Result<Vec<String>, String> {
             let chars = arg[1..].char_indices();
             for (offset, c) in chars {
                 result.push(format!("-{c}"));
-                if "kldp".contains(c) {
+                if "kldpj".contains(c) {
                     let tail = &arg[offset + 2..];
                     if tail.is_empty() {
                         expecting = true
@@ -249,6 +251,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let mut check_only = false;
     let mut ignore_trust = false;
     let mut pkg = None;
+    let mut jobs = None;
     let mut verbose: u64 = 0;
     let debug = env::var_os("AUTOPKG_RS_DEBUG").is_some();
     let mut iter = args.iter();
@@ -258,7 +261,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
             "-v" | "--verbose" => verbose += 1,
             "--ignore-parent-trust-verification-errors" => ignore_trust = true,
             "-h" | "--help" => {
-                autopkg_platform::text_println!("Usage: russet {verb} [options] [recipe ...]\n  --pre/--preprocessor NAME   Repeatable preprocessor\n  --post/--postprocessor NAME Repeatable postprocessor\n  -c/--check                 Check for new downloads\n  --ignore-parent-trust-verification-errors\n  -k/--key KEY=VALUE         Repeatable input override\n  -l/--recipe-list PATH      Text or plist recipe list\n  -p/--pkg PATH              Existing package or disk image\n  --report-plist PATH        Save summary report\n  -v/--verbose              Repeat for more diagnostics\n  -q/--quiet                Disable recipe search suggestions\n  -d/--search-dir DIRECTORY  Repeatable recipe directory\n  --override-dir DIRECTORY  Repeatable override directory\n  --prefs PATH              Preference file");
+                autopkg_platform::text_println!("Usage: russet {verb} [options] [recipe ...]\n  --pre/--preprocessor NAME   Repeatable preprocessor\n  --post/--postprocessor NAME Repeatable postprocessor\n  -c/--check                 Check for new downloads\n  --ignore-parent-trust-verification-errors\n  -k/--key KEY=VALUE         Repeatable input override\n  -l/--recipe-list PATH      Text or plist recipe list\n  -p/--pkg PATH              Existing package or disk image\n  --report-plist PATH        Save summary report\n  -v/--verbose              Repeat for more diagnostics\n  -q/--quiet                Disable recipe search suggestions\n  -d/--search-dir DIRECTORY  Repeatable recipe directory\n  --override-dir DIRECTORY  Repeatable override directory\n  --prefs PATH              Preference file\n  -j/--jobs N               Recipes to run at once; 0 is one per CPU");
                 return Ok(0);
             }
             "-q" | "--quiet" => {}
@@ -287,6 +290,19 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
                 ))
             }
             "-p" | "--pkg" => pkg = Some(iter.next().ok_or("--pkg requires a path")?.clone()),
+            "-j" | "--jobs" => {
+                let value = iter.next().ok_or("--jobs requires a number")?;
+                let Some(count) = jobs::parse(value) else {
+                    return options::usage_failure(
+                        verb,
+                        Some(&format!(
+                            "--jobs must be a whole number of 0 or more, not {value:?}"
+                        )),
+                        2,
+                    );
+                };
+                jobs = Some(count);
+            }
             "-k" | "--key" => {
                 let pair = iter.next().ok_or("--key requires KEY=VALUE")?;
                 let (key, value) = pair.split_once('=').ok_or("--key requires KEY=VALUE")?;
@@ -421,80 +437,176 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
             *recipe = recipe.check_phase()?;
         }
     }
+    let jobs = match jobs {
+        Some(count) => count,
+        None => jobs::preference(&keys, &initial)?.unwrap_or(1),
+    };
+    let context = RunContext {
+        initial: &initial,
+        keys: &keys,
+        search_paths: &search_paths,
+        options: autopkg_engine::RunOptions {
+            check_only,
+            preferences: Some(processor_preferences),
+        },
+        debug,
+    };
+    // Each recipe's cache folder. Recipes that share one never run at the
+    // same time.
+    let mut caches = Vec::new();
     for recipe in &loaded {
-        let mut inputs = initial.clone();
-        inputs.insert("AUTOPKG_VERSION".into(), "3.0.0".into());
-        inputs.insert(
-            "PARENT_RECIPES".into(),
-            parent_paths(recipe, &search_paths)?,
-        );
-        inputs.extend(recipe.input.clone());
-        inputs.extend(keys.clone());
-        let root = cache::root_with_override(&initial, inputs.get("CACHE_DIR"))?;
-        inputs.insert(
-            "CACHE_DIR".into(),
-            root.to_string_lossy().into_owned().into(),
-        );
+        let inputs = context.inputs(recipe)?;
         autopkg_engine::validate_recipe(recipe, &inputs)?;
+        let root = inputs
+            .get("CACHE_DIR")
+            .and_then(Value::as_string)
+            .unwrap_or_default();
+        caches.push(
+            autopkg_engine::cache::recipe_cache_path(
+                std::path::Path::new(root),
+                &recipe.identifier,
+            )
+            .unwrap_or_else(|_| PathBuf::from(root).join(&recipe.identifier)),
+        );
     }
     let results_path = initial
         .get("CACHE_DIR")
         .and_then(Value::as_string)
         .map(|root| PathBuf::from(root).join("autopkg_results.plist"));
-    let mut receipts = Vec::new();
     if let Some(path) = &results_path {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        if let Err(error) = autopkg_engine::report::write_run_results(&receipts, path) {
+        if let Err(error) = autopkg_engine::report::write_run_results(&[], path) {
             autopkg_platform::text_eprintln!("Can't write results to {}: {error}", path.display());
         }
     }
-    let options = autopkg_engine::RunOptions {
-        check_only,
-        preferences: Some(processor_preferences),
-    };
+    // A recipe that rebuilds Munki catalogs waits for the imports listed
+    // before it.
+    let barriers: Vec<_> = loaded
+        .iter()
+        .map(|recipe| {
+            recipe.process.iter().any(|step| {
+                autopkg_processors::canonical_name(&step.processor)
+                    .rsplit('/')
+                    .next()
+                    == Some("MakeCatalogsProcessor")
+            })
+        })
+        .collect();
+    let stages = jobs::stages(&caches, &barriers);
+    let workers = jobs::workers(jobs);
+    let prefixed = workers > 1 && stages.iter().any(|stage| stage.len() > 1);
+    let outcomes = jobs::run(
+        &stages,
+        workers,
+        |index| {
+            let _prefix =
+                prefixed.then(|| autopkg_platform::text_output::prefix_scope(&recipes[index]));
+            context.run_one(&loaded[index], &recipes[index])
+        },
+        |outcomes| {
+            if let Some(path) = &results_path {
+                let receipts: Vec<_> = outcomes
+                    .iter()
+                    .flatten()
+                    .map(|outcome| outcome.receipt.clone())
+                    .collect();
+                if let Err(error) = autopkg_engine::report::write_run_results(&receipts, path) {
+                    autopkg_platform::text_eprintln!(
+                        "Can't write results to {}: {error}",
+                        path.display()
+                    );
+                }
+            }
+        },
+    )?;
     let mut report = autopkg_engine::report::Report::default();
-    for (recipe, requested_name) in loaded.into_iter().zip(&recipes) {
+    for ((outcome, recipe), requested_name) in outcomes.iter().zip(&loaded).zip(&recipes) {
+        report.add_receipt(&outcome.receipt)?;
+        if let Some((message, traceback)) = &outcome.failure {
+            report.add_failure(requested_name, Some(&recipe.identifier), message, traceback);
+        }
+    }
+    print_summary(&report)?;
+    if let Some(path) = report_path {
+        report.write(&path)?;
+        autopkg_platform::text_println!("\nReport plist saved to {}.", path.display());
+    }
+    Ok(if report.failures.is_empty() { 0 } else { 70 })
+}
+
+/// What one recipe's run left: its receipt and, if it failed, the message
+/// and traceback for the report.
+struct Outcome {
+    receipt: Vec<Value>,
+    failure: Option<(String, String)>,
+}
+
+/// Everything recipes in one `run` share.
+struct RunContext<'a> {
+    initial: &'a Dictionary,
+    keys: &'a Dictionary,
+    search_paths: &'a [PathBuf],
+    options: autopkg_engine::RunOptions,
+    debug: bool,
+}
+
+impl RunContext<'_> {
+    /// A recipe's inputs: preferences, then the recipe's own input, then
+    /// keys from the command line, the recipe list, and the environment.
+    fn inputs(&self, recipe: &autopkg_engine::Recipe) -> Result<Dictionary, String> {
+        let mut inputs = self.initial.clone();
+        inputs.insert("AUTOPKG_VERSION".into(), "3.0.0".into());
+        inputs.insert(
+            "PARENT_RECIPES".into(),
+            parent_paths(recipe, self.search_paths)?,
+        );
+        inputs.extend(recipe.input.clone());
+        inputs.extend(self.keys.clone());
+        let root = cache::root_with_override(self.initial, inputs.get("CACHE_DIR"))?;
+        inputs.insert(
+            "CACHE_DIR".into(),
+            root.to_string_lossy().into_owned().into(),
+        );
+        Ok(inputs)
+    }
+
+    /// Runs one recipe and saves its receipt. An `Err` stops the whole run.
+    fn run_one(
+        &self,
+        recipe: &autopkg_engine::Recipe,
+        requested_name: &str,
+    ) -> Result<Outcome, String> {
         autopkg_platform::text_println!("Processing {requested_name}...");
         if !autopkg_engine::read_recipe(&recipe.source)?.contains_key("ParentRecipeTrustInfo") {
             autopkg_platform::text_eprintln!("WARNING: {requested_name} is missing trust info and FAIL_RECIPES_WITHOUT_TRUST_INFO is not set. Proceeding...");
         }
-        if debug {
+        if self.debug {
             autopkg_platform::text_eprintln!(
                 "Running {} ({})",
                 recipe.identifier,
                 recipe.source.display()
             );
         }
-        let mut inputs = initial.clone();
-        inputs.insert("AUTOPKG_VERSION".into(), "3.0.0".into());
-        inputs.insert(
-            "PARENT_RECIPES".into(),
-            parent_paths(&recipe, &search_paths)?,
-        );
-        inputs.extend(recipe.input.clone());
-        inputs.extend(keys.clone());
-        let root = cache::root_with_override(&initial, inputs.get("CACHE_DIR"))?;
-        inputs.insert(
-            "CACHE_DIR".into(),
-            root.to_string_lossy().into_owned().into(),
-        );
-        match autopkg_engine::run_recipe_detailed(&recipe, inputs, &options) {
+        let inputs = self.inputs(recipe)?;
+        let outcome = match autopkg_engine::run_recipe_detailed(recipe, inputs, &self.options) {
             Ok(result) => {
                 persist_receipt(
                     std::path::Path::new(requested_name),
                     &result.environment,
                     &result.receipt,
                 );
-                receipts.push(result.receipt.clone());
-                report.add_receipt(&result.receipt)?;
-                if debug {
+                if self.debug {
                     autopkg_platform::text_eprintln!(
                         "Executed {} processor(s); stopped={}",
                         result.executed.len(),
                         result.stopped
                     );
+                }
+                Outcome {
+                    receipt: result.receipt,
+                    failure: None,
                 }
             }
             Err(error) => {
@@ -504,35 +616,22 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
                     &error.partial.environment,
                     &error.partial.receipt,
                 );
-                receipts.push(error.partial.receipt.clone());
-                report.add_receipt(&error.partial.receipt)?;
-                report.add_failure(
-                    requested_name,
-                    Some(&recipe.identifier),
-                    &error.message,
-                    &format!(
-                        "{}\nNative Rust backtrace:\n{}",
-                        error.message,
-                        std::backtrace::Backtrace::force_capture()
-                    ),
+                let traceback = format!(
+                    "{}\nNative Rust backtrace:\n{}",
+                    error.message,
+                    std::backtrace::Backtrace::force_capture()
                 );
+                Outcome {
+                    receipt: error.partial.receipt,
+                    failure: Some((error.message, traceback)),
+                }
             }
-        }
-        if let Some(path) = &results_path {
-            if let Err(error) = autopkg_engine::report::write_run_results(&receipts, path) {
-                autopkg_platform::text_eprintln!(
-                    "Can't write results to {}: {error}",
-                    path.display()
-                );
-            }
-        }
+        };
+        // A receipt the report can't summarize stops the run here, as it
+        // did when recipes always ran one at a time.
+        autopkg_engine::report::Report::default().add_receipt(&outcome.receipt)?;
+        Ok(outcome)
     }
-    print_summary(&report)?;
-    if let Some(path) = report_path {
-        report.write(&path)?;
-        autopkg_platform::text_println!("\nReport plist saved to {}.", path.display());
-    }
-    Ok(if report.failures.is_empty() { 0 } else { 70 })
 }
 
 fn parent_paths(
@@ -805,7 +904,7 @@ fn main() {
         .is_some_and(|verb| verb == "processor-run");
     // Releases native disk-image extractions before the process exits;
     // std::process::exit doesn't run destructors.
-    let images = autopkg_platform::dmg::RecipeScope::new();
+    let images = autopkg_platform::dmg::RecipeScope::process();
     let code = match autopkg_platform::backend::validate().and_then(|()| dispatch(&arguments)) {
         Ok(code) => code,
         Err(error) => {

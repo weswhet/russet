@@ -60,7 +60,7 @@ The current command builder assembles generated curl arguments, operation argume
 
 Continue honoring [curl discovery and `CURL_PATH`](../crates/platform/src/downloads.rs) and [certificate policy](../crates/processors/src/processors/url_downloader/trust.rs). An explicit `CURL_PATH`, including a wrapper executable, selects curl in `auto` until its behavior can be proven equivalent; recognizing the filename alone is insufficient.
 
-Use the existing processor dispatch for both aliases; support both recipe execution and standalone processor runs without introducing another processor name. Keep recipe and processor execution sequential in this project. Parallelism is inside one eligible transfer, with shared limits that remain safe if recipe concurrency is added later.
+Use the existing processor dispatch for both aliases; support both recipe execution and standalone processor runs without introducing another processor name. Keep processor execution sequential in this project. Parallelism is inside one eligible transfer, with shared limits that remain safe across recipes. `run --jobs` later added recipe concurrency: each recipe runs on its own thread, the range-request limits in [chunks.rs](../crates/processors/src/download_transport/chunks.rs) are shared by every recipe in the run, and the transport emits its messages on the recipe's thread after the transfer, so they keep the recipe's output prefix and processor context.
 
 ## Proposed module boundaries
 

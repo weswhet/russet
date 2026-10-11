@@ -29,7 +29,9 @@ Replace the following:
    doesn't write a report.
 1. **Execution:** Russet runs each recipe in order and prints
    `Processing NAME...` for each one. If a processor fails, Russet prints the
-   error and `Failed.`, and then continues with the next recipe.
+   error and `Failed.`, and then continues with the next recipe. To run
+   several recipes at the same time, use `--jobs`. For details, see
+   [Run recipes at the same time](#run-recipes-at-the-same-time).
 
 When every recipe has run, Russet prints the recipes that failed, if any, and
 a summary of the items that the recipes downloaded, built, or imported. If
@@ -98,11 +100,56 @@ formats:
 Preprocessors and postprocessors from `--pre` and `--post` replace the ones in
 a property list recipe list.
 
+### Run recipes at the same time
+
+By default, Russet runs one recipe at a time, like AutoPkg. To run up to `N`
+recipes at the same time, use `--jobs N` or set the `RussetJobs` preference.
+`--jobs` overrides the preference. If `N` is `0`, Russet runs one recipe for
+each CPU on the computer. Running recipes at the same time saves the most
+time with a long recipe list, because recipes spend much of their time
+downloading files and unpacking disk images and packages.
+
+When more than one recipe runs at a time, Russet changes the run in the
+following ways:
+
+- **Output:** Russet prints each line as the recipe writes it, and starts the
+  line with the name that you gave for the recipe, in brackets. For example:
+
+  ```text
+  [Firefox.munki] Processing Firefox.munki...
+  [GoogleChrome.munki] Processing GoogleChrome.munki...
+  ```
+
+  Lines that Russet prints before the first recipe starts, and the summary at
+  the end, don't have a name.
+- **Order:** recipes can finish in any order. The summary, the report
+  property list, and `autopkg_results.plist` still list recipes in the order
+  that you named them.
+- **Shared resources:** some work still happens one recipe at a time:
+  - Recipes that use the same cache folder, such as one recipe that you list
+    twice, run one after another, in list order.
+  - Only one recipe at a time uses a disk image.
+  - `PkgCreator`, `AppPkgCreator`, `Installer`, and `InstallFromDMG` run for
+    one recipe at a time.
+  - A recipe that uses `MakeCatalogsProcessor`, such as `MakeCatalogs.munki`,
+    starts after every recipe listed before it finishes. Recipes listed after
+    it start after it finishes.
+
+If a recipe fails, the other recipes still run, and the exit status is `70`.
+
+:::caution
+Russet doesn't lock your Munki repository. If two recipes that import the
+same item run at the same time, such as two overrides of the same recipe,
+both recipes might import it. To avoid duplicate items, don't list two
+recipes that import the same item in a run that uses `--jobs`.
+:::
+
 ### Files that Russet writes
 
 After each recipe, Russet writes a receipt to
 `RECIPE_CACHE_DIR/receipts/NAME-receipt-YYYYMMDD-HHMMSS.plist` and updates
-`CACHE_DIR/autopkg_results.plist`. Receipts don't include the `GITHUB_TOKEN`
+`CACHE_DIR/autopkg_results.plist`, which lists the receipts of the recipes
+that have finished, in list order. Receipts don't include the `GITHUB_TOKEN`
 value. With `--report-plist`, Russet also writes a report when the run
 finishes.
 
@@ -133,6 +180,7 @@ The report is an XML property list with these keys:
 | `-q`, `--quiet` | Accepted for compatibility. This option has no effect. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Searches `FOLDER` for recipe overrides instead of the folders in `RECIPE_OVERRIDE_DIRS`. You can repeat this option. |
+| `-j N`, `--jobs N` | Runs up to `N` recipes at the same time. `0` runs one recipe for each CPU. The default is the `RussetJobs` preference, or `1`. For details, see [Run recipes at the same time](#run-recipes-at-the-same-time). AutoPkg doesn't have this option, so `--help` doesn't list it. |
 
 ### Verbosity levels
 
@@ -149,8 +197,8 @@ Each `-v` adds more detail:
 | Status | Meaning |
 | --- | --- |
 | `0` | Every recipe ran without an error. |
-| `1` | Validation failed, so no recipe ran. This status also covers a `--key` value without `=`, `--pkg` with more than one recipe, and a missing `--prefs` file. |
-| `2` | Russet couldn't parse an option. |
+| `1` | Validation failed, so no recipe ran. This status also covers a `--key` value without `=`, `--pkg` with more than one recipe, a missing `--prefs` file, and a `RussetJobs` value that isn't a whole number. |
+| `2` | Russet couldn't parse an option, or the `--jobs` value isn't a whole number. |
 | `70` | At least one recipe failed while it ran. Other recipes might have succeeded. |
 | `255` | You didn't name any recipes. On Windows, the status is `-1`. |
 
@@ -175,6 +223,13 @@ run the following command:
 
 ```sh
 russet run --check --recipe-list ~/recipe-list.txt --report-plist ~/autopkg-report.plist
+```
+
+To run the recipes in a recipe list four at a time, run the following
+command:
+
+```sh
+russet run --jobs 4 --recipe-list ~/recipe-list.txt
 ```
 
 To set a variable for every recipe in a run, such as the Munki repository

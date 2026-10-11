@@ -28,6 +28,17 @@ fn error(spec: &Value, message: &str) -> Parsed {
     );
     Parsed::Exit(2)
 }
+/// Options Russet adds to a verb. They aren't in the captured parsers, so
+/// `--help` stays the same as AutoPkg's.
+fn extensions(verb: &str) -> Vec<Value> {
+    match verb {
+        "run" | "install" => vec![serde_json::json!({
+            "flags": ["-j", "--jobs"],
+            "takes_value": true,
+        })],
+        _ => vec![],
+    }
+}
 pub fn parse(verb: &str, args: &[String]) -> Parsed {
     let specs: Value = serde_json::from_str(include_str!(
         "../../../../compatibility/cli-parser-reference.json"
@@ -36,7 +47,9 @@ pub fn parse(verb: &str, args: &[String]) -> Parsed {
     let Some(spec) = specs["parsers"].get(verb) else {
         return Parsed::Arguments(args.to_vec());
     };
-    let options = spec["options"].as_array().unwrap();
+    let mut options = spec["options"].as_array().unwrap().clone();
+    options.extend(extensions(verb));
+    let options = &options;
     let mut output = vec![];
     let mut index = 0;
     while index < args.len() {

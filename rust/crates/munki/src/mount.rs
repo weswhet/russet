@@ -4,10 +4,14 @@ use std::path::{Component, Path, PathBuf};
 pub(crate) struct Mount {
     owned: Option<autopkg_platform::dmg::Mount>,
     root: PathBuf,
+    /// Keeps another recipe from detaching a borrowed attachment. Declared
+    /// last so it's released after an owned image is detached.
+    _image: autopkg_platform::serial::KeyedGuard<PathBuf>,
 }
 impl Mount {
     pub(crate) fn new(image: &str) -> Result<Self, String> {
         use autopkg_platform::backend::{select, Backend, Tool};
+        let _image = autopkg_platform::dmg::lock_image(image);
         if select(Tool::Hdiutil) != Backend::Apple {
             // Only attached images can be borrowed.
             let owned = autopkg_platform::dmg::Mount::new(image)?;
@@ -15,6 +19,7 @@ impl Mount {
             return Ok(Self {
                 owned: Some(owned),
                 root,
+                _image,
             });
         }
         let image_path = Path::new(image).canonicalize().map_err(|e| e.to_string())?;
@@ -50,6 +55,7 @@ impl Mount {
                 return Ok(Self {
                     owned: None,
                     root: PathBuf::from(root),
+                    _image,
                 });
             }
         }
@@ -58,6 +64,7 @@ impl Mount {
         Ok(Self {
             owned: Some(owned),
             root,
+            _image,
         })
     }
     pub(crate) fn path(&self) -> &Path {

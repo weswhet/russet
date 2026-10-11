@@ -63,6 +63,27 @@ fn safe_relative(value: &str) -> bool {
             .components()
             .all(|c| matches!(c, Component::Normal(_)))
 }
+/// Writes a plist beside `path` and renames it into place, so a client or
+/// another recipe never reads a partial catalog. A replaced file keeps its
+/// permissions; a new one gets the usual permissions for the umask.
+fn write_atomically(value: Value, path: &Path) -> Result<(), String> {
+    let directory = path.parent().ok_or("A catalog path needs a folder")?;
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(".russet-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(fs::Permissions::from_mode(0o666));
+    }
+    let mut file = builder.tempfile_in(directory).map_err(|e| e.to_string())?;
+    if let Ok(existing) = fs::metadata(path) {
+        fs::set_permissions(file.path(), existing.permissions()).map_err(|e| e.to_string())?;
+    }
+    value.to_writer_xml(&mut file).map_err(|e| e.to_string())?;
+    file.persist(path).map_err(|e| e.error.to_string())?;
+    Ok(())
+}
+
 pub(crate) fn execute(
     env: &mut Dictionary,
     preferences: Option<&Dictionary>,
@@ -260,11 +281,7 @@ pub(crate) fn rebuild_catalogs(root: &Path) -> Result<(Vec<String>, Vec<String>)
         let path = root.join("catalogs").join(&name);
         let result = fs::create_dir_all(path.parent().unwrap())
             .map_err(|e| e.to_string())
-            .and_then(|_| {
-                Value::Array(items)
-                    .to_file_xml(&path)
-                    .map_err(|e| e.to_string())
-            });
+            .and_then(|_| write_atomically(Value::Array(items), &path));
         if let Err(e) = result {
             errors.push(format!("Failed to create catalog {name}: {e}"));
         }
@@ -290,10 +307,45 @@ pub(crate) fn rebuild_catalogs(root: &Path) -> Result<(Vec<String>, Vec<String>)
         }
     }
     if !hashes.is_empty() {
-        if let Err(e) = Value::Dictionary(hashes).to_file_xml(root.join("icons/_icon_hashes.plist"))
-        {
+        if let Err(e) = write_atomically(
+            Value::Dictionary(hashes),
+            &root.join("icons/_icon_hashes.plist"),
+        ) {
             errors.push(format!("Failed to create icons/_icon_hashes.plist: {e}"));
         }
     }
     Ok((warnings, errors))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalogs_are_replaced_whole_and_keep_their_permissions() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("all");
+        write_atomically(Value::Array(vec!["one".into()]), &path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
+        }
+        write_atomically(Value::Array(vec!["two".into()]), &path).unwrap();
+        assert_eq!(
+            Value::from_file(&path).unwrap(),
+            Value::Array(vec!["two".into()])
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&path).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o640);
+        }
+        let names: Vec<_> = fs::read_dir(temp.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["all"]);
+    }
 }

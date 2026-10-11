@@ -185,7 +185,7 @@ fn native_code_signature(
 /// processors that glob would pick it.
 pub fn verify_code_signature(env: &Dictionary, matches: Vec<PathBuf>) -> Result<(), String> {
     if enabled(env.get("DISABLE_CODE_SIGNATURE_VERIFICATION")) {
-        eprintln!("WARNING: Code signature verification disabled for this recipe run.");
+        crate::text_eprintln!("WARNING: Code signature verification disabled for this recipe run.");
         return Ok(());
     }
     let requirement = match env.get("requirement") {
@@ -383,7 +383,7 @@ pub fn signtool_default_path() -> Option<PathBuf> {
 
 pub fn verify_authenticode(env: &Dictionary) -> Result<(), String> {
     if enabled(env.get("DISABLE_CODE_SIGNATURE_VERIFICATION")) {
-        eprintln!("WARNING: Authenticode verification disabled for this recipe run.");
+        crate::text_eprintln!("WARNING: Authenticode verification disabled for this recipe run.");
         return Ok(());
     }
     if !cfg!(windows) {

@@ -614,6 +614,16 @@ fn execute_builtin(
     if name == "Installer" && processors::installer::skip(env) {
         return Ok(());
     }
+    // Recipes running in parallel build packages and install one at a time.
+    // The macOS helpers already take requests in turn; this also covers
+    // packages built in process.
+    static PACKAGING: autopkg_platform::serial::KeyedLock<()> =
+        autopkg_platform::serial::KeyedLock::new();
+    let _packaging = matches!(
+        canonical_name(name),
+        "PkgCreator" | "AppPkgCreator" | "Installer" | "InstallFromDMG"
+    )
+    .then(|| PACKAGING.lock(()));
     if let Some(result) = dmg::run_mounted(name, env, preferences, standalone) {
         return result;
     }

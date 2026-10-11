@@ -6,6 +6,19 @@ use std::{
     process::{Command, Stdio},
 };
 type Result<T> = std::result::Result<T, String>;
+
+/// Images in use, keyed by canonical path. When recipes run in parallel,
+/// one recipe at a time uses an image: otherwise `hdiutil attach` can hand a
+/// recipe another recipe's attachment, which the other recipe then detaches
+/// while it's still in use.
+static IMAGES: crate::serial::KeyedLock<PathBuf> = crate::serial::KeyedLock::new();
+
+/// Holds `image` until the guard drops, waiting while another thread uses
+/// it. A thread can hold the same image more than once.
+pub fn lock_image(image: &str) -> crate::serial::KeyedGuard<PathBuf> {
+    let path = Path::new(image);
+    IMAGES.lock(path.canonicalize().unwrap_or_else(|_| path.to_owned()))
+}
 struct MountDirectory(PathBuf);
 impl MountDirectory {
     fn path(&self) -> &Path {
@@ -63,6 +76,8 @@ pub struct Mount {
     #[cfg(unix)]
     _extraction: Option<std::sync::Arc<native::Extraction>>,
     attached: bool,
+    /// Declared last so it's released after the image is detached.
+    _image: Option<crate::serial::KeyedGuard<PathBuf>>,
 }
 impl Mount {
     pub fn path(&self) -> &Path {
@@ -76,7 +91,8 @@ impl Mount {
     /// `RUSSET_NATIVE` names `hdiutil`.
     pub fn new(image: &str) -> Result<Self> {
         use crate::backend::{select, Backend, Tool};
-        match select(Tool::Hdiutil) {
+        let lock = lock_image(image);
+        let mut mount = match select(Tool::Hdiutil) {
             Backend::Apple => Self::attach(image),
             #[cfg(unix)]
             Backend::Native => {
@@ -89,10 +105,13 @@ impl Mount {
                     _directory: None,
                     _extraction: Some(extraction),
                     attached: false,
+                    _image: None,
                 })
             }
             _ => Err(unsupported()),
-        }
+        }?;
+        mount._image = Some(lock);
+        Ok(mount)
     }
     fn attach(image: &str) -> Result<Self> {
         let info = Command::new("/usr/bin/hdiutil")
@@ -195,6 +214,7 @@ impl Mount {
             #[cfg(unix)]
             _extraction: None,
             attached,
+            _image: None,
         })
     }
     pub fn resolve(&self, inner: &str) -> Result<String> {
@@ -261,6 +281,7 @@ impl Mount {
             ));
         }
         self.attached = false;
+        self._image = None;
         Ok(())
     }
 }
@@ -268,20 +289,49 @@ impl Drop for Mount {
     fn drop(&mut self) {
         if self.attached {
             if let Err(error) = self.detach() {
-                eprintln!("WARNING: {error}");
+                crate::text_eprintln!("WARNING: {error}");
             }
         }
     }
 }
 
+thread_local! {
+    /// The scope that owns native extractions this thread makes; 0 is none.
+    static SCOPE: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 /// Clears cached native extractions when dropped. The engine holds one for
 /// each recipe run, so an image opened by several steps of a recipe is
 /// extracted once, and the scratch space is released when the recipe ends.
-pub struct RecipeScope(());
+/// Dropping a scope releases only the extractions made under it, so recipes
+/// running on other threads keep theirs.
+pub struct RecipeScope {
+    id: u64,
+    previous: u64,
+    /// Releases every extraction, not just this scope's.
+    all: bool,
+    _thread_bound: std::marker::PhantomData<std::rc::Rc<()>>,
+}
 
 impl RecipeScope {
     pub fn new() -> Self {
-        Self(())
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Self {
+            id,
+            previous: SCOPE.with(|scope| scope.replace(id)),
+            all: false,
+            _thread_bound: std::marker::PhantomData,
+        }
+    }
+
+    /// A scope for the whole process, which releases every extraction when
+    /// dropped.
+    pub fn process() -> Self {
+        Self {
+            all: true,
+            ..Self::new()
+        }
     }
 }
 
@@ -293,8 +343,9 @@ impl Default for RecipeScope {
 
 impl Drop for RecipeScope {
     fn drop(&mut self) {
+        SCOPE.with(|scope| scope.set(self.previous));
         #[cfg(unix)]
-        native::clear_cache();
+        native::clear_cache((!self.all).then_some(self.id));
     }
 }
 
@@ -337,14 +388,20 @@ mod native {
     }
 
     type Key = (PathBuf, u64, Option<SystemTime>);
-    static CACHE: Mutex<Vec<(Key, Arc<Extraction>)>> = Mutex::new(Vec::new());
+    /// Extractions by the scope that uses them. Scopes can share an
+    /// extraction, which is removed when the last one drops it.
+    static CACHE: Mutex<Vec<(u64, Key, Arc<Extraction>)>> = Mutex::new(Vec::new());
 
-    pub(super) fn clear_cache() {
-        let drained: Vec<_> = CACHE
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .drain(..)
-            .collect();
+    /// Releases one scope's extractions, or every extraction.
+    pub(super) fn clear_cache(scope: Option<u64>) {
+        let drained: Vec<_> = {
+            let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+            let (drained, kept) = std::mem::take(&mut *cache)
+                .into_iter()
+                .partition(|(owner, _, _)| scope.is_none_or(|scope| scope == *owner));
+            *cache = kept;
+            drained
+        };
         drop(drained);
     }
 
@@ -355,10 +412,22 @@ mod native {
         let metadata =
             std::fs::metadata(&path).map_err(|e| format!("mounting {image} failed: {e}"))?;
         let key = (path.clone(), metadata.len(), metadata.modified().ok());
-        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((_, extraction)) = cache.iter().find(|(k, _)| *k == key) {
-            return Ok(extraction.clone());
+        let scope = super::SCOPE.with(std::cell::Cell::get);
+        {
+            let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some((_, _, extraction)) = cache.iter().find(|(_, k, _)| *k == key) {
+                let extraction = extraction.clone();
+                if !cache
+                    .iter()
+                    .any(|(owner, k, _)| *owner == scope && *k == key)
+                {
+                    cache.push((scope, key, extraction.clone()));
+                }
+                return Ok(extraction);
+            }
         }
+        // The caller holds this image's lock, so no other thread extracts it
+        // meanwhile, and other images extract in parallel.
         let base = std::env::var_os(SCRATCH_VARIABLE)
             .map(PathBuf::from)
             .unwrap_or_else(std::env::temp_dir);
@@ -388,14 +457,78 @@ mod native {
         }
         extraction.volumes = result.volumes;
         let extraction = Arc::new(extraction);
-        cache.push((key, extraction.clone()));
+        CACHE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push((scope, key, extraction.clone()));
         Ok(extraction)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn extraction(root: &Path, name: &str) -> Arc<Extraction> {
+            let directory = root.join(name);
+            std::fs::create_dir(&directory).unwrap();
+            Arc::new(Extraction {
+                directory,
+                volumes: vec![],
+            })
+        }
+
+        #[test]
+        fn a_scope_releases_only_its_own_extractions() {
+            let temp = tempfile::tempdir().unwrap();
+            let key = |name: &str| (temp.path().join(name), 0, None);
+            let first = super::super::RecipeScope::new();
+            let shared = extraction(temp.path(), "shared");
+            let own = extraction(temp.path(), "own");
+            let (first_id, second_id) = (first.id, first.id + 1_000_000);
+            CACHE.lock().unwrap().extend([
+                (first_id, key("shared"), shared.clone()),
+                (first_id, key("own"), own),
+                (second_id, key("shared"), shared.clone()),
+            ]);
+            drop(shared);
+            drop(first);
+            // The other scope still uses the shared image.
+            assert!(temp.path().join("shared").is_dir());
+            assert!(!temp.path().join("own").exists());
+            clear_cache(Some(second_id));
+            assert!(!temp.path().join("shared").exists());
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn an_image_is_locked_by_its_canonical_path() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let temp = tempfile::tempdir().unwrap();
+        let image = temp.path().join("image.dmg");
+        std::fs::write(&image, b"").unwrap();
+        let alias = temp.path().join("alias.dmg");
+        std::os::unix::fs::symlink(&image, &alias).unwrap();
+        let released = AtomicBool::new(false);
+        let held = lock_image(image.to_str().unwrap());
+        // The same thread can take it again.
+        drop(lock_image(alias.to_str().unwrap()));
+        std::thread::scope(|scope| {
+            let waiter = scope.spawn(|| {
+                let _guard = lock_image(alias.to_str().unwrap());
+                released.load(Ordering::SeqCst)
+            });
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            released.store(true, Ordering::SeqCst);
+            drop(held);
+            assert!(waiter.join().unwrap(), "took an image another thread held");
+        });
+    }
 
     #[test]
     fn mount_directory_cleanup_never_recurses() {
