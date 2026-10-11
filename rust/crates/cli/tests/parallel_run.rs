@@ -282,13 +282,11 @@ fn parallel_runs_report_in_list_order_and_prefix_output() {
         let input = receipt.as_array().unwrap()[0].as_dictionary().unwrap()["Recipe input"]
             .as_dictionary()
             .unwrap();
-        assert_eq!(
-            input["RECIPE_PATH"].as_string(),
-            fixture
-                .root
-                .join("recipes")
-                .join(format!("{name}.download.recipe"))
-                .to_str()
+        // Windows can spell the temporary folder in short or long form.
+        let path = Path::new(input["RECIPE_PATH"].as_string().unwrap());
+        assert!(
+            path.ends_with(Path::new("recipes").join(format!("{name}.download.recipe"))),
+            "{path:?}"
         );
     }
 }
