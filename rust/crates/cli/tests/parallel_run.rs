@@ -156,13 +156,18 @@ fn fixture(names: &[&str], extra: &[(&str, Value)]) -> Fixture {
 impl Fixture {
     fn command(&self, verb: &str) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_russet"));
+        // Windows needs the rest of the environment, such as SystemRoot,
+        // to open network connections.
+        for (key, _) in std::env::vars_os() {
+            if key.to_string_lossy().starts_with("AUTOPKG_") {
+                command.env_remove(key);
+            }
+        }
         command
-            .env_clear()
             .env("HOME", &self.root)
             .env("USERPROFILE", &self.root)
             .env("TMPDIR", &self.root)
             .env("AUTOPKG_RS_PREFERENCES_FILE", &self.prefs)
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
             .arg(verb)
             .args(["--prefs", self.prefs.to_str().unwrap()]);
         command
