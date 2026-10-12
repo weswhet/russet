@@ -54,6 +54,8 @@ pub fn workers(requested: usize) -> usize {
     }
 }
 
+pub use autopkg_platform::live::elapsed;
+
 /// A stage's groups of list positions. Stages run one after another; a
 /// stage's groups can run at the same time.
 pub type Stage = Vec<Vec<usize>>;

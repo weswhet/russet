@@ -592,13 +592,7 @@ fn processor_output(name: &str, env: &Dictionary, level: i64, message: &str, sta
                 .or_else(|| v.as_string().and_then(|s| s.parse().ok()))
         })
         .unwrap_or(0);
-    if verbosity >= level {
-        if standalone {
-            autopkg_platform::text_eprintln!("{name}: {message}");
-        } else {
-            autopkg_platform::text_println!("{name}: {message}");
-        }
-    }
+    autopkg_platform::processor_output::deliver(name, verbosity, level, message, standalone);
 }
 
 fn execute_builtin(

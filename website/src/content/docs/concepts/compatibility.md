@@ -61,6 +61,10 @@ repository's Python file. For the list, see
 
 A few behaviors differ from Python AutoPkg by design:
 
+- **Terminal output:** in a terminal on macOS or Linux, `russet run` shows a
+  live display of each recipe and its processors. Use `--plain` for
+  AutoPkg's output. Output that you pipe or redirect doesn't change. For
+  details, see [Live display](/reference/cli/russet-run/#live-display).
 - **Failure details:** the `traceback` field in a failure report contains a
   native backtrace instead of Python stack frames.
 - **Munki options:** Russet rejects unknown `makepkginfo` options and options

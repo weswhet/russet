@@ -29,14 +29,43 @@ fn error(spec: &Value, message: &str) -> Parsed {
     Parsed::Exit(2)
 }
 /// Options Russet adds to a verb. They aren't in the captured parsers, so
-/// `--help` stays the same as AutoPkg's.
+/// `--help` stays the same as AutoPkg's. An `exact` option must be spelled
+/// out, so abbreviations still match only AutoPkg's options.
 fn extensions(verb: &str) -> Vec<Value> {
     match verb {
-        "run" | "install" => vec![serde_json::json!({
-            "flags": ["-j", "--jobs"],
-            "takes_value": true,
-        })],
+        "run" | "install" => vec![
+            serde_json::json!({
+                "flags": ["-j", "--jobs"],
+                "takes_value": true,
+            }),
+            serde_json::json!({
+                "flags": ["--plain"],
+                "takes_value": false,
+                "exact": true,
+            }),
+        ],
         _ => vec![],
+    }
+}
+/// The long options `name` selects: the one spelled exactly, or every
+/// non-exact option it abbreviates.
+fn matching<'a>(options: &'a [Value], name: &str) -> Vec<(&'a str, &'a Value)> {
+    let all: Vec<_> = options
+        .iter()
+        .flat_map(|o| {
+            o["flags"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(move |f| (f.as_str().unwrap(), o))
+        })
+        .collect();
+    if let Some(exact) = all.iter().find(|(f, _)| *f == name) {
+        vec![*exact]
+    } else {
+        all.into_iter()
+            .filter(|(f, o)| f.starts_with(name) && o["exact"] != true)
+            .collect()
     }
 }
 pub fn parse(verb: &str, args: &[String]) -> Parsed {
@@ -69,23 +98,7 @@ pub fn parse(verb: &str, args: &[String]) -> Parsed {
                 .split_once('=')
                 .map(|(a, b)| (a, Some(b.to_owned())))
                 .unwrap_or((argument.as_str(), None));
-            let all: Vec<_> = options
-                .iter()
-                .flat_map(|o| {
-                    o["flags"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .map(move |f| (f.as_str().unwrap(), o))
-                })
-                .collect();
-            let matching: Vec<_> = if let Some(exact) = all.iter().find(|(f, _)| *f == name) {
-                vec![*exact]
-            } else {
-                all.into_iter()
-                    .filter(|(f, _)| f.starts_with(name))
-                    .collect()
-            };
+            let matching = matching(options, name);
             if matching.is_empty() {
                 return error(spec, &format!("no such option: {name}"));
             }
@@ -217,4 +230,28 @@ pub fn operands(verb: &str, args: &[String]) -> Vec<String> {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn arguments(args: &[&str]) -> Option<Vec<String>> {
+        let args: Vec<_> = args.iter().map(|&a| a.to_owned()).collect();
+        match parse("run", &args) {
+            Parsed::Arguments(output) => Some(output),
+            Parsed::Exit(_) => None,
+        }
+    }
+
+    #[test]
+    fn plain_must_be_spelled_out() {
+        assert_eq!(arguments(&["--plain", "A"]).unwrap(), ["--plain", "A"]);
+        assert!(arguments(&["--plain=1"]).is_none());
+        assert!(arguments(&["--pla"]).is_none());
+        let mut options = extensions("run");
+        options.push(serde_json::json!({"flags": ["--prefs"], "takes_value": true}));
+        let names: Vec<_> = matching(&options, "--p").iter().map(|(f, _)| *f).collect();
+        assert_eq!(names, ["--prefs"]);
+    }
 }

@@ -243,7 +243,23 @@ fn parallel_runs_report_in_list_order_and_prefix_output() {
         let line = format!("[{recipe}] Processing {recipe}...");
         assert!(live.lines().any(|l| l == line), "{live}");
     }
-    assert!(stderr.contains("[Missing.download] Failed.\n"), "{stderr}");
+    // Each recipe says when it finishes, and how long it took.
+    for recipe in recipes.iter().filter(|r| *r != "Missing.download") {
+        let start = format!("[{recipe}] Finished {recipe} in ");
+        assert!(
+            live.lines()
+                .any(|l| l.strip_prefix(&start).is_some_and(|t| t.ends_with("s."))),
+            "{live}"
+        );
+    }
+    let failed = "[Missing.download] Failed Missing.download after ";
+    assert!(
+        stderr
+            .lines()
+            .any(|l| l.strip_prefix(failed).is_some_and(|t| t.ends_with("s."))),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("Failed.\n"), "{stderr}");
 
     // Reports follow the list, even though Slow finished last.
     let downloads = fixture.cache();
@@ -327,6 +343,9 @@ fn one_job_matches_the_sequential_output() {
     assert_eq!(text(&default.stderr), text(&one.stderr));
     assert!(text(&default.stdout).contains("\nProcessing Alpha.download...\n"));
     assert!(!text(&default.stdout).contains("[Alpha.download]"));
+    // Without shared output, there are no completion lines, as in AutoPkg.
+    assert!(!text(&default.stdout).contains("Finished "));
+    assert!(text(&default.stderr).contains("\nFailed.\n"));
 }
 
 fn fixture_with_jobs(value: &str) -> Fixture {

@@ -173,6 +173,7 @@ fn run_arguments(args: &[String]) -> Result<Vec<String>, String> {
         "--quiet",
         "--help",
         "--ignore-parent-trust-verification-errors",
+        "--plain",
     ];
     let mut result = vec![];
     let mut expecting = false;
@@ -253,15 +254,17 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let mut pkg = None;
     let mut jobs = None;
     let mut verbose: u64 = 0;
+    let mut plain = false;
     let debug = env::var_os("AUTOPKG_RS_DEBUG").is_some();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "-c" | "--check" => check_only = true,
             "-v" | "--verbose" => verbose += 1,
+            "--plain" => plain = true,
             "--ignore-parent-trust-verification-errors" => ignore_trust = true,
             "-h" | "--help" => {
-                autopkg_platform::text_println!("Usage: russet {verb} [options] [recipe ...]\n  --pre/--preprocessor NAME   Repeatable preprocessor\n  --post/--postprocessor NAME Repeatable postprocessor\n  -c/--check                 Check for new downloads\n  --ignore-parent-trust-verification-errors\n  -k/--key KEY=VALUE         Repeatable input override\n  -l/--recipe-list PATH      Text or plist recipe list\n  -p/--pkg PATH              Existing package or disk image\n  --report-plist PATH        Save summary report\n  -v/--verbose              Repeat for more diagnostics\n  -q/--quiet                Disable recipe search suggestions\n  -d/--search-dir DIRECTORY  Repeatable recipe directory\n  --override-dir DIRECTORY  Repeatable override directory\n  --prefs PATH              Preference file\n  -j/--jobs N               Recipes to run at once; 0 is one per CPU");
+                autopkg_platform::text_println!("Usage: russet {verb} [options] [recipe ...]\n  --pre/--preprocessor NAME   Repeatable preprocessor\n  --post/--postprocessor NAME Repeatable postprocessor\n  -c/--check                 Check for new downloads\n  --ignore-parent-trust-verification-errors\n  -k/--key KEY=VALUE         Repeatable input override\n  -l/--recipe-list PATH      Text or plist recipe list\n  -p/--pkg PATH              Existing package or disk image\n  --report-plist PATH        Save summary report\n  -v/--verbose              Repeat for more diagnostics\n  -q/--quiet                Disable recipe search suggestions\n  -d/--search-dir DIRECTORY  Repeatable recipe directory\n  --override-dir DIRECTORY  Repeatable override directory\n  --prefs PATH              Preference file\n  -j/--jobs N               Recipes to run at once; 0 is one per CPU\n  --plain                   Print plain lines instead of the live display");
                 return Ok(0);
             }
             "-q" | "--quiet" => {}
@@ -367,6 +370,12 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         runtime.insert("PKG".into(), Value::String(value.clone()));
     }
     let keys = runtime;
+    // In a terminal, show the live display unless anything asks for plain
+    // or verbose output.
+    let live = !plain
+        && verbose == 0
+        && !keys.contains_key("verbose")
+        && autopkg_platform::live::available();
     initial.insert("verbose".into(), Value::Integer(verbose.into()));
     if pkg.is_some() && recipes.len() > 1 {
         return Err("-p/--pkg option can't be used with multiple recipes!".into());
@@ -441,7 +450,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         Some(count) => count,
         None => jobs::preference(&keys, &initial)?.unwrap_or(1),
     };
-    let context = RunContext {
+    let mut context = RunContext {
         initial: &initial,
         keys: &keys,
         search_paths: &search_paths,
@@ -450,6 +459,8 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
             preferences: Some(processor_preferences),
         },
         debug,
+        timed: false,
+        live,
     };
     // Each recipe's cache folder. Recipes that share one never run at the
     // same time.
@@ -496,14 +507,24 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         .collect();
     let stages = jobs::stages(&caches, &barriers);
     let workers = jobs::workers(jobs);
-    let prefixed = workers > 1 && stages.iter().any(|stage| stage.len() > 1);
+    let prefixed = !live && workers > 1 && stages.iter().any(|stage| stage.len() > 1);
+    // Recipes that share the output also say when they finish. Output that
+    // isn't shared stays the same as AutoPkg's.
+    context.timed = prefixed;
+    let display = live.then(|| autopkg_platform::live::start(recipes.len()));
     let outcomes = jobs::run(
         &stages,
         workers,
         |index| {
             let _prefix =
                 prefixed.then(|| autopkg_platform::text_output::prefix_scope(&recipes[index]));
-            context.run_one(&loaded[index], &recipes[index])
+            let block = autopkg_platform::live::recipe(&recipes[index]);
+            let outcome = context.run_one(&loaded[index], &recipes[index])?;
+            match &outcome.failure {
+                Some((message, _)) => block.finish(Err(message)),
+                None => block.finish(Ok(())),
+            }
+            Ok(outcome)
         },
         |outcomes| {
             if let Some(path) = &results_path {
@@ -520,7 +541,9 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
                 }
             }
         },
-    )?;
+    );
+    drop(display);
+    let outcomes = outcomes?;
     let mut report = autopkg_engine::report::Report::default();
     for ((outcome, recipe), requested_name) in outcomes.iter().zip(&loaded).zip(&recipes) {
         report.add_receipt(&outcome.receipt)?;
@@ -550,6 +573,11 @@ struct RunContext<'a> {
     search_paths: &'a [PathBuf],
     options: autopkg_engine::RunOptions,
     debug: bool,
+    /// Whether each recipe prints a completion line with how long it took.
+    timed: bool,
+    /// Whether the live display shows each recipe, in place of the
+    /// `Processing` and `Failed.` lines.
+    live: bool,
 }
 
 impl RunContext<'_> {
@@ -578,7 +606,10 @@ impl RunContext<'_> {
         recipe: &autopkg_engine::Recipe,
         requested_name: &str,
     ) -> Result<Outcome, String> {
-        autopkg_platform::text_println!("Processing {requested_name}...");
+        let started = std::time::Instant::now();
+        if !self.live {
+            autopkg_platform::text_println!("Processing {requested_name}...");
+        }
         if !autopkg_engine::read_recipe(&recipe.source)?.contains_key("ParentRecipeTrustInfo") {
             autopkg_platform::text_eprintln!("WARNING: {requested_name} is missing trust info and FAIL_RECIPES_WITHOUT_TRUST_INFO is not set. Proceeding...");
         }
@@ -604,13 +635,26 @@ impl RunContext<'_> {
                         result.stopped
                     );
                 }
+                if self.timed {
+                    autopkg_platform::text_println!(
+                        "Finished {requested_name} in {}.",
+                        jobs::elapsed(started.elapsed())
+                    );
+                }
                 Outcome {
                     receipt: result.receipt,
                     failure: None,
                 }
             }
             Err(error) => {
-                autopkg_platform::text_eprintln!("Failed.");
+                if self.timed {
+                    autopkg_platform::text_eprintln!(
+                        "Failed {requested_name} after {}.",
+                        jobs::elapsed(started.elapsed())
+                    );
+                } else if !self.live {
+                    autopkg_platform::text_eprintln!("Failed.");
+                }
                 persist_receipt(
                     std::path::Path::new(requested_name),
                     &error.partial.environment,

@@ -33,6 +33,9 @@ Replace the following:
    several recipes at the same time, use `--jobs`. For details, see
    [Run recipes at the same time](#run-recipes-at-the-same-time).
 
+In a terminal, Russet shows a live display in place of these lines. For
+details, see [Live display](#live-display).
+
 When every recipe has run, Russet prints the recipes that failed, if any, and
 a summary of the items that the recipes downloaded, built, or imported. If
 nothing changed, it prints `Nothing downloaded, packaged or imported.`
@@ -100,6 +103,56 @@ formats:
 Preprocessors and postprocessors from `--pre` and `--post` replace the ones in
 a property list recipe list.
 
+### Live display
+
+When you run `russet run` in a terminal on macOS or Linux, Russet shows each
+recipe as it runs, in place of the `Processing NAME...` and `Failed.` lines.
+For example:
+
+```text
+✔ Firefox.munki                                                     14.2s
+  ✔ MozillaURLProvider     Found URL https://download-installer.cdn.mozilla.net/…
+  ✔ URLDownloader          Item at URL is unchanged.
+  ✔ EndOfCheckPhase
+⠼ GoogleChrome.munki                                                 3.1s
+  ✔ GoogleChromeURLProvider  Found URL https://dl.google.com/…
+  ⠼ URLDownloader          Downloading https://dl.google.com/…
+  1 running · 12 waiting · 5 done
+```
+
+The display shows the following:
+
+- **Recipes:** each recipe has a header line with a spinner while it runs,
+  and its run time. When the recipe finishes, the spinner becomes a check
+  mark, or a cross mark if the recipe failed.
+- **Processors:** each processor that has started has a line with its name
+  and its most recent message. The messages are the ones that `-v` prints.
+- **Errors and warnings:** a processor's error appears below it. Text that a
+  recipe prints, such as a warning about missing trust information, appears
+  below the processor that was running.
+- **Counts:** when you run more than one recipe, the last line counts the
+  recipes that are running, waiting, and done.
+
+A finished recipe stays in the terminal, with every processor line, so you
+can scroll back to it. The summary and the report are the same as in plain output. If the
+terminal window is too short, Russet shortens the display: it first replaces
+each recipe's finished processors with a count, and then shows only the
+recipe headers.
+
+Russet shows the live display only when all of the following are true:
+
+- Russet runs on macOS or Linux.
+- Standard output and standard error are the same terminal.
+- The `TERM` environment variable names a terminal type other than `dumb`.
+- The terminal window is at least 40 columns wide.
+- You don't ask for more detail with `-v`, `-k verbose=N`, an
+  `AUTOPKG_verbose` environment variable, or a `verbose` key in a recipe
+  list.
+
+To get plain output in a terminal, use `--plain`. Output that you pipe or
+redirect to a file is always plain. If you set the `NO_COLOR` environment
+variable, the display doesn't use color.
+
 ### Run recipes at the same time
 
 By default, Russet runs one recipe at a time, like AutoPkg. To run up to `N`
@@ -110,7 +163,8 @@ time with a long recipe list, because recipes spend much of their time
 downloading files and unpacking disk images and packages.
 
 When more than one recipe runs at a time, Russet changes the run in the
-following ways:
+following ways. The output and completion lines apply only to plain output,
+because the [live display](#live-display) shows each recipe separately.
 
 - **Output:** Russet prints each line as the recipe writes it, and starts the
   line with the name that you gave for the recipe, in brackets. For example:
@@ -118,10 +172,16 @@ following ways:
   ```text
   [Firefox.munki] Processing Firefox.munki...
   [GoogleChrome.munki] Processing GoogleChrome.munki...
+  [GoogleChrome.munki] Finished GoogleChrome.munki in 42.3s.
+  [Firefox.munki] Finished Firefox.munki in 1m 05s.
   ```
 
   Lines that Russet prints before the first recipe starts, and the summary at
   the end, don't have a name.
+- **Completion lines:** when a recipe finishes, Russet prints
+  `Finished NAME in TIME.` If the recipe fails, Russet prints
+  `Failed NAME after TIME.` in place of `Failed.` The time is the recipe's
+  total run time, such as `0.4s`, `2m 05s`, or `1h 02m 05s`.
 - **Order:** recipes can finish in any order. The summary, the report
   property list, and `autopkg_results.plist` still list recipes in the order
   that you named them.
@@ -181,6 +241,7 @@ The report is an XML property list with these keys:
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Searches `FOLDER` for recipe overrides instead of the folders in `RECIPE_OVERRIDE_DIRS`. You can repeat this option. |
 | `-j N`, `--jobs N` | Runs up to `N` recipes at the same time. `0` runs one recipe for each CPU. The default is the `RussetJobs` preference, or `1`. For details, see [Run recipes at the same time](#run-recipes-at-the-same-time). AutoPkg doesn't have this option, so `--help` doesn't list it. |
+| `--plain` | Prints plain lines, as AutoPkg does, instead of the live display. You must type the whole option name. For details, see [Live display](#live-display). AutoPkg doesn't have this option, so `--help` doesn't list it. |
 
 ### Verbosity levels
 

@@ -24,6 +24,10 @@ then, [build Russet from source](/get-started/install/).
   the same time. Recipes run one at a time unless you set them. For details,
   see
   [Run recipes at the same time](/reference/cli/russet-run/#run-recipes-at-the-same-time).
+- A live display for `russet run` and `russet install` in a terminal on
+  macOS and Linux, with a line for each recipe and processor. Use `--plain`
+  for AutoPkg's output. For details, see
+  [Live display](/reference/cli/russet-run/#live-display).
 - Trust verification that rejects trust information in overrides inside
   recipe repositories. For details, see
   [Recipe trust](/concepts/recipe-trust/#where-trusted-overrides-must-be).
