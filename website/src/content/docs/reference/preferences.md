@@ -66,6 +66,7 @@ Windows.
 | `CACHE_DIR` | `~/Library/AutoPkg/Cache` | Folder for downloads, build products, receipts, and run results. |
 | `GIT_PATH` | `git` from `PATH` | Git executable that recipe repository commands use. |
 | `CURL_PATH` | `curl` from `PATH`, then `/usr/bin/curl` | curl executable for downloads and GitHub requests. If you set this key, `URLDownloader` and `URLDownloaderPython` use this executable for every download instead of Russet's downloader. |
+| `RussetJobs` | `1` | Number of recipes that `russet run` and `russet install` run at the same time. `0` runs one recipe for each CPU. The `--jobs` option overrides this preference. For details, see [Run recipes at the same time](/reference/cli/russet-run/#run-recipes-at-the-same-time). |
 | `UseRussetDownloader` | `true` | If `false`, `URLDownloader` and `URLDownloaderPython` use curl for every download instead of Russet's downloader. For details, see [Downloads](#downloads). |
 | `GITHUB_TOKEN` | None | GitHub token for API requests. Russet reads this token only from preferences. |
 | `GITHUB_TOKEN_PATH` | `~/.autopkg_gh_token` | File that contains a GitHub token, used when `GITHUB_TOKEN` isn't set. |
@@ -120,6 +121,12 @@ command:
 
 ```sh
 defaults write com.github.autopkg UseRussetDownloader -bool false
+```
+
+To run four recipes at a time on macOS, run the following command:
+
+```sh
+defaults write com.github.autopkg RussetJobs -int 4
 ```
 
 To set the Munki repository path on macOS, run the following command:

@@ -218,5 +218,6 @@ mod tests {
 pub mod dmg;
 
 pub mod processor_output;
+pub mod serial;
 pub mod text_output;
 pub use processor_output::emit as processor_output;

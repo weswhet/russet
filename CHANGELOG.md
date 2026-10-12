@@ -14,6 +14,12 @@ compatibility version 3.0.0.
 - `run` and `install` find recipes by short name at the top level of each search
   folder and one folder below it, like Python AutoPkg. Identifier lookup covers
   the same two levels.
+- `run` and `install` accept `-j/--jobs N`, and read the `RussetJobs`
+  preference, to run up to `N` recipes at the same time; `0` means one per
+  CPU. The default stays one at a time. Each output line starts with the
+  recipe's name, and reports keep list order. Recipes that share a cache
+  folder, a disk image, packaging and installs, and `MakeCatalogsProcessor`
+  recipes still run one at a time, and Munki catalogs are written atomically.
 - Only `RECIPE_REPO_DIR` and the repositories in `RECIPE_REPOS` count as recipe
   repositories for trust records, so overrides verify when `russet` runs from
   any folder, including the home folder or `/`.

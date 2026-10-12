@@ -122,6 +122,24 @@ A recipe list can also be a property list with a `recipes` array. In a
 property list, the optional `preprocessors` and `postprocessors` arrays add
 processors to every recipe, and any other keys become input variables.
 
+## Run recipes at the same time
+
+A long recipe list runs faster when several recipes run at once. To run up to
+four recipes at the same time, add `--jobs`:
+
+```sh
+russet run --jobs 4 --recipe-list RECIPE_LIST
+```
+
+Each line of output starts with the name of the recipe that printed it, such
+as `[Firefox.munki]`. The summary and the report still list recipes in the
+order of the recipe list. A recipe that rebuilds Munki catalogs, such as
+`MakeCatalogs.munki`, waits for the recipes listed before it.
+
+To use the same number for every run, set the `RussetJobs` preference. For
+what runs one recipe at a time, see
+[Run recipes at the same time](/reference/cli/russet-run/#run-recipes-at-the-same-time).
+
 ## Add processors before or after each recipe
 
 To run a built-in processor before or after every recipe in the run, use

@@ -20,6 +20,10 @@ then, [build Russet from source](/get-started/install/).
 - Recipe lookup by short name at the top level of each folder and one level
   down, as in Python AutoPkg, so you can run a recipe from a recipe
   repository by name, such as `russet run Firefox.download`.
+- A `--jobs` option and a `RussetJobs` preference that run several recipes at
+  the same time. Recipes run one at a time unless you set them. For details,
+  see
+  [Run recipes at the same time](/reference/cli/russet-run/#run-recipes-at-the-same-time).
 - Trust verification that rejects trust information in overrides inside
   recipe repositories. For details, see
   [Recipe trust](/concepts/recipe-trust/#where-trusted-overrides-must-be).
