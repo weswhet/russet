@@ -441,7 +441,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         Some(count) => count,
         None => jobs::preference(&keys, &initial)?.unwrap_or(1),
     };
-    let context = RunContext {
+    let mut context = RunContext {
         initial: &initial,
         keys: &keys,
         search_paths: &search_paths,
@@ -450,6 +450,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
             preferences: Some(processor_preferences),
         },
         debug,
+        timed: false,
     };
     // Each recipe's cache folder. Recipes that share one never run at the
     // same time.
@@ -497,6 +498,9 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let stages = jobs::stages(&caches, &barriers);
     let workers = jobs::workers(jobs);
     let prefixed = workers > 1 && stages.iter().any(|stage| stage.len() > 1);
+    // Recipes that share the output also say when they finish. Output that
+    // isn't shared stays the same as AutoPkg's.
+    context.timed = prefixed;
     let outcomes = jobs::run(
         &stages,
         workers,
@@ -550,6 +554,8 @@ struct RunContext<'a> {
     search_paths: &'a [PathBuf],
     options: autopkg_engine::RunOptions,
     debug: bool,
+    /// Whether each recipe prints a completion line with how long it took.
+    timed: bool,
 }
 
 impl RunContext<'_> {
@@ -578,6 +584,7 @@ impl RunContext<'_> {
         recipe: &autopkg_engine::Recipe,
         requested_name: &str,
     ) -> Result<Outcome, String> {
+        let started = std::time::Instant::now();
         autopkg_platform::text_println!("Processing {requested_name}...");
         if !autopkg_engine::read_recipe(&recipe.source)?.contains_key("ParentRecipeTrustInfo") {
             autopkg_platform::text_eprintln!("WARNING: {requested_name} is missing trust info and FAIL_RECIPES_WITHOUT_TRUST_INFO is not set. Proceeding...");
@@ -604,13 +611,26 @@ impl RunContext<'_> {
                         result.stopped
                     );
                 }
+                if self.timed {
+                    autopkg_platform::text_println!(
+                        "Finished {requested_name} in {}.",
+                        jobs::elapsed(started.elapsed())
+                    );
+                }
                 Outcome {
                     receipt: result.receipt,
                     failure: None,
                 }
             }
             Err(error) => {
-                autopkg_platform::text_eprintln!("Failed.");
+                if self.timed {
+                    autopkg_platform::text_eprintln!(
+                        "Failed {requested_name} after {}.",
+                        jobs::elapsed(started.elapsed())
+                    );
+                } else {
+                    autopkg_platform::text_eprintln!("Failed.");
+                }
                 persist_receipt(
                     std::path::Path::new(requested_name),
                     &error.partial.environment,

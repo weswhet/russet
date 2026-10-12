@@ -118,10 +118,16 @@ following ways:
   ```text
   [Firefox.munki] Processing Firefox.munki...
   [GoogleChrome.munki] Processing GoogleChrome.munki...
+  [GoogleChrome.munki] Finished GoogleChrome.munki in 42.3s.
+  [Firefox.munki] Finished Firefox.munki in 1m 05s.
   ```
 
   Lines that Russet prints before the first recipe starts, and the summary at
   the end, don't have a name.
+- **Completion lines:** when a recipe finishes, Russet prints
+  `Finished NAME in TIME.` If the recipe fails, Russet prints
+  `Failed NAME after TIME.` in place of `Failed.` The time is the recipe's
+  total run time, such as `0.4s`, `2m 05s`, or `1h 02m 05s`.
 - **Order:** recipes can finish in any order. The summary, the report
   property list, and `autopkg_results.plist` still list recipes in the order
   that you named them.
