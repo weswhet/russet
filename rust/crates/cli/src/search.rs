@@ -285,7 +285,7 @@ fn print_rows(rows: &[Row]) {
     for row in limited {
         render([&row.name, &row.repo, &row.path], false)
     }
-    autopkg_platform::text_println!("\nTo add a new recipe repo, use `autopkg repo-add <repo name>`\n\nIf you don't see the recipe you're looking for, try searching https://autopkgweb.com/ (maintained by @jannheider).");
+    autopkg_platform::text_println!("\nTo add a new recipe repo, use `russet repo-add <repo name>`\n\nIf you don't see the recipe you're looking for, try searching https://autopkgweb.com/ (maintained by @jannheider).");
     if rows.len() > 100 {
         autopkg_platform::text_eprintln!("\nWARNING: Only showing first 100 out of {} total results. Please try a more specific search term.",rows.len());
     }
@@ -349,7 +349,7 @@ pub fn run(args: &[String]) -> Result<i32, String> {
             .chars()
             .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
             .collect();
-        autopkg_platform::text_println!("'autopkg search' no longer directly searches GitHub users or orgs other than the autopkg org.\nHowever, this page may provide some useful results:\nhttps://github.com/search?q={}+org%3A{user}+lang%3Axml+OR+lang%3Ayaml&type=code",quote(query).to_lowercase());
+        autopkg_platform::text_println!("'russet search' no longer directly searches GitHub users or orgs other than the autopkg org.\nHowever, this page may provide some useful results:\nhttps://github.com/search?q={}+org%3A{user}+lang%3Axml+OR+lang%3Ayaml&type=code",quote(query).to_lowercase());
         return Ok(0);
     }
     let prefs = super::manage::load_preferences(prefs)?;

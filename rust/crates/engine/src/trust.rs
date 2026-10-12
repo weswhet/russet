@@ -396,7 +396,7 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
         .keys()
         .filter(|key| !expected_scripts.contains_key(key))
     {
-        eprintln!("WARNING: Script trust info missing for {key}. Run autopkg update-trust-info to add script trust info. Starting in AutoPkg 3.1.0, this will be a trust verification error.");
+        eprintln!("WARNING: Script trust info missing for {key}. Run russet update-trust-info to add script trust info. Starting in AutoPkg 3.1.0, this will be a trust verification error.");
     }
     let expected = expected
         .get("parent_recipes")

@@ -176,7 +176,10 @@ pub fn top_help(verb: Option<&str>) -> i32 {
     for (name, entry) in commands {
         autopkg_platform::text_println!(
             "    {name:longest$}  ({})",
-            entry["help"].as_str().unwrap()
+            entry["help"]
+                .as_str()
+                .unwrap()
+                .replace("autopkg ", &format!("{program} "))
         );
     }
     autopkg_platform::text_println!();

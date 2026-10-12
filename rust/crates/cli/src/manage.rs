@@ -503,7 +503,7 @@ fn map_path_output(values: &Dictionary, stderr: bool) -> Result<PathBuf, String>
         .filter(|s| !s.is_empty());
     if root && environment.is_some() {
         autopkg_platform::text_eprintln!(
-            "SECURITY WARNING: autopkg is running as root and AUTOPKG_RECIPE_MAP_PATH was ignored."
+            "SECURITY WARNING: russet is running as root and AUTOPKG_RECIPE_MAP_PATH was ignored."
         );
     }
     let target = environment
@@ -578,7 +578,7 @@ pub fn ensure_recipe_map_output(values: &Dictionary, stderr: bool) -> Result<(),
     if path.exists() {
         return Ok(());
     }
-    map_log("Recipe map not found; generating it on demand. Run `autopkg generate-recipe-map` explicitly (e.g. in CI) to avoid paying this cost on every fresh run.",stderr);
+    map_log("Recipe map not found; generating it on demand. Run `russet generate-recipe-map` explicitly (e.g. in CI) to avoid paying this cost on every fresh run.",stderr);
     let mut bytes =
         serde_json::to_vec_pretty(&map_data(values, false)?).map_err(|e| e.to_string())?;
     bytes.push(b'\n');
