@@ -42,7 +42,9 @@ jobs:
         run: |
           failed=""
           for target in $(cargo fuzz list); do
-            cargo fuzz run "$target" -- -max_total_time="$SECONDS_PER_TARGET" -rss_limit_mb=2048 || failed="$failed $target"
+            # The prebuilt cargo-fuzz is a musl binary and would default to
+            # its own target, which the sanitizer doesn't support.
+            cargo fuzz run --target x86_64-unknown-linux-gnu "$target" -- -max_total_time="$SECONDS_PER_TARGET" -rss_limit_mb=2048 || failed="$failed $target"
           done
           if [ -n "$failed" ]; then
             echo "::error::Fuzz targets failed:$failed"
