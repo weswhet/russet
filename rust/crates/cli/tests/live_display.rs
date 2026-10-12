@@ -171,7 +171,7 @@ fn pty() -> (File, File) {
                 &mut device,
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
-                &mut size,
+                &raw mut size,
             ),
             0
         );
