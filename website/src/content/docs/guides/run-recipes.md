@@ -131,8 +131,10 @@ four recipes at the same time, add `--jobs`:
 russet run --jobs 4 --recipe-list RECIPE_LIST
 ```
 
-Each line of output starts with the name of the recipe that printed it, such
-as `[Firefox.munki]`. The summary and the report still list recipes in the
+In a terminal, the live display shows each running recipe separately. In
+plain output, such as output that you redirect to a file, each line starts
+with the name of the recipe that printed it, such as `[Firefox.munki]`. The
+summary and the report still list recipes in the
 order of the recipe list. A recipe that rebuilds Munki catalogs, such as
 `MakeCatalogs.munki`, waits for the recipes listed before it.
 

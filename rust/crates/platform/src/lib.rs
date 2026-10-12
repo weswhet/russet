@@ -217,6 +217,7 @@ mod tests {
 
 pub mod dmg;
 
+pub mod live;
 pub mod processor_output;
 pub mod serial;
 pub mod text_output;

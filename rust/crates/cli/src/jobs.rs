@@ -13,7 +13,6 @@ use std::{
         Mutex,
     },
     thread,
-    time::Duration,
 };
 
 /// The preference that sets how many recipes run at once.
@@ -55,21 +54,7 @@ pub fn workers(requested: usize) -> usize {
     }
 }
 
-/// How long a recipe took, for its completion line: tenths of a second
-/// under a minute, then whole seconds with minutes and hours.
-pub fn elapsed(duration: Duration) -> String {
-    let tenths = duration.as_millis() / 100;
-    if tenths < 600 {
-        return format!("{}.{}s", tenths / 10, tenths % 10);
-    }
-    let seconds = duration.as_secs();
-    let (hours, minutes, seconds) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-    if hours == 0 {
-        format!("{minutes}m {seconds:02}s")
-    } else {
-        format!("{hours}h {minutes:02}m {seconds:02}s")
-    }
-}
+pub use autopkg_platform::live::elapsed;
 
 /// A stage's groups of list positions. Stages run one after another; a
 /// stage's groups can run at the same time.
@@ -190,23 +175,7 @@ fn run_stage<T: Send>(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn elapsed_times_use_the_largest_units() {
-        let cases = [
-            (0, "0.0s"),
-            (420, "0.4s"),
-            (1_650, "1.6s"),
-            (59_999, "59.9s"),
-            (60_000, "1m 00s"),
-            (125_400, "2m 05s"),
-            (3_600_000, "1h 00m 00s"),
-            (3_725_000, "1h 02m 05s"),
-        ];
-        for (millis, text) in cases {
-            assert_eq!(elapsed(Duration::from_millis(millis)), text, "{millis}");
-        }
-    }
+    use std::time::Duration;
 
     #[test]
     fn counts_are_whole_numbers() {

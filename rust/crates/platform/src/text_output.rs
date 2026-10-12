@@ -13,7 +13,32 @@ thread_local! {
 }
 
 pub fn write(arguments: std::fmt::Arguments<'_>, stderr: bool) {
+    if crate::live::active() {
+        let lines = PENDING.with(|pending| {
+            take_lines(
+                &mut pending.borrow_mut()[usize::from(stderr)],
+                &arguments.to_string(),
+            )
+        });
+        if !lines.is_empty() {
+            crate::live::lines(&lines, stderr);
+        }
+        return;
+    }
     emit(&prefixed(arguments.to_string(), stderr), stderr);
+}
+
+/// This thread's unfinished stdout and stderr lines, each with a newline
+/// added, for the live display.
+pub(crate) fn take_pending() -> Vec<(String, bool)> {
+    [false, true]
+        .into_iter()
+        .filter_map(|stderr| {
+            let line = PENDING
+                .with(|pending| std::mem::take(&mut pending.borrow_mut()[usize::from(stderr)]));
+            (!line.is_empty()).then(|| (line + "\n", stderr))
+        })
+        .collect()
 }
 
 /// The text to write now: unchanged without a prefix, otherwise the lines
@@ -53,16 +78,21 @@ fn emit(text: &str, stderr: bool) {
 /// Adds `text` to the unfinished line in `pending`, and returns every line
 /// that is now complete, each starting with `[prefix] `.
 fn complete_lines(prefix: &str, pending: &mut String, text: &str) -> String {
+    take_lines(pending, text)
+        .split_inclusive('\n')
+        .map(|line| format!("[{prefix}] {line}"))
+        .collect()
+}
+
+/// Adds `text` to the unfinished line in `pending`, and returns every line
+/// that is now complete.
+fn take_lines(pending: &mut String, text: &str) -> String {
     pending.push_str(text);
     let Some(end) = pending.rfind('\n') else {
         return String::new();
     };
     let rest = pending.split_off(end + 1);
-    let lines = std::mem::replace(pending, rest);
-    lines
-        .split_inclusive('\n')
-        .map(|line| format!("[{prefix}] {line}"))
-        .collect()
+    std::mem::replace(pending, rest)
 }
 
 /// Starts each line this thread writes with `[name] ` until the guard drops.

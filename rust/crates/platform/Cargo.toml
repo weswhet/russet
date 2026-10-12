@@ -16,6 +16,7 @@ tempfile = "3"
 tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
+libc = "0.2"
 russet-fs = { path = "../fs" }
 russet-hdiutil = { path = "../hdiutil" }
 russet-pkgutil = { path = "../pkgutil" }
