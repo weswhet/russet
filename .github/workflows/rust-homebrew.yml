@@ -37,7 +37,7 @@ jobs:
             echo "::error::The russet-release environment has no HOMEBREW_TAP_DEPLOY_KEY."
             exit 64
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
@@ -53,7 +53,7 @@ jobs:
           fi
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS \
             --output "$RUNNER_TEMP/SHA256SUMS"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: weswhet/homebrew-tap
           ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
