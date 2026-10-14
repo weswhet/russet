@@ -17,7 +17,7 @@ tempfile = "3"
 autopkg-platform = { path = "../platform" }
 
 [dev-dependencies]
-sha2 = "0.10"
+sha2 = "0.11"
 tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]

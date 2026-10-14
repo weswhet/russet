@@ -7,7 +7,7 @@ description = "Native replacement for the read-only installer queries Russet use
 
 [target.'cfg(unix)'.dependencies]
 russet-xar = { path = "../xar" }
-roxmltree = "0.20"
+roxmltree = "0.21"
 
 [target.'cfg(unix)'.dev-dependencies]
 tempfile = "3"
