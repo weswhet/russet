@@ -21,7 +21,7 @@ cat > "$work/create.plist" <<EOF
 <key>file_content</key><string>native Linux fixture</string>
 </dict></plist>
 EOF
-env PATH=/nonexistent AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
+env PATH=/nonexistent RUSSET_PREFERENCES_FILE="$work/preferences.plist" \
     /usr/local/bin/russet processor-run FileCreator < "$work/create.plist" > "$work/result.plist"
 [ "$(cat "$work/native.txt")" = 'native Linux fixture' ]
 grep -q '<plist' "$work/result.plist"
@@ -35,7 +35,7 @@ cat > "$work/native.recipe" <<EOF
 <key>file_content</key><string>native Linux recipe</string>
 </dict></dict></array></dict></plist>
 EOF
-env PATH=/nonexistent AUTOPKG_RS_CACHE_DIR="$work/cache" \
+env PATH=/nonexistent RUSSET_CACHE_DIR="$work/cache" \
     /usr/local/bin/russet run --prefs "$work/preferences.plist" "$work/native.recipe"
 [ "$(cat "$work/recipe.txt")" = 'native Linux recipe' ]
 [ -f "$work/cache/autopkg_results.plist" ]

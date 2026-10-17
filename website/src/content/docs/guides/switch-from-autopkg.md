@@ -17,12 +17,28 @@ time.
 
 ## What Russet shares with Python AutoPkg
 
-Russet uses the same preference domain, working folders, and file formats as
-Python AutoPkg, so it uses the following items without changes:
+Russet uses the same preference keys and file formats as Python AutoPkg, but
+it keeps its own preferences in the `com.github.russet` domain. Russet doesn't
+read Python AutoPkg's preferences when it runs recipes, so you copy them once
+with `russet migrate`. For the steps, see
+[Copy your preferences to Russet](#copy-your-preferences-to-russet).
 
-- Your preferences in the `com.github.autopkg` domain.
-- Your recipe repositories, overrides, and their trust information.
-- Your cache, including the download metadata that avoids repeat downloads.
+After you copy your preferences, Russet uses the following items without
+changes:
+
+- Your recipe repositories, overrides, and their trust information, in the
+  folders that your preferences name.
+- Your cache, if your preferences set `CACHE_DIR`, including the download
+  metadata that avoids repeat downloads.
+
+When a preference doesn't set a folder, Russet uses its own default under
+`~/Library/Russet`, not Python AutoPkg's folder under `~/Library/AutoPkg`.
+For the defaults, see
+[Files and paths](/reference/files-and-paths/#working-folders).
+
+Russet saves preference changes, such as the recipe repositories that
+`russet repo-add` adds, to its own domain. It never changes Python AutoPkg's
+preferences, so Python AutoPkg doesn't see these changes.
 
 Russet keeps its own installation separate. It installs in `/opt/russet`,
 adds the `russet` command at `/usr/local/bin/russet`, and runs its own helper
@@ -30,8 +46,8 @@ services. Python AutoPkg's `/Library/AutoPkg` folder, its `autopkg` command,
 and its `autopkgserver` and `autopkginstalld` services stay unchanged. The
 `russet` command accepts the same verbs and options as the `autopkg` command.
 
-Because both tools share the cache, don't run the same recipe with both tools
-at the same time.
+Russet and Python AutoPkg can run side by side. If both tools use the same
+cache, don't run the same recipe with both tools at the same time.
 
 Russet doesn't run custom processors that recipe repositories supply in
 Python. For the processors that Russet implements, see
@@ -50,6 +66,46 @@ russet version
 ```
 
 The output is `3.0.0`, the AutoPkg version that Russet is compatible with.
+
+## Copy your preferences to Russet
+
+Russet starts with empty preferences. To bring your Python AutoPkg settings
+over, copy them into Russet's preferences:
+
+1. See what Russet would copy:
+
+   ```sh
+   russet migrate --dry-run
+   ```
+
+   Each line of the output names a preference key and what would happen to
+   it, such as `copied` or `unchanged`. Russet doesn't write anything.
+
+1. Copy the preferences:
+
+   ```sh
+   russet migrate
+   ```
+
+1. Confirm that Russet reads your preferences:
+
+   ```sh
+   russet info
+   ```
+
+   The output starts with `Current preferences:` and lists the keys that
+   Russet copied.
+
+`russet migrate` copies preferences only. Nothing on disk moves. Paths such
+as `RECIPE_REPOS` and `RECIPE_SEARCH_DIRS` that point into `~/Library/AutoPkg`
+keep pointing there, so Russet uses the recipe repositories and overrides that
+you already have. Python AutoPkg's preferences don't change, so Python AutoPkg
+keeps working side by side with Russet.
+
+If you change Python AutoPkg's preferences later, Russet doesn't see the
+change. Run `russet migrate` again to copy keys that Russet doesn't have, or
+`russet migrate --force` to replace values that differ. For details, see
+[`russet migrate`](/reference/cli/russet-migrate/).
 
 ## Check your overrides and recipes
 

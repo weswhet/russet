@@ -89,11 +89,13 @@ confirm that you don't need it, delete it:
 - **Windows:** the `-rollbacks` folder next to the installation folder
 
 Rollback doesn't remove your preferences, recipe repositories, overrides, or
-cache. Python AutoPkg uses the same ones, so keep them if you still use Python
-AutoPkg. To remove them, delete the folders listed in
+cache. To remove them, delete the folders listed in
 [Files and paths](/reference/files-and-paths/#working-folders), and your
 preferences. For preference locations, see
-[Preferences](/reference/preferences/#preference-locations).
+[Preferences](/reference/preferences/#preference-locations). If you copied
+Python AutoPkg's preferences with `russet migrate`, your preferences might
+name Python AutoPkg's folders. Keep those folders if you still use Python
+AutoPkg.
 
 :::danger
 Deleting the rollback history removes the only copy of the earlier Russet

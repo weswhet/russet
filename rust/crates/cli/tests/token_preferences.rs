@@ -54,7 +54,7 @@ fn command(root: &Path, prefs: &Path) -> Command {
         .current_dir(root)
         .env("HOME", root)
         .env("USERPROFILE", root)
-        .env("AUTOPKG_RS_PREFERENCES_FILE", prefs)
+        .env("RUSSET_PREFERENCES_FILE", prefs)
         .env("TMPDIR", root)
         .env_remove("AUTOPKG_GITHUB_TOKEN");
     command
@@ -200,4 +200,53 @@ fn standalone_preferences_are_separate_and_output_environment_is_preserved() {
         result.as_dictionary().unwrap()["GITHUB_TOKEN"].as_string(),
         Some("recipe-token")
     );
+}
+#[test]
+fn default_token_file_prefers_russet_and_falls_back_to_autopkg() {
+    for (files, expected) in [
+        (&[(".autopkg_gh_token", "autopkg-file")][..], "autopkg-file"),
+        (
+            &[
+                (".autopkg_gh_token", "autopkg-file"),
+                (".russet_gh_token", "russet-file"),
+            ][..],
+            "russet-file",
+        ),
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        for (name, token) in files {
+            std::fs::write(root.join(name), token).unwrap();
+        }
+        let prefs = preferences(root, None);
+        let (url, request) = server();
+        let input = Value::Dictionary(Dictionary::from_iter([
+            ("github_repo", Value::from("owner/project")),
+            ("GITHUB_URL", Value::from(url)),
+            (
+                "curl_opts",
+                Value::Array(vec![Value::from("--noproxy"), Value::from("*")]),
+            ),
+        ]));
+        let mut bytes = vec![];
+        input.to_writer_xml(&mut bytes).unwrap();
+        let mut child = command(root, &prefs)
+            .args(["processor-run", "GitHubReleasesInfoProvider"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(&bytes).unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(request
+            .join()
+            .unwrap()
+            .contains(&format!("Authorization: token {expected}")));
+    }
 }

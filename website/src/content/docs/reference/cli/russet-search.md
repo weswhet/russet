@@ -41,7 +41,7 @@ ignores a token that contains spaces and prints a warning.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-p`, `--path-only` | Matches `TERM` against recipe paths only. Use it to find recipes in a specific folder or recipe repository. |
 | `-u ORG`, `--user ORG` | Deprecated. Prints a GitHub code search URL for `ORG` instead of searching. |
 | `-t`, `--use-token` | Deprecated. Russet prints a warning and ignores this option. Russet uses a configured token automatically. |

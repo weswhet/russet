@@ -227,7 +227,7 @@ The report is an XML property list with these keys:
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `--pre NAME`, `--preprocessor NAME` | Runs the processor `NAME`, with no arguments, before each recipe's steps. You can repeat this option. |
 | `--post NAME`, `--postprocessor NAME` | Runs the processor `NAME`, with no arguments, after each recipe's steps. You can repeat this option. With `--check`, Russet doesn't run postprocessors. |
 | `-c`, `--check` | Runs each recipe only through its last `EndOfCheckPhase` step, which checks for new downloads without building or importing anything. |

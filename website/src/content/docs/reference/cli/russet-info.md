@@ -38,7 +38,7 @@ Russet shows the override.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Searches `FOLDER` for recipe overrides instead of the folders in `RECIPE_OVERRIDE_DIRS`. You can repeat this option. |
 | `-q`, `--quiet` | Accepted for compatibility. This option has no effect. |
@@ -69,7 +69,7 @@ Identifier:          com.github.autopkg.download.TheUnarchiver
 Munki import recipe: False
 Has check phase:     True
 Builds package:      False
-Recipe file path:    /Users/alex/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes/The Unarchiver/TheUnarchiver.download.recipe
+Recipe file path:    /Users/alex/Library/Russet/RecipeRepos/com.github.autopkg.recipes/The Unarchiver/TheUnarchiver.download.recipe
 Input values:
  'NAME': 'TheUnarchiver', 'SPARKLE_FEED_URL': 'https://updates.devmate.com/com.macpaw.site.theunarchiver.xml'
 ```

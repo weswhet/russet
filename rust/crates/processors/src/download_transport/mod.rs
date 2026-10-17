@@ -34,7 +34,9 @@ pub(super) struct Policy {
 fn preference(env: &Dictionary, key: &str) -> Result<Option<Value>, String> {
     match env.get(key) {
         Some(value) => Ok(Some(value.clone())),
-        None => autopkg_platform::preference("com.github.autopkg", key),
+        // Unit tests never read the developer's own preferences.
+        None if cfg!(test) => Ok(None),
+        None => autopkg_platform::russet_preference(key),
     }
 }
 
@@ -69,7 +71,7 @@ pub(super) fn policy(env: &Dictionary) -> Result<Policy, crate::ExecutionFailure
 }
 
 fn debug(message: impl std::fmt::Display) {
-    if std::env::var_os("AUTOPKG_RS_DEBUG").is_some() {
+    if std::env::var_os("RUSSET_DEBUG").is_some() {
         autopkg_platform::text_eprintln!("Download backend: {message}");
     }
 }

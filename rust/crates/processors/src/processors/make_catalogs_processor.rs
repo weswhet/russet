@@ -95,8 +95,7 @@ pub(crate) fn execute(
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            PathBuf::from(std::env::var_os("HOME").unwrap_or_default())
-                .join("Library/AutoPkg/Cache")
+            PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join("Library/Russet/Cache")
         });
     let changed = match fs::read(cache.join("autopkg_results.plist")) {
         Ok(bytes) => {

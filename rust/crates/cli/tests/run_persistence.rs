@@ -61,7 +61,7 @@ fn recipe_list_precedence_receipts_and_install_alias() {
         let output = Command::new(env!("CARGO_BIN_EXE_russet"))
             .env_clear()
             .env("HOME", root)
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
+            .env("RUSSET_PREFERENCES_FILE", &prefs)
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
             .env("AUTOPKG_NAME", "environment")
             .args(args)
@@ -156,7 +156,7 @@ fn explicit_trust_bypass_keeps_validation_and_option_precedence() {
         Command::new(env!("CARGO_BIN_EXE_russet"))
             .env_clear()
             .env("HOME", root)
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
+            .env("RUSSET_PREFERENCES_FILE", &prefs)
             .args(["run", &format!("--prefs={}", prefs.display())])
             .args(extra)
             .arg(&child)
@@ -269,7 +269,7 @@ fn default_and_development_caches_resolve_in_isolated_home() {
         command
             .env_clear()
             .env("HOME", &home)
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
+            .env("RUSSET_PREFERENCES_FILE", &prefs)
             .env("USERPROFILE", &home)
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
             .arg(verb)
@@ -277,7 +277,7 @@ fn default_and_development_caches_resolve_in_isolated_home() {
             .args(extra)
             .current_dir(temp.path());
         if let Some(path) = developer {
-            command.env("AUTOPKG_RS_CACHE_DIR", path);
+            command.env("RUSSET_CACHE_DIR", path);
         }
         command.output().unwrap()
     };
@@ -287,7 +287,7 @@ fn default_and_development_caches_resolve_in_isolated_home() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let root = home.join("Library/AutoPkg/Cache");
+    let root = home.join("Library/Russet/Cache");
     assert!(root.join("autopkg_results.plist").is_file());
     assert!(root.join("org.default-cache/receipts").is_dir());
     let output = invoke("clear-cache", &["--dry-run", "all"], None);
@@ -409,7 +409,7 @@ Process:
             .env("HOME", root)
             .env("USERPROFILE", root)
             .env("CFFIXED_USER_HOME", root)
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
+            .env("RUSSET_PREFERENCES_FILE", &prefs)
             .args(["run", "--prefs"])
             .arg(&prefs)
             .arg(root.join(filename))

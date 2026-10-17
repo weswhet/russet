@@ -24,12 +24,9 @@ fn token(prefs: &Dictionary) -> Option<String> {
         .filter(|s| !s.is_empty())
         .map(str::to_owned)
         .or_else(|| {
-            fs::read_to_string(expand(
-                prefs
-                    .get("GITHUB_TOKEN_PATH")
-                    .and_then(Plist::as_string)
-                    .unwrap_or("~/.autopkg_gh_token"),
-            ))
+            fs::read_to_string(expand(autopkg_platform::github::token_file(
+                prefs.get("GITHUB_TOKEN_PATH").and_then(Plist::as_string),
+            )))
             .ok()
         })?;
     let value = value.trim();

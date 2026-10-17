@@ -32,7 +32,7 @@ and one folder down, so a short name works for recipes in a recipe
 repository.
 
 Russet saves the override in the first folder in `RECIPE_OVERRIDE_DIRS`,
-which is `~/Library/AutoPkg/RecipeOverrides` by default. The override's
+which is `~/Library/Russet/RecipeOverrides` by default. The override's
 identifier starts with `local.`, such as `local.munki.Firefox`.
 
 You can change how Russet creates the override with the following options:
@@ -124,7 +124,7 @@ accept a change, follow these steps:
    Replace the following:
 
    - `REPOSITORY_FOLDER`: the recipe repository's folder, such as
-     `~/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes`.
+     `~/Library/Russet/RecipeRepos/com.github.autopkg.recipes`.
    - `RECIPE_FILE`: the parent recipe's path inside that folder.
 
 1. If you trust the change, update the override's trust information:
@@ -136,7 +136,7 @@ accept a change, follow these steps:
    The output names the file that Russet updated:
 
    ```text
-   Wrote updated /Users/USERNAME/Library/AutoPkg/RecipeOverrides/OVERRIDE.recipe
+   Wrote updated /Users/USERNAME/Library/Russet/RecipeOverrides/OVERRIDE.recipe
    ```
 
 ## Require trust information

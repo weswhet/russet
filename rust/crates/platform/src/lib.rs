@@ -8,6 +8,21 @@ pub mod downloads;
 pub mod github;
 pub mod signature;
 
+/// AutoPkg's preference domain. Only `russet migrate` reads it, and Russet
+/// never writes it.
+pub const AUTOPKG_DOMAIN: &str = "com.github.autopkg";
+/// Russet's own preference domain.
+pub const RUSSET_DOMAIN: &str = "com.github.russet";
+
+/// Read a preference from Russet's domain. `RUSSET_PREFERENCES_FILE` replaces
+/// that domain, so tests that set it never read the user's settings.
+pub fn russet_preference(key: &str) -> Result<Option<plist::Value>, String> {
+    if std::env::var_os("RUSSET_PREFERENCES_FILE").is_some() {
+        return Ok(None);
+    }
+    preference(RUSSET_DOMAIN, key)
+}
+
 /// Read an application preference using the user's native macOS preference domain.
 #[cfg(target_os = "macos")]
 pub fn preference(domain: &str, key: &str) -> Result<Option<plist::Value>, String> {

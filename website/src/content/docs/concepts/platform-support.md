@@ -37,7 +37,7 @@ The following table shows how each kind of operation runs on each platform:
 | `StopProcessingIf` predicates | Foundation predicates | A documented subset of predicate syntax |
 | Munki metadata for packages and disk images | Supported | Linux: supported, except installer choices. Windows: not supported |
 | Munki catalogs and pkginfo edits | Supported | Supported |
-| Preferences | `com.github.autopkg` domain | `config.plist` or `config.json` file |
+| Preferences | `com.github.russet` domain | `config.plist` or `config.json` file in the `Russet` folder |
 
 ## Disk images on Linux
 

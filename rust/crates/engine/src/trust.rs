@@ -50,17 +50,12 @@ fn collect(
             "Duplicate parent recipe identifier in trust graph: {identifier}"
         ));
     }
-    let manifest = autopkg_processors::contract();
     if let Some(process) = data.get("Process") {
         for step in process.as_array().ok_or("Process must be an array")? {
-            let step = step.as_dictionary().ok_or("Invalid processor step")?;
-            let name = step
-                .get("Processor")
+            step.as_dictionary()
+                .and_then(|step| step.get("Processor"))
                 .and_then(Value::as_string)
                 .ok_or("Missing processor name")?;
-            if manifest["processors"].get(name).is_none() {
-                return Err(format!("Custom processor trust is unsupported: {name}"));
-            }
         }
     }
     graph.insert(
@@ -98,8 +93,19 @@ pub fn parent_trust_info(parent: &Path, search_paths: &[PathBuf]) -> Result<Dict
     ]))
 }
 
-/// Preserve the Python source records even though these processors execute Rust.
-/// The source is only read as data; neither discovery nor hashing imports it.
+/// Whether `name` is one of AutoPkg's own processors, which never get
+/// `non_core_processors` records. Russet's ports of community processors and
+/// processors that Russet doesn't have both get records, as in AutoPkg.
+fn is_core(name: &str) -> bool {
+    autopkg_processors::contract()["processors"]
+        .get(name)
+        .is_some()
+        && autopkg_processors::community_source(name).is_none()
+}
+
+/// Record the Python source of every non-core processor, as AutoPkg does,
+/// even though Russet runs its own ports and can't run the others. The source
+/// is only read as data; neither discovery nor hashing imports it.
 fn processor_trust(
     parent: &Path,
     dirs: &[PathBuf],
@@ -110,9 +116,7 @@ fn processor_trust(
     let mut processors = Dictionary::new();
     for step in &recipe.process {
         let name = &step.processor;
-        if autopkg_processors::community_source(name).is_none() {
-            // collect() has already rejected unknown processors. Original core
-            // processors never acquire non_core_processors records.
+        if is_core(name) {
             continue;
         }
         if processors.contains_key(name) {
@@ -131,7 +135,11 @@ fn processor_trust(
                 .values()
                 .filter_map(|(path, _)| path.parent().map(Path::to_owned)),
         );
-        let filename = format!("{}.py", autopkg_processors::canonical_name(name));
+        // AutoPkg looks for the part after the shared recipe's identifier.
+        let filename = match autopkg_processors::community_source(name) {
+            Some(_) => format!("{}.py", autopkg_processors::canonical_name(name)),
+            None => format!("{}.py", name.rsplit('/').next().unwrap_or(name)),
+        };
         let source = roots
             .into_iter()
             .map(|root| root.join(&filename))
@@ -336,11 +344,6 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
         })
         .transpose()?
         .unwrap_or(&empty);
-    for name in processors.keys().chain(actual_processors.keys()) {
-        if autopkg_processors::community_source(name).is_none() {
-            return Err(format!("Custom processor trust is unsupported: {name}"));
-        }
-    }
     if processors.len() != actual_processors.len()
         || processors
             .keys()
@@ -562,7 +565,7 @@ mod tests {
     }
 
     #[test]
-    fn promoted_processor_trust_requires_exact_name_sets_and_rejects_unknown() {
+    fn promoted_processor_trust_requires_exact_name_sets() {
         let temp = tempfile::tempdir().unwrap();
         let parent = community_parent(temp.path(), "MozillaURLProvider");
         std::fs::write(temp.path().join("MozillaURLProvider.py"), "source").unwrap();
@@ -587,11 +590,56 @@ mod tests {
             );
         assert!(verify(&unknown, &actual)
             .unwrap_err()
-            .contains("Custom processor trust is unsupported"));
-        community_parent(temp.path(), "evil.identifier/MozillaURLProvider");
-        assert!(parent_trust_info(&parent, &[])
+            .contains("graph differs"));
+    }
+
+    #[test]
+    fn processors_russet_lacks_get_python_trust_records() {
+        let temp = tempfile::tempdir().unwrap();
+        let shared_dir = temp.path().join("shared");
+        std::fs::create_dir(&shared_dir).unwrap();
+        std::fs::write(
+            shared_dir.join("shared.recipe.yaml"),
+            "Identifier: com.example.shared\nInput: {}\nProcess: []\n",
+        )
+        .unwrap();
+        std::fs::write(shared_dir.join("ChangeModeOwner.py"), "shared").unwrap();
+        std::fs::write(temp.path().join("JetbrainsURLProvider.py"), "local").unwrap();
+        let parent = temp.path().join("parent.recipe.yaml");
+        std::fs::write(
+            &parent,
+            "Identifier: org.parent\nInput: {}\nProcess:\n- Processor: JetbrainsURLProvider\n- Processor: com.example.shared/ChangeModeOwner\n- Processor: URLDownloader\n",
+        )
+        .unwrap();
+        let dirs = [temp.path().to_owned()];
+        let info = parent_trust_info(&parent, &dirs).unwrap();
+        let processors = info["non_core_processors"].as_dictionary().unwrap();
+        assert_eq!(processors.len(), 2, "{processors:?}");
+        for (name, source) in [
+            ("JetbrainsURLProvider", "local"),
+            ("com.example.shared/ChangeModeOwner", "shared"),
+        ] {
+            assert_eq!(
+                processors[name].as_dictionary().unwrap()["sha256_hash"].as_string(),
+                Some(format!("{:x}", Sha256::digest(source.as_bytes())).as_str())
+            );
+        }
+        verify(&info, &info).unwrap();
+        std::fs::write(temp.path().join("JetbrainsURLProvider.py"), "changed").unwrap();
+        assert!(verify(&info, &parent_trust_info(&parent, &dirs).unwrap())
             .unwrap_err()
-            .contains("Custom processor trust is unsupported"));
+            .contains("Processor JetbrainsURLProvider contents differ"));
+
+        // A look-alike name is its own processor, not Russet's port.
+        community_parent(temp.path(), "evil.identifier/MozillaURLProvider");
+        std::fs::write(temp.path().join("MozillaURLProvider.py"), "evil").unwrap();
+        let info = parent_trust_info(&parent, &dirs).unwrap();
+        let processors = info["non_core_processors"].as_dictionary().unwrap();
+        assert!(processors.contains_key("evil.identifier/MozillaURLProvider"));
+        assert!(!processors.contains_key("MozillaURLProvider"));
+        assert!(autopkg_processors::contract()["processors"]
+            .get("evil.identifier/MozillaURLProvider")
+            .is_none());
     }
 
     #[test]

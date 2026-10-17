@@ -1,5 +1,6 @@
 //! Read-only recipe discovery and inspection.
-use autopkg_engine::{preferences::Preferences, read_recipe};
+use crate::pprint::{pformat, Py};
+use autopkg_engine::read_recipe;
 use plist::{Dictionary, Value};
 use std::{
     collections::HashSet,
@@ -13,6 +14,8 @@ struct Options {
     search: Vec<PathBuf>,
     overrides: Vec<PathBuf>,
     prefs: Dictionary,
+    /// Preference keys from a macOS domain; see `config::Store::native`.
+    native: Vec<String>,
     identifiers: bool,
     paths: bool,
     plist: bool,
@@ -44,19 +47,12 @@ fn configured(prefs: &Dictionary, key: &str) -> Result<Vec<PathBuf>, String> {
     }
 }
 fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
-    let mut o = Options {
-        prefs: crate::manage::load_preferences(None)?,
-        ..Options::default()
-    };
+    let mut o = Options::default();
+    let mut prefs = None;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
-            "--prefs" => {
-                o.prefs.extend(
-                    Preferences::load(&expand(iter.next().ok_or("--prefs requires a path")?))?
-                        .values,
-                );
-            }
+            "--prefs" => prefs = Some(iter.next().ok_or("--prefs requires a path")?.clone()),
             "-d" | "--search-dir" => o
                 .search
                 .push(expand(iter.next().ok_or("--search-dir requires a path")?)),
@@ -88,6 +84,9 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
     if o.all && !(o.identifiers || o.paths || o.plist) {
         return Err("The '--show-all' option is only valid when used with '--with-paths', '--with-identifiers', or '--plist' options.".into());
     }
+    let store = crate::config::Store::load(prefs.as_deref())?;
+    o.prefs = store.values;
+    o.native = store.native;
     if o.search.is_empty() {
         o.search = configured(&o.prefs, "RECIPE_SEARCH_DIRS")?;
     }
@@ -95,14 +94,16 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
         o.overrides = configured(&o.prefs, "RECIPE_OVERRIDE_DIRS")?;
     }
     if o.search.is_empty() {
-        o.search = [".", "~/Library/AutoPkg/Recipes", "/Library/AutoPkg/Recipes"]
+        o.search = crate::manage::DEFAULT_SEARCH_DIRS
             .iter()
             .map(|s| expand(s))
             .collect();
     }
     if o.overrides.is_empty() {
-        o.overrides
-            .push(expand("~/Library/AutoPkg/RecipeOverrides"));
+        o.overrides = crate::manage::DEFAULT_OVERRIDE_DIRS
+            .iter()
+            .map(|s| expand(s))
+            .collect();
     }
     Ok(o)
 }
@@ -250,41 +251,6 @@ fn text_list(rows: &[Dictionary], o: &Options) -> String {
     }
     output.join("\n")
 }
-fn pretty_repr(value: &Value, indent: usize) -> String {
-    let plain = python_repr(value);
-    if indent + plain.chars().count() <= 80 {
-        return plain;
-    }
-    match value {
-        Value::Dictionary(values) if !values.is_empty() => {
-            let mut entries: Vec<_> = values.iter().collect();
-            entries.sort_by_key(|(k, _)| *k);
-            let rows = entries
-                .into_iter()
-                .map(|(key, value)| {
-                    let label = python_repr(&Value::String(key.clone()));
-                    format!(
-                        "{label}: {}",
-                        pretty_repr(value, indent + 1 + label.chars().count() + 2)
-                    )
-                })
-                .collect::<Vec<_>>();
-            format!(
-                "{{{}}}",
-                rows.join(&format!(",\n{}", " ".repeat(indent + 1)))
-            )
-        }
-        Value::Array(values) if values.len() > 1 => format!(
-            "[{}]",
-            values
-                .iter()
-                .map(|v| pretty_repr(v, indent + 1))
-                .collect::<Vec<_>>()
-                .join(&format!(",\n{}", " ".repeat(indent + 1)))
-        ),
-        _ => plain,
-    }
-}
 fn sorted(value: &mut Value) {
     match value {
         Value::Dictionary(d) => {
@@ -299,40 +265,6 @@ fn sorted(value: &mut Value) {
             }
         }
         _ => {}
-    }
-}
-fn python_repr(v: &Value) -> String {
-    match v {
-        Value::String(s) => format!(
-            "'{}'",
-            s.replace('\\', "\\\\")
-                .replace('\'', "\\'")
-                .replace('\n', "\\n")
-        ),
-        Value::Boolean(b) => if *b { "True" } else { "False" }.into(),
-        Value::Integer(i) => i.to_string(),
-        Value::Real(f) => f.to_string(),
-        Value::Array(a) => format!(
-            "[{}]",
-            a.iter().map(python_repr).collect::<Vec<_>>().join(", ")
-        ),
-        Value::Dictionary(d) => {
-            let mut entries: Vec<_> = d.iter().collect();
-            entries.sort_by_key(|(k, _)| *k);
-            format!(
-                "{{{}}}",
-                entries
-                    .iter()
-                    .map(|(k, v)| format!(
-                        "{}: {}",
-                        python_repr(&Value::String((*k).clone())),
-                        python_repr(v)
-                    ))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-        }
-        other => format!("{other:?}"),
     }
 }
 fn summary(
@@ -419,7 +351,22 @@ fn info(o: &Options) -> Result<(), String> {
     if o.recipes.is_empty() {
         autopkg_platform::text_println!(
             "Current preferences:\n{}",
-            pretty_repr(&Value::Dictionary(o.prefs.clone()), 0)
+            pformat(
+                &Py::Dict(
+                    o.prefs
+                        .iter()
+                        .map(|(key, value)| {
+                            let value = if o.native.contains(key) {
+                                Py::autopkg_domain(value)
+                            } else {
+                                Py::python(value)
+                            };
+                            (key.clone(), value)
+                        })
+                        .collect()
+                ),
+                1
+            )
         );
         return Ok(());
     }
@@ -483,7 +430,7 @@ fn info(o: &Options) -> Result<(), String> {
                 .join("\n                     ")
         );
     }
-    let input = python_repr(&recipe["Input"]);
+    let input = pformat(&Py::python(&recipe["Input"]), 4);
     autopkg_platform::text_println!("Input values: \n {}", &input[1..input.len() - 1]);
     Ok(())
 }

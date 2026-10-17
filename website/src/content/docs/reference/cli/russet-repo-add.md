@@ -40,17 +40,16 @@ check the output.
 
 Russet doesn't accept `file://` URLs.
 
-On Linux and Windows, Russet saves preferences only to a loaded preference
-file. If you don't have a `config.plist` or `config.json` file with at least
-one key, and you don't pass `--prefs`, Russet clones the recipe repository and
-then fails with `No writable preference file loaded; use --prefs FILE`. For
-details, see [Preferences](/reference/preferences/).
+Russet saves the changed preferences to Russet's own preferences, or to the
+file that you pass with `--prefs`. It never changes Python AutoPkg's
+preferences. For details, see
+[Preferences](/reference/preferences/#where-russet-saves-changes).
 
 ## Options
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` and saves the updated preferences to it. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences and saves the changed keys to `FILE`. |
 
 ## Exit status
 
@@ -75,12 +74,12 @@ The output looks like the following:
 ```text
 Attempting git clone for https://github.com/autopkg/recipes...
 
-Adding /Users/alex/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes to RECIPE_SEARCH_DIRS...
+Adding /Users/alex/Library/Russet/RecipeRepos/com.github.autopkg.recipes to RECIPE_SEARCH_DIRS...
 Updated search path:
   '.'
-  '~/Library/AutoPkg/Recipes'
-  '/Library/AutoPkg/Recipes'
-  '/Users/alex/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes'
+  '~/Library/Russet/Recipes'
+  '/Library/Russet/Recipes'
+  '/Users/alex/Library/Russet/RecipeRepos/com.github.autopkg.recipes'
 ```
 
 To add a recipe repository from another GitHub account, run the following

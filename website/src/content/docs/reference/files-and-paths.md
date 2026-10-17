@@ -34,23 +34,32 @@ package installer.
 | Package installer log | `/private/var/log/russet-installd` |
 
 None of these paths overlap with Python AutoPkg's installation, so Russet and
-Python AutoPkg can run on the same Mac. Both read the same preferences and use
-the same working folders.
+Python AutoPkg can run on the same Mac. Russet uses its own preferences and
+working folders, and it doesn't change Python AutoPkg's preferences.
 
 ## Working folders
 
 Russet uses the same default folders on every platform. A path that starts
 with `~` refers to the current user's home folder, so on Linux and Windows
-these folders are also under `Library/AutoPkg` in your home folder.
+these folders are also under `Library/Russet` in your home folder.
 
 | Item | Default | Preference key |
 | --- | --- | --- |
-| Cache | `~/Library/AutoPkg/Cache` | `CACHE_DIR` |
-| Recipe repositories | `~/Library/AutoPkg/RecipeRepos` | `RECIPE_REPO_DIR` |
-| Recipe overrides | `~/Library/AutoPkg/RecipeOverrides` | `RECIPE_OVERRIDE_DIRS` |
-| Recipe search folders | `.`, `~/Library/AutoPkg/Recipes`, `/Library/AutoPkg/Recipes` | `RECIPE_SEARCH_DIRS` |
-| Recipe map | `~/Library/AutoPkg/recipe_map.json` | `RECIPE_MAP_PATH` |
-| GitHub token file | `~/.autopkg_gh_token` | `GITHUB_TOKEN_PATH` |
+| Cache | `~/Library/Russet/Cache` | `CACHE_DIR` |
+| Recipe repositories | `~/Library/Russet/RecipeRepos` | `RECIPE_REPO_DIR` |
+| Recipe overrides | `~/Library/Russet/RecipeOverrides` | `RECIPE_OVERRIDE_DIRS` |
+| Recipe search folders | `.`, `~/Library/Russet/Recipes`, `/Library/Russet/Recipes` | `RECIPE_SEARCH_DIRS` |
+| Recipe map | `~/Library/Russet/recipe_map.json` | `RECIPE_MAP_PATH` |
+| GitHub token file | `~/.russet_gh_token`, or `~/.autopkg_gh_token` if only that file exists | `GITHUB_TOKEN_PATH` |
+
+Russet uses a default only when your preferences don't set the key.
+
+If you copy Python AutoPkg's preferences with
+[`russet migrate`](/reference/cli/russet-migrate/), the folders that those
+preferences name keep working, because the preferences store their full
+paths. For example, recipe repositories in `~/Library/AutoPkg/RecipeRepos`
+stay in `RECIPE_REPOS` and `RECIPE_SEARCH_DIRS`. Russet doesn't move any
+files.
 
 ## Cache contents
 

@@ -20,7 +20,7 @@ the list, see [Processors](/reference/processors/).
 ## Cache
 
 The folder where Russet keeps downloads, build products, receipts, and run
-results. By default, it's `~/Library/AutoPkg/Cache`.
+results. By default, it's `~/Library/Russet/Cache`.
 
 ## Catalog
 
@@ -101,12 +101,12 @@ can also be a property list.
 ## Recipe map
 
 A file that indexes the recipes in your search folders by name and
-identifier. By default, it's `~/Library/AutoPkg/recipe_map.json`.
+identifier. By default, it's `~/Library/Russet/recipe_map.json`.
 
 ## Recipe repository
 
 A Git repository of recipes. `russet repo-add` clones recipe repositories
-into `~/Library/AutoPkg/RecipeRepos` by default.
+into `~/Library/Russet/RecipeRepos` by default.
 
 ## Rollback generation
 
