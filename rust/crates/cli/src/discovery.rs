@@ -65,6 +65,9 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
             "--plist" if verb == "list-recipes" => o.plist = true,
             "-a" | "--show-all" if verb == "list-recipes" => o.all = true,
             "-q" | "--quiet" if verb == "info" => {}
+            // AutoPkg pulls a missing parent's repo from GitHub. Russet never
+            // searches GitHub, so a found recipe behaves the same either way.
+            "-p" | "--pull" if verb == "info" => {}
             "--" => {
                 o.recipes.extend(iter.cloned());
                 break;
@@ -74,15 +77,6 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
             }
             _ => o.recipes.push(arg.clone()),
         }
-    }
-    if o.plist && (o.identifiers || o.paths) {
-        return Err(
-            "It is invalid to specify '--with-identifiers' or '--with-paths' with '--plist'."
-                .into(),
-        );
-    }
-    if o.all && !(o.identifiers || o.paths || o.plist) {
-        return Err("The '--show-all' option is only valid when used with '--with-paths', '--with-identifiers', or '--plist' options.".into());
     }
     let store = crate::config::Store::load(prefs.as_deref())?;
     o.prefs = store.values;
@@ -106,6 +100,16 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
             .collect();
     }
     Ok(o)
+}
+/// The message for list-recipes options that can't be combined.
+fn invalid_combination(o: &Options) -> Option<&'static str> {
+    if o.plist && (o.identifiers || o.paths) {
+        Some("It is invalid to specify '--with-identifiers' or '--with-paths' with '--plist'.")
+    } else if o.all && !(o.identifiers || o.paths || o.plist) {
+        Some("The '--show-all' option is only valid when used with '--with-paths', '--with-identifiers', or '--plist' options.")
+    } else {
+        None
+    }
 }
 fn shortname(path: &Path) -> Option<String> {
     let name = path.file_name()?.to_str()?;
@@ -459,6 +463,10 @@ pub fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         }
         info(&options)?;
     } else {
+        if let Some(message) = invalid_combination(&options) {
+            autopkg_platform::text_eprintln!("{message}");
+            return Ok(255);
+        }
         if !options.recipes.is_empty() {
             return Err("list-recipes does not accept recipe arguments".into());
         }
@@ -574,8 +582,24 @@ mod tests {
             ("Path", Value::String("/tmp/App.recipe".into())),
         ]);
         assert_eq!(text_list(&[row.clone(), row], &Options::default()), "App");
-        assert!(parse("list-recipes", &["--show-all".into()]).is_err());
-        assert!(parse("list-recipes", &["--plist".into(), "-i".into()]).is_err());
-        assert!(parse("info", &["--pull".into()]).is_err());
+        let all = Options {
+            all: true,
+            ..Default::default()
+        };
+        assert!(invalid_combination(&all).is_some());
+        assert!(invalid_combination(&Options { plist: true, ..all }).is_none());
+        assert!(invalid_combination(&Options {
+            plist: true,
+            identifiers: true,
+            ..Default::default()
+        })
+        .is_some());
+        // --pull is accepted, so parsing stops at the next unknown option.
+        let pull = |verb| parse(verb, &["--pull".into(), "-p".into(), "--bogus".into()]);
+        assert_eq!(
+            pull("info").err().unwrap(),
+            "Unsupported info option '--bogus'"
+        );
+        assert!(parse("list-recipes", &["--pull".into()]).is_err());
     }
 }
