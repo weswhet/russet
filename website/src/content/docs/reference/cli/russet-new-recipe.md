@@ -43,7 +43,7 @@ recipe map.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-i IDENTIFIER`, `--identifier IDENTIFIER` | Sets the recipe identifier. |
 | `-p PARENT_IDENTIFIER`, `--parent-identifier PARENT_IDENTIFIER` | Sets the identifier of the parent recipe. |
 | `--format FORMAT` | Writes the recipe as `plist` or `yaml`. The default is `plist`. |

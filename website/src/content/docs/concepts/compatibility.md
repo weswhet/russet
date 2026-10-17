@@ -25,8 +25,12 @@ schedules depend on:
   `ParentRecipeTrustInfo` keep the same format and verification rules.
 - **Processors:** built-in processors keep their names, input variables,
   output variables, and default values.
-- **Preferences:** Russet reads the same preference keys from the same
-  locations.
+- **Preferences:** Russet reads the same preference keys and formats, but
+  from its own location, such as the `com.github.russet` domain on macOS. To
+  copy Python AutoPkg's preferences, run
+  [`russet migrate`](/reference/cli/russet-migrate/). Russet never changes
+  Python AutoPkg's preferences. For details, see
+  [Preferences](/reference/preferences/).
 - **Results:** receipts, report property lists, and the run results file keep
   their formats.
 

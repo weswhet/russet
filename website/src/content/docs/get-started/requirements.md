@@ -81,7 +81,7 @@ them. For details, see [How Russet works](/concepts/how-russet-works/).
 ## Disk space
 
 Russet stores downloads and build products in its cache, which is
-`~/Library/AutoPkg/Cache` by default. Make sure that the cache's volume has
+`~/Library/Russet/Cache` by default. Make sure that the cache's volume has
 room for the software that your recipes download. To change the location, see
 [Preferences](/reference/preferences/).
 

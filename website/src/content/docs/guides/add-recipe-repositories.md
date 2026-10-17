@@ -12,9 +12,6 @@ repositories.
 - [Install Russet](/get-started/install/).
 - Make sure that you have Git. Russet runs the `git` command from your
   `PATH` unless the `GIT_PATH` preference names another one.
-- On Linux and Windows, create a preference file so that Russet can save the
-  repositories that you add. For details, see
-  [Configure preferences](/guides/configure-preferences/).
 
 ## Search for recipes
 
@@ -115,7 +112,9 @@ russet repo-delete REPOSITORY
 
 Replace `REPOSITORY` with the form that you used to add it, such as
 `recipes`, or with its local path. Russet removes the repository from your
-preferences and then deletes its folder.
+preferences and then deletes its folder. If Python AutoPkg's preferences also
+list the repository, Russet keeps the folder so that Python AutoPkg keeps
+working.
 
 :::caution
 `russet repo-delete` deletes the repository's local folder, including any

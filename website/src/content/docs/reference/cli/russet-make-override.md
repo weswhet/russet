@@ -47,7 +47,7 @@ Russet refreshes the recipe map.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for the recipe instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Writes the override to `FOLDER` instead of the first folder in `RECIPE_OVERRIDE_DIRS`. If you repeat this option, Russet uses the first folder. |
 | `-n FILENAME`, `--name FILENAME` | Names the override file `FILENAME`. The name can't contain path separators. |
@@ -77,7 +77,7 @@ russet make-override TheUnarchiver.download
 The output looks like the following:
 
 ```text
-Override file saved to /Users/alex/Library/AutoPkg/RecipeOverrides/TheUnarchiver.download.recipe
+Override file saved to /Users/alex/Library/Russet/RecipeOverrides/TheUnarchiver.download.recipe
 ```
 
 To create a YAML override, run the following command:

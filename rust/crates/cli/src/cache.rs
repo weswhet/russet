@@ -28,11 +28,11 @@ pub fn root_with_override(
     let path = configured
         .map(PathBuf::from)
         .or_else(|| {
-            std::env::var_os("AUTOPKG_RS_CACHE_DIR")
+            std::env::var_os("RUSSET_CACHE_DIR")
                 .filter(|s| !s.is_empty())
                 .map(PathBuf::from)
         })
-        .unwrap_or_else(|| PathBuf::from("~/Library/AutoPkg/Cache"));
+        .unwrap_or_else(|| PathBuf::from("~/Library/Russet/Cache"));
     autopkg_engine::cache::normalized(&path)
 }
 

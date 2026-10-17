@@ -36,7 +36,7 @@ repositories. For details, see [Recipe trust](/concepts/recipe-trust/).
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for parent recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Searches `FOLDER` for recipe overrides instead of the folders in `RECIPE_OVERRIDE_DIRS`. You can repeat this option. |
 

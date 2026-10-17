@@ -167,7 +167,7 @@ impl Fixture {
             .env("HOME", &self.root)
             .env("USERPROFILE", &self.root)
             .env("TMPDIR", &self.root)
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &self.prefs)
+            .env("RUSSET_PREFERENCES_FILE", &self.prefs)
             .arg(verb)
             .args(["--prefs", self.prefs.to_str().unwrap()]);
         command

@@ -1,5 +1,5 @@
 //! Read-only recipe discovery and inspection.
-use autopkg_engine::{preferences::Preferences, read_recipe};
+use autopkg_engine::read_recipe;
 use plist::{Dictionary, Value};
 use std::{
     collections::HashSet,
@@ -44,19 +44,12 @@ fn configured(prefs: &Dictionary, key: &str) -> Result<Vec<PathBuf>, String> {
     }
 }
 fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
-    let mut o = Options {
-        prefs: crate::manage::load_preferences(None)?,
-        ..Options::default()
-    };
+    let mut o = Options::default();
+    let mut prefs = None;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
-            "--prefs" => {
-                o.prefs.extend(
-                    Preferences::load(&expand(iter.next().ok_or("--prefs requires a path")?))?
-                        .values,
-                );
-            }
+            "--prefs" => prefs = Some(iter.next().ok_or("--prefs requires a path")?.clone()),
             "-d" | "--search-dir" => o
                 .search
                 .push(expand(iter.next().ok_or("--search-dir requires a path")?)),
@@ -88,6 +81,7 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
     if o.all && !(o.identifiers || o.paths || o.plist) {
         return Err("The '--show-all' option is only valid when used with '--with-paths', '--with-identifiers', or '--plist' options.".into());
     }
+    o.prefs = crate::manage::load_preferences(prefs.as_deref())?;
     if o.search.is_empty() {
         o.search = configured(&o.prefs, "RECIPE_SEARCH_DIRS")?;
     }
@@ -95,14 +89,16 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
         o.overrides = configured(&o.prefs, "RECIPE_OVERRIDE_DIRS")?;
     }
     if o.search.is_empty() {
-        o.search = [".", "~/Library/AutoPkg/Recipes", "/Library/AutoPkg/Recipes"]
+        o.search = crate::manage::DEFAULT_SEARCH_DIRS
             .iter()
             .map(|s| expand(s))
             .collect();
     }
     if o.overrides.is_empty() {
-        o.overrides
-            .push(expand("~/Library/AutoPkg/RecipeOverrides"));
+        o.overrides = crate::manage::DEFAULT_OVERRIDE_DIRS
+            .iter()
+            .map(|s| expand(s))
+            .collect();
     }
     Ok(o)
 }

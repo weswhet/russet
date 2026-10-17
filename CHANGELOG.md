@@ -35,8 +35,31 @@ compatibility version 3.0.0.
 - Russet installs in `/opt/russet`, links `/usr/local/bin/russet`, and on macOS
   uses its own launchd jobs (`com.github.weswhet.russet.server` and
   `com.github.weswhet.russet.installd`), sockets, and logs. It doesn't change
-  a Python AutoPkg installation, and it still reads the `com.github.autopkg`
-  preferences and the same working folders.
+  a Python AutoPkg installation.
+- Russet has its own preferences: the `com.github.russet` domain on macOS, and
+  `config.plist` or `config.json` in `~/.config/Russet` on Linux or
+  `%LOCALAPPDATA%\Russet` on Windows. Russet doesn't read or change AutoPkg's
+  preferences; `repo-add` and `repo-delete` save changes to Russet's
+  preferences or the `--prefs` file. On Linux and Windows, these commands no
+  longer need `--prefs` when no preference file exists. With `--prefs`, Russet
+  saves only that file's values and the changed keys.
+- New `russet migrate` copies AutoPkg's preferences into Russet's preferences.
+  `--dry-run` shows the changes without saving them, and `--force` replaces
+  values that differ. It copies every key and value type, including keys in
+  `/Library/Preferences` and from configuration profiles, and AutoPkg's
+  default search and override folders when they're unset. It doesn't move any
+  folders, so paths that AutoPkg's preferences name keep working.
+- On macOS, Russet reads keys in `/Library/Preferences/com.github.russet.plist`
+  and keys that configuration profiles set, as Python AutoPkg does for its
+  domain. `repo-delete` keeps the folder of a recipe
+  repository that AutoPkg's preferences list.
+- Clones, overrides, recipes, the cache, and the recipe map default to folders
+  in `~/Library/Russet` and `/Library/Russet`.
+- The GitHub token file defaults to `~/.russet_gh_token`, and Russet reads
+  `~/.autopkg_gh_token` when only that file exists. `RUSSET_RECIPE_MAP_PATH`
+  and `RUSSET_DISABLE_RECIPE_MAP` replace the `AUTOPKG_` names, which still
+  work. The development variables are now `RUSSET_CACHE_DIR`, `RUSSET_DEBUG`,
+  `RUSSET_PREFERENCES_FILE`, and `RUSSET_AUTOPKG_PREFERENCES_FILE`.
 - The repository contains no Python. Packaging, installer tests, and release
   promotion run as `cargo xtask` commands, and the comparisons with Python
   AutoPkg run in [russet-compat](https://github.com/weswhet/russet-compat).

@@ -39,7 +39,7 @@ folder, from `RECIPE_OVERRIDE_DIRS` or `--override-dir`, points into a cloned
 repository.
 
 **Resolution:** keep your overrides in a folder outside your recipe
-repositories, such as `~/Library/AutoPkg/RecipeOverrides`. For details, see
+repositories, such as `~/Library/Russet/RecipeOverrides`. For details, see
 [Recipe trust](/concepts/recipe-trust/#where-trusted-overrides-must-be).
 
 ## Unsupported processor
@@ -73,25 +73,6 @@ override, usually because `russet repo-update` pulled a new version.
 **Resolution:** review the change, and if you trust it, run
 `russet update-trust-info OVERRIDE`. For the steps, see
 [Create recipe overrides](/guides/create-overrides/#review-a-change-and-update-trust-information).
-
-## Can't save preferences
-
-**Symptom:** on Linux or Windows, `russet repo-add` or `russet repo-delete`
-prints the following error:
-
-```text
-No writable preference file loaded; use --prefs FILE
-```
-
-`russet repo-add` clones the repository before it prints this error, but it
-doesn't add the repository to your search folders.
-
-**Cause:** Russet saves preferences only to a preference file that it loaded,
-and it ignores a missing or empty file.
-
-**Resolution:** create a preference file with at least one key, and run the
-command again. For details, see
-[Configure preferences](/guides/configure-preferences/).
 
 ## Operation needs macOS
 
@@ -223,8 +204,10 @@ Russet can't tell where its check phase ends.
 authentication.
 
 **Resolution:** create a GitHub personal access token, and save it in
-`~/.autopkg_gh_token` or in the `GITHUB_TOKEN` preference. Russet reads the
-token only from these locations. For details, see
+`~/.russet_gh_token` or in the `GITHUB_TOKEN` preference. If you already
+have a token in Python AutoPkg's `~/.autopkg_gh_token` file and no
+`~/.russet_gh_token` file, Russet reads that file. Russet reads the token only
+from preferences and these files. For details, see
 [Preferences](/reference/preferences/).
 
 ## Downloads fail with Russet's downloader

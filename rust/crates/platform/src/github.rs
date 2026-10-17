@@ -33,6 +33,22 @@ fn expanded(path: &str) -> PathBuf {
     }
     PathBuf::from(path)
 }
+/// AutoPkg's token file, which is also the processors' `GITHUB_TOKEN_PATH`
+/// default in the frozen contract.
+const AUTOPKG_TOKEN_FILE: &str = "~/.autopkg_gh_token";
+/// The token file to read for a `GITHUB_TOKEN_PATH` value. When it's unset or
+/// AutoPkg's default, that's `~/.russet_gh_token`, or AutoPkg's file when only
+/// that one exists.
+pub fn token_file(configured: Option<&str>) -> &str {
+    const RUSSET: &str = "~/.russet_gh_token";
+    match configured {
+        Some(path) if path != AUTOPKG_TOKEN_FILE => path,
+        _ if !expanded(RUSSET).exists() && expanded(AUTOPKG_TOKEN_FILE).exists() => {
+            AUTOPKG_TOKEN_FILE
+        }
+        _ => RUSSET,
+    }
+}
 fn sanitized(token: &str, source: &str) -> Option<String> {
     let token = token.trim();
     if token.is_empty() || token.chars().any(char::is_whitespace) {
@@ -46,7 +62,7 @@ fn sanitized(token: &str, source: &str) -> Option<String> {
 }
 fn token(env: &Dictionary, preferences: Option<&Dictionary>) -> Result<Option<String>, String> {
     let native = if preferences.is_none() {
-        crate::preference("com.github.autopkg", "GITHUB_TOKEN")?
+        crate::russet_preference("GITHUB_TOKEN")?
     } else {
         None
     };
@@ -60,7 +76,11 @@ fn token(env: &Dictionary, preferences: Option<&Dictionary>) -> Result<Option<St
             "GITHUB_TOKEN preference",
         ));
     }
-    let path = expanded(string(env, "GITHUB_TOKEN_PATH", "~/.autopkg_gh_token")?);
+    let path = expanded(token_file(Some(string(
+        env,
+        "GITHUB_TOKEN_PATH",
+        AUTOPKG_TOKEN_FILE,
+    )?)));
     if !path.exists() {
         return Ok(None);
     }

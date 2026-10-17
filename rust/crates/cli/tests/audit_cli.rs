@@ -15,7 +15,7 @@ fn audit_inheritance_filters_and_machine_reports_do_not_execute_custom_code() {
     let invoke = |args: &[&str]| {
         Command::new(env!("CARGO_BIN_EXE_russet"))
             .env("HOME", root)
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
+            .env("RUSSET_PREFERENCES_FILE", &prefs)
             .args(["audit", "--prefs", prefs.to_str().unwrap()])
             .args(args)
             .arg(&child)

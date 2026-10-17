@@ -5,9 +5,9 @@ description: How the russet command, the recipe engine, the built-in processors,
 
 Russet is a native implementation of AutoPkg's recipe engine, command-line
 interface, and built-in processors. It runs the recipes that you already use,
-with the same command name, preference keys, and file locations, but it
-doesn't run Python. This page explains the parts of Russet and how a recipe
-run uses them.
+with the same command name and preference keys, but it keeps its own
+preferences and working folders, and it doesn't run Python. This page
+explains the parts of Russet and how a recipe run uses them.
 
 ## The parts of Russet
 

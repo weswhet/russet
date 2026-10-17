@@ -1,9 +1,11 @@
 use plist::{Dictionary, Value};
 mod audit;
 mod cache;
+mod config;
 mod discovery;
 mod jobs;
 mod manage;
+mod migrate;
 mod options;
 mod search;
 use std::{
@@ -255,7 +257,7 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let mut jobs = None;
     let mut verbose: u64 = 0;
     let mut plain = false;
-    let debug = env::var_os("AUTOPKG_RS_DEBUG").is_some();
+    let debug = env::var_os("RUSSET_DEBUG").is_some();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
@@ -795,7 +797,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
     let original_verb = args.first().map(String::as_str);
     let known = original_verb.is_some_and(|verb| {
         contract()["cli"]["subcommands"].get(verb).is_some()
-            || matches!(verb, "processor-run" | "generate-map")
+            || matches!(verb, "processor-run" | "generate-map" | "migrate")
     });
     if !known || original_verb == Some("help") {
         return Ok(options::top_help(original_verb));
@@ -815,6 +817,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
     match verb {
         "list-recipes" | "info" => return discovery::run(verb, rest),
         "clear-cache" => return cache::run(rest),
+        "migrate" => return migrate::migrate_preferences(rest),
         "new-recipe" => return manage::new_recipe(rest),
         "audit" => return audit::run(rest),
         "search" => return search::run(rest),
@@ -885,7 +888,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "processor-run" => return processor_run(rest),
         "run" | "install" => return run(verb, rest),
         "help" | "--help" | "-h" => {
-            autopkg_platform::text_println!("Usage: russet VERB [options]\n\nDevelopment build. The Python executable remains the release implementation.\n\nImplemented verbs:\n  version\n  list-processors (processor-list)\n  processor-info NAME\n  processor-run NAME < input.plist > output.plist\n  list-recipes [--plist] [-i] [-p]\n  info [RECIPE ...]\n  clear-cache RECIPE ...\n  repo-add URL ...\n  repo-delete REPOSITORY ...\n  repo-list (list-repos)\n  repo-update [REPOSITORY ...]\n  audit RECIPE ...\n  search SEARCH_TERM\n  new-recipe PATH\n  make-override RECIPE\n  update-trust-info RECIPE ...\n  verify-trust-info RECIPE ...\n  generate-recipe-map\n  install RECIPE ...\n  run [-l RECIPE_LIST] [-c] [-v] [-k KEY=VALUE] [-d DIRECTORY] [--prefs FILE] RECIPE ...\n\nOn macOS, as root:\n  --install-helpers    Load the launchd jobs PkgCreator and Installer need\n  --uninstall-helpers  Unload and remove those launchd jobs");
+            autopkg_platform::text_println!("Usage: russet VERB [options]\n\nDevelopment build. The Python executable remains the release implementation.\n\nImplemented verbs:\n  version\n  list-processors (processor-list)\n  processor-info NAME\n  processor-run NAME < input.plist > output.plist\n  list-recipes [--plist] [-i] [-p]\n  info [RECIPE ...]\n  clear-cache RECIPE ...\n  repo-add URL ...\n  repo-delete REPOSITORY ...\n  repo-list (list-repos)\n  repo-update [REPOSITORY ...]\n  audit RECIPE ...\n  search SEARCH_TERM\n  new-recipe PATH\n  make-override RECIPE\n  update-trust-info RECIPE ...\n  verify-trust-info RECIPE ...\n  generate-recipe-map\n  migrate [--dry-run] [--force]\n  install RECIPE ...\n  run [-l RECIPE_LIST] [-c] [-v] [-k KEY=VALUE] [-d DIRECTORY] [--prefs FILE] RECIPE ...\n\nOn macOS, as root:\n  --install-helpers    Load the launchd jobs PkgCreator and Installer need\n  --uninstall-helpers  Unload and remove those launchd jobs");
         }
         _ => {
             return Err(format!(
