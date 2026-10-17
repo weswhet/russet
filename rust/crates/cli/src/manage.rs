@@ -1540,7 +1540,7 @@ mod tests {
         let configured = Dictionary::from_iter([("RECIPE_REPO_DIR", Value::from("/srv/repos"))]);
         assert_eq!(
             repository_dirs(&configured).unwrap(),
-            [PathBuf::from("/srv/repos")]
+            [expand("/srv/repos").unwrap()]
         );
     }
 }
