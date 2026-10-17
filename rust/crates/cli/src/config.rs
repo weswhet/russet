@@ -114,6 +114,14 @@ impl Layer {
             }
         }
     }
+    /// Whether the values come from a macOS preference domain.
+    fn is_domain(&self) -> bool {
+        match &self.target {
+            Target::File(..) => false,
+            #[cfg(target_os = "macos")]
+            Target::Domain(_) => true,
+        }
+    }
     /// Where this layer is saved, for messages.
     pub(crate) fn location(&self) -> String {
         match &self.target {
@@ -204,9 +212,21 @@ pub(crate) fn russet_layer() -> Result<Layer, String> {
     Layer::directory(&config_root()?.join("Russet"))
 }
 
+/// A domain value after AutoPkg's `__deepconvert_objc`, which truncates
+/// numbers to integers at the top level and inside arrays.
+fn autopkg_numbers(value: &Value) -> Value {
+    match value {
+        Value::Array(items) => Value::Array(items.iter().map(autopkg_numbers).collect()),
+        other => crate::pprint::autopkg_number(other),
+    }
+}
+
 /// The merged preferences and the layer that receives changes.
 pub(crate) struct Store {
     pub(crate) values: Dictionary,
+    /// Keys whose values come from a macOS domain. AutoPkg converts these
+    /// with PyObjC, so `info` shows them the same way.
+    pub(crate) native: Vec<String>,
     russet: Layer,
     explicit: Option<Layer>,
     /// The recipe repositories in AutoPkg's preferences, read on first use.
@@ -222,11 +242,20 @@ impl Store {
     }
     pub(crate) fn new(russet: Layer, explicit: Option<Layer>) -> Self {
         let mut values = russet.values.clone();
+        let mut native = Vec::new();
+        if russet.is_domain() {
+            for (key, value) in values.iter_mut() {
+                *value = autopkg_numbers(value);
+                native.push(key.clone());
+            }
+        }
         if let Some(explicit) = &explicit {
+            native.retain(|key| !explicit.values.contains_key(key));
             values.extend(explicit.values.clone());
         }
         Self {
             values,
+            native,
             russet,
             explicit,
             autopkg_repos: OnceCell::new(),
@@ -447,6 +476,26 @@ mod tests {
         let saved = Preferences::load(&directory.join("config.json")).unwrap();
         assert_eq!(saved.format, Format::Json);
         assert_eq!(saved.values["KEY"].as_string(), Some("value"));
+    }
+
+    #[test]
+    fn domain_numbers_are_truncated_like_autopkg() {
+        let value = Value::Array(vec![
+            Value::Real(2.75),
+            Value::Real(-2.5),
+            Value::Array(vec![Value::Real(4.75)]),
+            Value::Dictionary(Dictionary::from_iter([("f", Value::Real(3.25))])),
+        ]);
+        assert_eq!(
+            autopkg_numbers(&value),
+            Value::Array(vec![
+                Value::from(2),
+                Value::from(-2),
+                Value::Array(vec![Value::from(4)]),
+                Value::Dictionary(Dictionary::from_iter([("f", Value::Real(3.25))])),
+            ])
+        );
+        assert_eq!(autopkg_numbers(&Value::Real(1.9)), Value::from(1));
     }
 
     #[test]

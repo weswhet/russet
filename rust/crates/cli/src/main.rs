@@ -7,6 +7,7 @@ mod jobs;
 mod manage;
 mod migrate;
 mod options;
+mod pprint;
 mod search;
 use std::{
     env,

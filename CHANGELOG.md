@@ -52,6 +52,11 @@ compatibility version 3.0.0.
 - On macOS, Russet reads keys in `/Library/Preferences/com.github.russet.plist`
   and keys that configuration profiles set, as Python AutoPkg does for its
   domain.
+- On macOS, decimal numbers from the preference domain become whole numbers at
+  the top level and inside arrays, as in Python AutoPkg, so recipes get the
+  same values.
+- `info` wraps long values like Python's `pprint`, and shows dates, data, and
+  nested arrays from the macOS preference domain the way Python AutoPkg does.
 - Trust records include processors that Russet doesn't have, such as those in
   recipe repositories, with the same hashes as Python AutoPkg, so
   `verify-trust-info`, `update-trust-info`, and `make-override` work for
