@@ -1528,7 +1528,8 @@ mod tests {
             search[1..],
             [
                 home.join("Library/Russet/Recipes"),
-                PathBuf::from("/Library/Russet/Recipes")
+                // Windows resolves a rooted path against the current drive.
+                expand("/Library/Russet/Recipes").unwrap()
             ]
         );
         assert_eq!(overrides, [home.join("Library/Russet/RecipeOverrides")]);
