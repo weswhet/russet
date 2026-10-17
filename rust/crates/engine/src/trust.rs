@@ -329,7 +329,23 @@ fn trust_entry(path: &Path, hash: String) -> Dictionary {
     entry
 }
 
+/// The file a trust record names, with a leading `~` expanded, for messages.
+fn record_path(entry: &Value) -> Option<String> {
+    let path = entry.as_dictionary()?.get("path")?.as_string()?;
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
+    Some(match (path.strip_prefix("~/"), home) {
+        (Some(relative), Some(home)) => PathBuf::from(home)
+            .join(relative)
+            .to_string_lossy()
+            .into_owned(),
+        _ => path.to_owned(),
+    })
+}
+
+/// Compares trust records. Like AutoPkg, it reports every changed processor,
+/// script and parent recipe, one per line with an indented `Path:` line.
 fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
+    let mut errors = String::new();
     let processors = expected
         .get("non_core_processors")
         .ok_or("Missing non_core_processors trust record")?
@@ -363,10 +379,12 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
             .and_then(Value::as_string)
             .ok_or("Invalid processor SHA-256 trust record")?;
         if actual_hash == "PROCESSOR FILEPATH NOT FOUND" {
-            return Err(format!("Expected processor {name} can't be found"));
-        }
-        if hash != actual_hash {
-            return Err(format!("Processor {name} contents differ from expected"));
+            errors += &format!("Expected processor {name} can't be found.\n");
+        } else if hash != actual_hash {
+            errors += &format!("Processor {name} contents differ from expected.\n");
+            if let Some(path) = record_path(&actual_processors[name]) {
+                errors += &format!("    Path: {path}\n");
+            }
         }
     }
     let expected_scripts = expected
@@ -390,9 +408,13 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
             .and_then(|d| d.get("sha256_hash"))
             .and_then(Value::as_string);
         if actual_hash != Some(hash) {
-            return Err(format!(
-                "Script {key} contents differ from expected or cannot be found"
-            ));
+            errors += &match actual_hash {
+                Some(_) => format!("Script {key} contents differ from expected.\n"),
+                None => format!("Expected script {key} can't be found.\n"),
+            };
+            if let Some(path) = record_path(entry).filter(|path| !path.is_empty()) {
+                errors += &format!("    Path: {path}\n");
+            }
         }
     }
     for key in actual_scripts
@@ -416,10 +438,17 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
             .and_then(Value::as_string)
             .ok_or("Invalid parent recipe SHA-256 trust record")?;
         if actual[id].as_dictionary().unwrap()["sha256_hash"].as_string() != Some(hash) {
-            return Err(format!("Parent recipe {id} contents differ from expected"));
+            errors += &format!("Parent recipe {id} contents differ from expected.\n");
+            if let Some(path) = record_path(&actual[id]) {
+                errors += &format!("    Path: {path}\n");
+            }
         }
     }
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 /// Load a trusted local override. The caller supplies configured directories;
@@ -440,7 +469,9 @@ pub fn load_verified_recipe(
     let expected = data
         .get("ParentRecipeTrustInfo")
         .and_then(Value::as_dictionary)
-        .ok_or("No parent recipe trust information present")?;
+        // AutoPkg treats empty trust information as none.
+        .filter(|info| !info.is_empty())
+        .ok_or("No trust information present.")?;
     let parent = data
         .get("ParentRecipe")
         .or_else(|| data.get("Recipe"))
@@ -881,7 +912,7 @@ mod tests {
         std::fs::remove_file(root.join("scripts/postinstall")).unwrap();
         assert!(verify(&original, &parent_trust_info(&parent, &[]).unwrap())
             .unwrap_err()
-            .contains("Script scripts/postinstall"));
+            .contains("Expected script scripts/postinstall can't be found.\n"));
     }
     #[test]
     fn verifies_parents_and_rejects_mutation_and_external_origin() {
@@ -946,6 +977,34 @@ mod tests {
         assert!(verify(&expected, &actual).unwrap_err().contains("graph"));
     }
     #[test]
+    fn reports_every_changed_parent_with_its_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let parent = temp.path().join("parent.recipe.yaml");
+        let base = temp.path().join("base.recipe.yaml");
+        std::fs::write(&base, "Identifier: org.base\nInput: {}\nProcess: []\n").unwrap();
+        std::fs::write(
+            &parent,
+            "Identifier: org.parent\nParentRecipe: org.base\nInput: {}\nProcess: []\n",
+        )
+        .unwrap();
+        let info = parent_trust_info(&parent, &[]).unwrap();
+        for path in [&parent, &base] {
+            let text = std::fs::read_to_string(path).unwrap();
+            std::fs::write(path, text.replace("Input: {}", "Input: {NAME: changed}")).unwrap();
+        }
+        let error = verify(&info, &parent_trust_info(&parent, &[]).unwrap()).unwrap_err();
+        for (id, path) in [("org.parent", &parent), ("org.base", &base)] {
+            let path = crate::normal_recipe_path(path.canonicalize().unwrap());
+            assert!(
+                error.contains(&format!(
+                    "Parent recipe {id} contents differ from expected.\n    Path: {}\n",
+                    path.display()
+                )),
+                "{error}"
+            );
+        }
+    }
+    #[test]
     fn hashes_entire_inheritance_chain_and_script_contents() {
         let temp = tempfile::tempdir().unwrap();
         let parent = temp.path().join("parent.recipe.yaml");
@@ -982,6 +1041,6 @@ mod tests {
         std::fs::write(scripts.join("postinstall"), b"changed").unwrap();
         assert!(verify(&expected, &parent_trust_info(&parent, &[]).unwrap())
             .unwrap_err()
-            .contains("Script scripts/postinstall"));
+            .contains("Script scripts/postinstall contents differ from expected.\n"));
     }
 }

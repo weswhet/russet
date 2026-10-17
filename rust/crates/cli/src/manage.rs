@@ -64,6 +64,8 @@ struct Options {
 }
 fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
     let mut o = Options::default();
+    // AutoPkg adds a recipe list's recipes after the named ones.
+    let mut listed = Vec::new();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
@@ -97,29 +99,18 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
             "-v" | "--verbose" if verb == "verify-trust-info" => o.verbose = true,
             "-l" | "--recipe-list" if verb == "verify-trust-info" => {
                 let file = expand(iter.next().ok_or("--recipe-list requires a file")?)?;
-                let bytes = fs::read(file).map_err(|e| e.to_string())?;
-                if let Ok(value) = Value::from_reader(std::io::Cursor::new(&bytes)) {
-                    let recipes = value
-                        .as_dictionary()
-                        .and_then(|d| d.get("recipes"))
-                        .and_then(Value::as_array)
-                        .ok_or("Recipe list plist requires recipes array")?;
-                    for recipe in recipes {
-                        o.args.push(
-                            recipe
-                                .as_string()
-                                .ok_or("Recipe names must be strings")?
-                                .into(),
-                        );
-                    }
-                } else {
-                    o.args.extend(
-                        String::from_utf8(bytes)
-                            .map_err(|e| e.to_string())?
-                            .lines()
-                            .map(str::trim)
-                            .filter(|s| !s.is_empty() && !s.starts_with('#'))
-                            .map(str::to_owned),
+                let list = crate::read_recipe_list(&file)?;
+                for recipe in list
+                    .get("recipes")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
+                    listed.push(
+                        recipe
+                            .as_string()
+                            .ok_or("Recipe names must be strings")?
+                            .into(),
                     );
                 }
             }
@@ -134,9 +125,14 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
             _ => o.args.push(arg.clone()),
         }
     }
+    o.args.extend(listed);
     Ok(o)
 }
-fn pref_dirs(values: &Dictionary, key: &str, defaults: &[&str]) -> Result<Vec<String>, String> {
+pub(crate) fn pref_dirs(
+    values: &Dictionary,
+    key: &str,
+    defaults: &[&str],
+) -> Result<Vec<String>, String> {
     let paths = match values.get(key) {
         Some(Value::String(v)) if !v.is_empty() => vec![v.clone()],
         Some(Value::Array(v)) if !v.is_empty() => v
@@ -675,7 +671,9 @@ fn trust(store: &Store, o: &Options, verify: bool) -> Result<i32, String> {
             status = 1;
             autopkg_platform::text_eprintln!("{requested}: FAILED");
             if o.verbose || !verify {
-                autopkg_platform::text_eprintln!("    {error}");
+                for line in error.lines() {
+                    autopkg_platform::text_eprintln!("    {line}");
+                }
             }
         }
     }
