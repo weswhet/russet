@@ -51,7 +51,11 @@ compatibility version 3.0.0.
   folders, so paths that AutoPkg's preferences name keep working.
 - On macOS, Russet reads keys in `/Library/Preferences/com.github.russet.plist`
   and keys that configuration profiles set, as Python AutoPkg does for its
-  domain. `repo-delete` keeps the folder of a recipe
+  domain.
+- Trust records include processors that Russet doesn't have, such as those in
+  recipe repositories, with the same hashes as Python AutoPkg, so
+  `verify-trust-info`, `update-trust-info`, and `make-override` work for
+  recipes that use them. Russet still can't run those processors. `repo-delete` keeps the folder of a recipe
   repository that AutoPkg's preferences list.
 - Clones, overrides, recipes, the cache, and the recipe map default to folders
   in `~/Library/Russet` and `/Library/Russet`.
