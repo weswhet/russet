@@ -852,6 +852,25 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
             }
         }
         "processor-info" => {
+            // Loading the -r recipe generates the recipe map like AutoPkg.
+            let mut prefs = None;
+            let mut recipe = None;
+            let mut arguments = rest.iter();
+            while let Some(arg) = arguments.next() {
+                match arg.as_str() {
+                    "--prefs" => prefs = arguments.next(),
+                    "-r" | "--recipe" => recipe = arguments.next(),
+                    "--" => break,
+                    _ => {}
+                }
+            }
+            if recipe.is_some_and(|r| !std::path::Path::new(r).is_file()) {
+                let prefs = match prefs {
+                    Some(path) => dictionary(path)?,
+                    None => manage::load_preferences(None)?,
+                };
+                manage::ensure_recipe_map(&prefs)?;
+            }
             let rest = options::operands(verb, rest);
             if rest.len() != 1 {
                 autopkg_platform::text_eprintln!("Need exactly one processor name");

@@ -66,9 +66,73 @@ fn list_tree(path: &Path, action: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Clears one recipe's cache, which is named by the identifier of the recipe
+/// that `run` would use, so an override's own identifier.
+#[allow(clippy::too_many_arguments)]
+fn clear_recipe(
+    prefs: &Dictionary,
+    name: &str,
+    mut search: Vec<PathBuf>,
+    mut overrides: Vec<PathBuf>,
+    root: &Path,
+    action: &str,
+    verbose: usize,
+    dry_run: bool,
+) -> Result<i32, String> {
+    let (configured_search, configured_overrides) = super::manage::recipe_directories(prefs)?;
+    if search.is_empty() {
+        search = configured_search;
+    }
+    if overrides.is_empty() {
+        overrides = configured_overrides;
+    }
+    if !Path::new(name).is_file() {
+        super::manage::ensure_recipe_map(prefs)?;
+    }
+    overrides.extend(search);
+    let Ok(path) = super::manage::locate(name, &overrides, true) else {
+        autopkg_platform::text_eprintln!("No valid recipe found for {name}");
+        return Ok(1);
+    };
+    let raw = autopkg_engine::read_recipe(&path)?;
+    let Some(identifier) = raw
+        .get("Identifier")
+        .or_else(|| {
+            raw.get("Input")
+                .and_then(Value::as_dictionary)
+                .and_then(|i| i.get("IDENTIFIER"))
+        })
+        .and_then(Value::as_string)
+    else {
+        autopkg_platform::text_eprintln!("ERROR: Could not determine recipe identifier for {name}");
+        return Ok(1);
+    };
+    let target = autopkg_engine::cache::recipe_cache_path(root, identifier)?;
+    if target == root {
+        return Err("Recipe cache path must be below CACHE_DIR".into());
+    }
+    if !target.exists() {
+        autopkg_platform::text_eprintln!(
+            "ERROR: Recipe cache directory does not exist: {}",
+            target.display()
+        );
+        return Ok(1);
+    }
+    autopkg_platform::text_println!("{action} {}", target.display());
+    if verbose > 1 {
+        list_tree(&target, action)?;
+    }
+    if let Err(error) = remove_item(&target, dry_run) {
+        autopkg_platform::text_eprintln!("ERROR: Could not remove {}: {error}", target.display());
+        return Ok(1);
+    }
+    Ok(0)
+}
+
 pub fn run(args: &[String]) -> Result<i32, String> {
     let mut prefs = super::manage::load_preferences(None)?;
     let mut search = Vec::new();
+    let mut overrides = Vec::new();
     let mut dry_run = false;
     let mut verbose = 0;
     let mut targets = Vec::new();
@@ -81,8 +145,13 @@ pub fn run(args: &[String]) -> Result<i32, String> {
             "--dry-run" => dry_run = true,
             "-v" | "--verbose" => verbose += 1,
             "-vv" => verbose += 2,
-            "-d" | "--search-dir" | "--override-dir" => search.push(PathBuf::from(
+            "-d" | "--search-dir" => search.push(PathBuf::from(
                 arguments.next().ok_or("Search directory requires a path")?,
+            )),
+            "--override-dir" => overrides.push(PathBuf::from(
+                arguments
+                    .next()
+                    .ok_or("Override directory requires a path")?,
             )),
             flag if flag.starts_with('-') => {
                 return Err(format!("Unknown clear-cache option '{flag}'"))
@@ -116,29 +185,9 @@ pub fn run(args: &[String]) -> Result<i32, String> {
         }
         entries
     } else {
-        let recipe = autopkg_engine::load_recipe(Path::new(targets[0]), &search)?;
-        let raw = autopkg_engine::read_recipe(&recipe.source)?;
-        let identifier = raw
-            .get("Identifier")
-            .or_else(|| {
-                raw.get("Input")
-                    .and_then(Value::as_dictionary)
-                    .and_then(|i| i.get("IDENTIFIER"))
-            })
-            .and_then(Value::as_string)
-            .ok_or("Could not determine explicit recipe identifier")?;
-        let target = autopkg_engine::cache::recipe_cache_path(&root, identifier)?;
-        if target == root {
-            return Err("Recipe cache path must be below CACHE_DIR".into());
-        }
-        if !target.exists() {
-            return Err(format!(
-                "Recipe cache directory does not exist: {}",
-                target.display()
-            ));
-        }
-        autopkg_platform::text_println!("{action} {}", target.display());
-        vec![target]
+        return clear_recipe(
+            &prefs, targets[0], search, overrides, &root, action, verbose, dry_run,
+        );
     };
     let mut success = true;
     for item in items {
@@ -199,6 +248,53 @@ mod tests {
         assert!(cache_value(Some(&Value::from(""))).unwrap().is_none());
         assert!(cache_value(Some(&Value::Boolean(false))).unwrap().is_none());
         assert!(cache_value(Some(&Value::Boolean(true))).is_err());
+    }
+    #[test]
+    fn recipe_cache_uses_the_override_identifier() {
+        let temp = tempfile::tempdir().unwrap();
+        let (recipes, overrides, cache) = (
+            temp.path().join("recipes"),
+            temp.path().join("overrides"),
+            temp.path().join("cache"),
+        );
+        for dir in [&recipes, &overrides, &cache.join("org.test.app")] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        let recipe = |path: PathBuf, identifier: &str| {
+            Value::Dictionary(Dictionary::from_iter([
+                ("Identifier", Value::from(identifier)),
+                ("Input", Value::Dictionary(Dictionary::new())),
+                ("Process", Value::Array(vec![])),
+            ]))
+            .to_file_xml(path)
+            .unwrap()
+        };
+        recipe(recipes.join("App.recipe"), "org.test.app");
+        let text = |p: &Path| Value::from(p.to_string_lossy().into_owned());
+        let prefs = Dictionary::from_iter([
+            ("DISABLE_RECIPE_MAP", Value::Boolean(true)),
+            ("RECIPE_SEARCH_DIRS", Value::Array(vec![text(&recipes)])),
+            ("RECIPE_OVERRIDE_DIRS", Value::Array(vec![text(&overrides)])),
+        ]);
+        let clear = |overrides: Vec<PathBuf>| {
+            clear_recipe(
+                &prefs,
+                "App",
+                vec![],
+                overrides,
+                &cache,
+                "Removing",
+                0,
+                true,
+            )
+        };
+        assert_eq!(clear(vec![]).unwrap(), 0);
+        // The override's cache folder doesn't exist, even though its
+        // parent's does.
+        recipe(overrides.join("App.recipe"), "local.App");
+        assert_eq!(clear(vec![]).unwrap(), 1);
+        assert_eq!(clear(vec![temp.path().join("none")]).unwrap(), 0);
+        assert!(cache.join("org.test.app").is_dir());
     }
     #[test]
     fn dry_run_preserves_contents() {

@@ -270,7 +270,7 @@ fn scan(directory: &Path, follow: bool) -> Result<Vec<PathBuf>, String> {
     }
     Ok(result)
 }
-fn locate(request: &str, dirs: &[PathBuf], follow: bool) -> Result<PathBuf, String> {
+pub(crate) fn locate(request: &str, dirs: &[PathBuf], follow: bool) -> Result<PathBuf, String> {
     let direct = expand(request)?;
     if direct.is_file() {
         return Ok(direct);
