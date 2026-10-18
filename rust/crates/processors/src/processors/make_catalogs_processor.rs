@@ -299,7 +299,7 @@ pub(crate) fn rebuild_catalogs(root: &Path) -> Result<(Vec<String>, Vec<String>)
             }
             match fs::read(&path) {
                 Ok(bytes) => {
-                    hashes.insert(name, format!("{:x}", Sha256::digest(bytes)).into());
+                    hashes.insert(name, crate::hex(&Sha256::digest(bytes)).into());
                 }
                 Err(e) => errors.push(format!("Error reading icons/{name}: {e}")),
             }

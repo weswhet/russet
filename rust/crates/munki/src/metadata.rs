@@ -151,11 +151,30 @@ pub(crate) fn command(program: &str, args: &[&std::ffi::OsStr]) -> Result<Vec<u8
     autopkg_platform::run(std::ffi::OsStr::new(program), args).map(|o| o.stdout)
 }
 pub(crate) fn hash(path: &Path) -> Result<String, String> {
-    // Packages and disk images can be several gigabytes, so hash as we read.
     let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
-    let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
-    Ok(format!("{:x}", hasher.finalize()))
+    hex_digest::<Sha256>(&mut file).map_err(|e| e.to_string())
+}
+/// Hashes everything `reader` yields, as lowercase hex. Packages and disk
+/// images can be several gigabytes, so this hashes as it reads.
+pub(crate) fn hex_digest<D: Digest>(reader: &mut impl std::io::Read) -> std::io::Result<String> {
+    struct Hasher<D>(D);
+    impl<D: Digest> std::io::Write for Hasher<D> {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.update(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut hasher = Hasher(D::new());
+    std::io::copy(reader, &mut hasher)?;
+    Ok(hasher
+        .0
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect())
 }
 fn text(d: &Dictionary, key: &str) -> Option<String> {
     d.get(key).and_then(Value::as_string).map(str::to_owned)

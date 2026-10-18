@@ -95,7 +95,7 @@ mod tests {
             hashes.as_dictionary().unwrap()["example.png"]
                 .as_string()
                 .unwrap(),
-            format!("{:x}", Sha256::digest(b"icon"))
+            crate::hex(&Sha256::digest(b"icon"))
         );
         assert_eq!(
             Value::from_file(root.join("catalogs/testing")).unwrap(),

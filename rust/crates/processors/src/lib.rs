@@ -191,6 +191,10 @@ fn truth(value: Option<&Value>) -> bool {
 fn io<T>(result: std::io::Result<T>) -> Result<T> {
     result.map_err(|e| e.to_string())
 }
+/// Lowercase hex, the way recipes see a digest.
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
 fn mode(path: &Path, text: &str) -> Result<()> {
     let bits = u32::from_str_radix(text, 8).map_err(|e| e.to_string())?;
     #[cfg(unix)]

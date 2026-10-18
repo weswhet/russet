@@ -60,7 +60,7 @@ fn collect(
     }
     graph.insert(
         identifier.into(),
-        (path.clone(), format!("{:x}", Sha256::digest(bytes))),
+        (path.clone(), hex(&Sha256::digest(bytes))),
     );
     if let Some(parent) = data.get("ParentRecipe").or_else(|| data.get("Recipe")) {
         let mut search = dirs.to_vec();
@@ -152,7 +152,7 @@ fn processor_trust(
                 ));
             }
             let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            trust_entry(&path, format!("{:x}", Sha256::digest(bytes)))
+            trust_entry(&path, hex(&Sha256::digest(bytes)))
         } else {
             // This sentinel and empty path match Python's persisted record.
             // Verification below deliberately refuses to trust a missing file.
@@ -236,7 +236,7 @@ fn script_trust(
             }
             let hash = if path.is_file() {
                 let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-                format!("{:x}", Sha256::digest(bytes))
+                hex(&Sha256::digest(bytes))
             } else {
                 "NOT A FILE".into()
             };
@@ -492,6 +492,11 @@ pub fn load_verified_recipe(
     Ok(recipe)
 }
 
+/// Lowercase hex, the way trust info records a digest.
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -517,7 +522,7 @@ mod tests {
         assert_eq!(processors.len(), 1);
         assert_eq!(
             processors["MozillaURLProvider"].as_dictionary().unwrap()["sha256_hash"].as_string(),
-            Some(format!("{:x}", Sha256::digest(b"this must never execute!")).as_str())
+            Some(hex(&Sha256::digest(b"this must never execute!")).as_str())
         );
         verify(&info, &info).unwrap();
         std::fs::write(&source, "changed").unwrap();
@@ -583,7 +588,7 @@ mod tests {
             assert!(!entries.contains_key("GenerateRelocatablePython"));
             assert_eq!(
                 entries[alias].as_dictionary().unwrap()["sha256_hash"].as_string(),
-                Some(format!("{:x}", Sha256::digest(expected.as_bytes())).as_str())
+                Some(hex(&Sha256::digest(expected.as_bytes())).as_str())
             );
             verify(&info, &info).unwrap();
         };
@@ -652,7 +657,7 @@ mod tests {
         ] {
             assert_eq!(
                 processors[name].as_dictionary().unwrap()["sha256_hash"].as_string(),
-                Some(format!("{:x}", Sha256::digest(source.as_bytes())).as_str())
+                Some(hex(&Sha256::digest(source.as_bytes())).as_str())
             );
         }
         verify(&info, &info).unwrap();
@@ -827,10 +832,7 @@ mod tests {
                 "parent_recipes",
                 Value::Dictionary(Dictionary::from_iter([(
                     "org.parent",
-                    Value::Dictionary(trust_entry(
-                        &parent,
-                        format!("{:x}", Sha256::digest(source)),
-                    )),
+                    Value::Dictionary(trust_entry(&parent, hex(&Sha256::digest(source)))),
                 )])),
             ),
             ("non_core_processors", Value::Dictionary(Dictionary::new())),
@@ -838,10 +840,7 @@ mod tests {
                 "scripts",
                 Value::Dictionary(Dictionary::from_iter([(
                     "scripts/postinstall",
-                    Value::Dictionary(trust_entry(
-                        &script,
-                        format!("{:x}", Sha256::digest(b"original")),
-                    )),
+                    Value::Dictionary(trust_entry(&script, hex(&Sha256::digest(b"original")))),
                 )])),
             ),
         ]);
