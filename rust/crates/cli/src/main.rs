@@ -37,7 +37,9 @@ fn list_strings(values: &Dictionary, key: &str) -> Result<Vec<String>, String> {
         _ => Err(format!("{key} must be an array")),
     }
 }
-fn read_recipe_list(path: &str) -> Result<Dictionary, String> {
+/// Reads a recipe list the way AutoPkg's `parse_recipe_list` does: a plist
+/// dictionary, or else one recipe per line, skipping blank and `#` lines.
+pub(crate) fn read_recipe_list(path: impl AsRef<std::path::Path>) -> Result<Dictionary, String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
     if bytes.starts_with(b"bplist") || bytes.starts_with(b"<?xml") || bytes.starts_with(b"<plist") {
         if let Ok(value) = Value::from_reader(io::Cursor::new(&bytes)) {
@@ -392,6 +394,35 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         cache_root.to_string_lossy().into_owned().into(),
     );
     let (configured_search, configured_overrides) = manage::recipe_directories(&initial)?;
+    // Like AutoPkg, recipes see the folders this run searches, as given on
+    // the command line or in preferences, or the defaults. The recipe map
+    // and trust checks still use the preferences.
+    let mut directories = Vec::new();
+    for (key, given, defaults) in [
+        (
+            "RECIPE_SEARCH_DIRS",
+            &paths,
+            &manage::DEFAULT_SEARCH_DIRS[..],
+        ),
+        (
+            "RECIPE_OVERRIDE_DIRS",
+            &override_paths,
+            &manage::DEFAULT_OVERRIDE_DIRS[..],
+        ),
+    ] {
+        let dirs = if given.is_empty() {
+            manage::pref_dirs(&initial, key, defaults)?
+        } else {
+            given
+                .iter()
+                .map(|path| path.to_string_lossy().into_owned())
+                .collect()
+        };
+        directories.push((
+            key,
+            Value::Array(dirs.into_iter().map(Value::String).collect()),
+        ));
+    }
     if paths.is_empty() {
         paths = configured_search;
     }
@@ -411,13 +442,15 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     {
         manage::ensure_recipe_map(&initial)?;
     }
-    // Resolve and validate all recipes before any recipe can mutate the filesystem.
-    let mut loaded = recipes
+    // Resolve and validate all recipes before any recipe can mutate the
+    // filesystem. A recipe that fails trust verification doesn't stop the
+    // run: like AutoPkg, it's reported as a failed recipe.
+    let loaded = recipes
         .iter()
-        .map(|path| {
-            let path = autopkg_engine::resolve_recipe(&PathBuf::from(path), &search_paths)?;
-            let has_trust =
-                autopkg_engine::read_recipe(&path)?.contains_key("ParentRecipeTrustInfo");
+        .map(|name| {
+            let path = autopkg_engine::resolve_recipe(&PathBuf::from(name), &search_paths)?;
+            let data = autopkg_engine::read_recipe(&path)?;
+            let has_trust = data.contains_key("ParentRecipeTrustInfo");
             let fail_without_trust = keys
                 .get("FAIL_RECIPES_WITHOUT_TRUST_INFO")
                 .or_else(|| initial.get("FAIL_RECIPES_WITHOUT_TRUST_INFO"))
@@ -428,31 +461,63 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
                     Value::Integer(n) => n.as_signed() != Some(0),
                     _ => true,
                 });
+            let identifier = || {
+                data.get("Identifier")
+                    .and_then(Value::as_string)
+                    .unwrap_or_default()
+                    .to_owned()
+            };
             if !ignore_trust && fail_without_trust && !has_trust {
-                return Err(format!(
-                    "{} is missing parent recipe trust information",
-                    path.display()
-                ));
+                return Ok(Err(Untrusted {
+                    identifier: identifier(),
+                    message: missing_trust_message(name, &path, &data, &policy, verbose),
+                }));
             }
-            if ignore_trust {
-                autopkg_engine::load_unverified_recipe(&path, &search_paths)
+            Ok(if ignore_trust {
+                Ok(autopkg_engine::load_unverified_recipe(
+                    &path,
+                    &search_paths,
+                )?)
             } else if has_trust {
-                autopkg_engine::trust::load_verified_recipe(&path, &search_paths, &policy)
+                autopkg_engine::trust::load_verified_recipe(&path, &search_paths, &policy).map_err(
+                    |message| Untrusted {
+                        identifier: identifier(),
+                        message,
+                    },
+                )
             } else {
-                autopkg_engine::load_recipe(&path, &search_paths)
-            }
+                Ok(autopkg_engine::load_recipe(&path, &search_paths)?)
+            })
         })
-        .collect::<Result<Vec<_>, _>>()?;
-    for recipe in &mut loaded {
-        recipe.add_processors(&pre, &post);
-        if check_only {
-            *recipe = recipe.check_phase()?;
+        .collect::<Result<Vec<_>, String>>()?;
+    // A recipe without a check phase is skipped, as in AutoPkg, and the run
+    // still fails.
+    let mut skipped = 0;
+    let mut kept = Vec::new();
+    for (name, mut recipe) in recipes.into_iter().zip(loaded) {
+        if let Ok(recipe) = &mut recipe {
+            recipe.add_processors(&pre, &post);
+            if check_only {
+                let Ok(checked) = recipe.check_phase() else {
+                    autopkg_platform::text_eprintln!(
+                        "Recipe at {name} is missing EndOfCheckPhase Processor, not possible to perform check."
+                    );
+                    skipped += 1;
+                    continue;
+                };
+                *recipe = checked;
+            }
         }
+        kept.push((name, recipe));
     }
+    let (recipes, loaded): (Vec<_>, Vec<_>) = kept.into_iter().unzip();
     let jobs = match jobs {
         Some(count) => count,
         None => jobs::preference(&keys, &initial)?.unwrap_or(1),
     };
+    for (key, dirs) in directories {
+        initial.insert(key.into(), dirs);
+    }
     let mut context = RunContext {
         initial: &initial,
         keys: &keys,
@@ -468,7 +533,12 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     // Each recipe's cache folder. Recipes that share one never run at the
     // same time.
     let mut caches = Vec::new();
-    for recipe in &loaded {
+    for (index, recipe) in loaded.iter().enumerate() {
+        let Ok(recipe) = recipe else {
+            // Nothing runs, so it shares a cache folder with no other recipe.
+            caches.push(PathBuf::from(format!("\0untrusted-{index}")));
+            continue;
+        };
         let inputs = context.inputs(recipe)?;
         autopkg_engine::validate_recipe(recipe, &inputs)?;
         let root = inputs
@@ -500,11 +570,13 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     let barriers: Vec<_> = loaded
         .iter()
         .map(|recipe| {
-            recipe.process.iter().any(|step| {
-                autopkg_processors::canonical_name(&step.processor)
-                    .rsplit('/')
-                    .next()
-                    == Some("MakeCatalogsProcessor")
+            recipe.as_ref().is_ok_and(|recipe| {
+                recipe.process.iter().any(|step| {
+                    autopkg_processors::canonical_name(&step.processor)
+                        .rsplit('/')
+                        .next()
+                        == Some("MakeCatalogsProcessor")
+                })
             })
         })
         .collect();
@@ -522,7 +594,10 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
             let _prefix =
                 prefixed.then(|| autopkg_platform::text_output::prefix_scope(&recipes[index]));
             let block = autopkg_platform::live::recipe(&recipes[index]);
-            let outcome = context.run_one(&loaded[index], &recipes[index])?;
+            let outcome = match &loaded[index] {
+                Ok(recipe) => context.run_one(recipe, &recipes[index])?,
+                Err(untrusted) => context.untrusted(untrusted, &recipes[index]),
+            };
             match &outcome.failure {
                 Some((message, _)) => block.finish(Err(message)),
                 None => block.finish(Ok(())),
@@ -551,7 +626,11 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     for ((outcome, recipe), requested_name) in outcomes.iter().zip(&loaded).zip(&recipes) {
         report.add_receipt(&outcome.receipt)?;
         if let Some((message, traceback)) = &outcome.failure {
-            report.add_failure(requested_name, Some(&recipe.identifier), message, traceback);
+            let identifier = match recipe {
+                Ok(recipe) => &recipe.identifier,
+                Err(untrusted) => &untrusted.identifier,
+            };
+            report.add_failure(requested_name, Some(identifier), message, traceback);
         }
     }
     print_summary(&report)?;
@@ -559,7 +638,47 @@ fn run(verb: &str, args: &[String]) -> Result<i32, String> {
         report.write(&path)?;
         autopkg_platform::text_println!("\nReport plist saved to {}.", path.display());
     }
-    Ok(if report.failures.is_empty() { 0 } else { 70 })
+    Ok(if report.failures.is_empty() && skipped == 0 {
+        0
+    } else {
+        70
+    })
+}
+
+/// A recipe that failed trust verification, which AutoPkg reports as a
+/// failed recipe without running it.
+struct Untrusted {
+    identifier: String,
+    message: String,
+}
+
+/// AutoPkg's message when `FAIL_RECIPES_WITHOUT_TRUST_INFO` is set and a
+/// recipe has no trust information. With `-vv`, it says how to add some.
+fn missing_trust_message(
+    name: &str,
+    path: &std::path::Path,
+    data: &Dictionary,
+    policy: &autopkg_engine::trust::TrustPolicy,
+    verbose: u64,
+) -> String {
+    let mut message = String::from("No trust information present.");
+    if verbose > 1 {
+        let resolved = path.canonicalize().unwrap_or_else(|_| path.to_owned());
+        let in_override = policy
+            .override_dirs
+            .iter()
+            .filter_map(|dir| dir.canonicalize().ok())
+            .any(|dir| resolved.starts_with(dir));
+        if in_override && data.contains_key("ParentRecipe") {
+            message +=
+                &format!("\nAudit the parent recipe, then run:\n\trusset update-trust-info {name}");
+        } else {
+            message += &format!(
+                "\nAudit the recipe, then store trust info by running:\n\trusset make-override {name}"
+            );
+        }
+    }
+    message
 }
 
 /// What one recipe's run left: its receipt and, if it failed, the message
@@ -601,6 +720,27 @@ impl RunContext<'_> {
             root.to_string_lossy().into_owned().into(),
         );
         Ok(inputs)
+    }
+
+    /// Reports a recipe that failed trust verification the way AutoPkg
+    /// does: it starts processing it, fails, and records the error.
+    fn untrusted(&self, untrusted: &Untrusted, requested_name: &str) -> Outcome {
+        if !self.live {
+            autopkg_platform::text_println!("Processing {requested_name}...");
+            autopkg_platform::text_eprintln!("Failed local trust verification.");
+        }
+        let message = untrusted.message.clone();
+        let traceback = format!(
+            "{message}\nNative Rust backtrace:\n{}",
+            std::backtrace::Backtrace::force_capture()
+        );
+        Outcome {
+            receipt: vec![Value::Dictionary(Dictionary::from_iter([(
+                "RecipeError",
+                Value::String(message.trim_end().to_owned()),
+            )]))],
+            failure: Some((message, traceback)),
+        }
     }
 
     /// Runs one recipe and saves its receipt. An `Err` stops the whole run.
@@ -714,16 +854,20 @@ fn print_summary(report: &autopkg_engine::report::Report) -> Result<(), String> 
         autopkg_platform::text_println!("\nThe following recipes failed:");
         for failure in &report.failures {
             autopkg_platform::text_println!(
-                "    {}\n        {}",
+                "    {}",
                 failure
                     .get("recipe")
                     .and_then(Value::as_string)
-                    .unwrap_or(""),
-                failure
-                    .get("message")
-                    .and_then(Value::as_string)
                     .unwrap_or("")
             );
+            for line in failure
+                .get("message")
+                .and_then(Value::as_string)
+                .unwrap_or("")
+                .lines()
+            {
+                autopkg_platform::text_println!("        {line}");
+            }
         }
     }
     if report.summary_results.is_empty() {
@@ -852,6 +996,25 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
             }
         }
         "processor-info" => {
+            // Loading the -r recipe generates the recipe map like AutoPkg.
+            let mut prefs = None;
+            let mut recipe = None;
+            let mut arguments = rest.iter();
+            while let Some(arg) = arguments.next() {
+                match arg.as_str() {
+                    "--prefs" => prefs = arguments.next(),
+                    "-r" | "--recipe" => recipe = arguments.next(),
+                    "--" => break,
+                    _ => {}
+                }
+            }
+            if recipe.is_some_and(|r| !std::path::Path::new(r).is_file()) {
+                let prefs = match prefs {
+                    Some(path) => dictionary(path)?,
+                    None => manage::load_preferences(None)?,
+                };
+                manage::ensure_recipe_map(&prefs)?;
+            }
             let rest = options::operands(verb, rest);
             if rest.len() != 1 {
                 autopkg_platform::text_eprintln!("Need exactly one processor name");

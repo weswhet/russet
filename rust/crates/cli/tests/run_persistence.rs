@@ -163,8 +163,18 @@ fn explicit_trust_bypass_keeps_validation_and_option_precedence() {
             .output()
             .unwrap()
     };
-    assert!(!invoke(&[]).status.success());
-    assert!(!cache.exists());
+    // Like AutoPkg, the untrusted recipe fails without running, and the run
+    // results record why.
+    assert_eq!(invoke(&[]).status.code(), Some(70));
+    assert!(!cache.join("org.child").exists());
+    let results = Value::from_file(cache.join("autopkg_results.plist")).unwrap();
+    assert_eq!(
+        results.as_array().unwrap()[0].as_array().unwrap()[0]
+            .as_dictionary()
+            .unwrap()["RecipeError"]
+            .as_string(),
+        Some("No trust information present.")
+    );
     let output = invoke(&[
         "-vv",
         "--ignore-parent-trust-verification-errors",
