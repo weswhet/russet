@@ -28,7 +28,7 @@ pub fn curl_binary(env: &Dictionary) -> Result<PathBuf, String> {
         }
         crate::text_eprintln!("WARNING: path given in the 'CURL_PATH' environment: '{}' either doesn't exist or is not executable! Continuing search for usable 'curl'.", path.display());
     }
-    if let Some(value) = crate::preference("com.github.autopkg", "CURL_PATH")? {
+    if let Some(value) = crate::russet_preference("CURL_PATH")? {
         if let Some(path) = value.as_string() {
             let path = PathBuf::from(path);
             if executable(&path) {

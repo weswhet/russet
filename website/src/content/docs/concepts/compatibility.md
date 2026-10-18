@@ -25,8 +25,12 @@ schedules depend on:
   `ParentRecipeTrustInfo` keep the same format and verification rules.
 - **Processors:** built-in processors keep their names, input variables,
   output variables, and default values.
-- **Preferences:** Russet reads the same preference keys from the same
-  locations.
+- **Preferences:** Russet reads the same preference keys and formats, but
+  from its own location, such as the `com.github.russet` domain on macOS. To
+  copy Python AutoPkg's preferences, run
+  [`russet migrate`](/reference/cli/russet-migrate/). Russet never changes
+  Python AutoPkg's preferences. For details, see
+  [Preferences](/reference/preferences/).
 - **Results:** receipts, report property lists, and the run results file keep
   their formats.
 
@@ -61,6 +65,10 @@ repository's Python file. For the list, see
 
 A few behaviors differ from Python AutoPkg by design:
 
+- **Terminal output:** in a terminal on macOS or Linux, `russet run` shows a
+  live display of each recipe and its processors. Use `--plain` for
+  AutoPkg's output. Output that you pipe or redirect doesn't change. For
+  details, see [Live display](/reference/cli/russet-run/#live-display).
 - **Failure details:** the `traceback` field in a failure report contains a
   native backtrace instead of Python stack frames.
 - **Munki options:** Russet rejects unknown `makepkginfo` options and options

@@ -35,7 +35,7 @@ Russet removes symbolic links without following them.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `--dry-run` | Prints what Russet would remove without removing anything. |
 | `-v`, `--verbose` | With `all`, lists each top-level cache item. With `-vv`, also lists the items inside each removed folder. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for the recipe. You can repeat this option. |
@@ -61,7 +61,7 @@ To remove the cache of a recipe override in the default override folder, run
 the following command:
 
 ```sh
-russet clear-cache --override-dir ~/Library/AutoPkg/RecipeOverrides TheUnarchiver.download
+russet clear-cache --override-dir ~/Library/Russet/RecipeOverrides TheUnarchiver.download
 ```
 
 ## Related pages

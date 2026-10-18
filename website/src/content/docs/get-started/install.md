@@ -139,9 +139,6 @@ The installer creates `/opt/russet/russet`, with a symbolic link at
 `/usr/local/bin/russet`. It keeps replaced files in `/opt/russet-rollbacks`.
 Linux doesn't use the helper services.
 
-Before you add recipe repositories on Linux, create a preference file. For
-details, see [Configure preferences](/guides/configure-preferences/).
-
 ## Install on Windows
 
 The Windows installer copies `russet.exe` into a folder that you choose. It

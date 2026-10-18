@@ -33,7 +33,7 @@ and `IsOverride` keys.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-i`, `--with-identifiers` | Adds each recipe's identifier. |
 | `-p`, `--with-paths` | Adds each recipe's path. |
 | `--plist` | Prints the list as a property list with every key of each recipe. You can't combine this option with `-i` or `-p`. |

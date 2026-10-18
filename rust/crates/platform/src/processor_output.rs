@@ -46,11 +46,25 @@ pub fn scope(name: &str, env: &plist::Dictionary, standalone: bool) -> OutputSco
 
 pub fn emit(level: i64, message: impl std::fmt::Display) {
     let context = CONTEXT.with(|context| context.borrow().clone());
-    if let Some(context) = context.filter(|context| context.verbosity >= level) {
-        super::text_output::write(
-            format_args!("{}: {}\n", context.name, message),
+    if let Some(context) = context {
+        deliver(
+            &context.name,
+            context.verbosity,
+            level,
+            &message.to_string(),
             context.standalone,
         );
+    }
+}
+
+/// Shows a processor message: in the live display when it's drawing,
+/// otherwise as a `name: message` line when `verbosity` reaches `level`.
+pub fn deliver(name: &str, verbosity: i64, level: i64, message: &str, standalone: bool) {
+    if crate::live::message(level, message) {
+        return;
+    }
+    if verbosity >= level {
+        super::text_output::write(format_args!("{name}: {message}\n"), standalone);
     }
 }
 

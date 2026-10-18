@@ -33,15 +33,22 @@ files can stop the deletion.
 If you name a recipe repository that you didn't add, Russet prints
 `ERROR: Can't find an installed repo for REPOSITORY` and continues.
 
-On Linux and Windows, Russet saves preferences only to a loaded preference
-file or the file that you pass with `--prefs`. For details, see
-[Preferences](/reference/preferences/).
+Russet saves the changed preferences to Russet's own preferences, or to the
+file that you pass with `--prefs`. It never changes Python AutoPkg's
+preferences, so a recipe repository that you remove from Russet stays in
+Python AutoPkg's preferences.
+
+When you don't pass `--prefs`, Russet also reads Python AutoPkg's
+preferences. If they list the recipe repository, Russet keeps its folder so
+that Python AutoPkg keeps working, and prints
+`Leaving PATH in place because AutoPkg's preferences list it.` For details,
+see [Preferences](/reference/preferences/#autopkgs-preferences).
 
 ## Options
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` and saves the updated preferences to it. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences and saves the changed keys to `FILE`. |
 
 ## Exit status
 

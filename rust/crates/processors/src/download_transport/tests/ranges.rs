@@ -291,7 +291,13 @@ fn tls_uses_each_processor_trust_source() {
     std::fs::write(&trusted, pem).unwrap();
     std::fs::write(&untrusted, other).unwrap();
     let output = directory.path().join("download");
-    for python in [false, true] {
+    // On Windows a curl request with SSL_CERT_FILE always runs curl.
+    let legs: &[bool] = if cfg!(windows) {
+        &[true]
+    } else {
+        &[false, true]
+    };
+    for &python in legs {
         let server = serve(
             |_| Reply::new("200 OK").body("secure"),
             Some(config.clone()),

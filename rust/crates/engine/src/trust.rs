@@ -50,17 +50,12 @@ fn collect(
             "Duplicate parent recipe identifier in trust graph: {identifier}"
         ));
     }
-    let manifest = autopkg_processors::contract();
     if let Some(process) = data.get("Process") {
         for step in process.as_array().ok_or("Process must be an array")? {
-            let step = step.as_dictionary().ok_or("Invalid processor step")?;
-            let name = step
-                .get("Processor")
+            step.as_dictionary()
+                .and_then(|step| step.get("Processor"))
                 .and_then(Value::as_string)
                 .ok_or("Missing processor name")?;
-            if manifest["processors"].get(name).is_none() {
-                return Err(format!("Custom processor trust is unsupported: {name}"));
-            }
         }
     }
     graph.insert(
@@ -98,8 +93,19 @@ pub fn parent_trust_info(parent: &Path, search_paths: &[PathBuf]) -> Result<Dict
     ]))
 }
 
-/// Preserve the Python source records even though these processors execute Rust.
-/// The source is only read as data; neither discovery nor hashing imports it.
+/// Whether `name` is one of AutoPkg's own processors, which never get
+/// `non_core_processors` records. Russet's ports of community processors and
+/// processors that Russet doesn't have both get records, as in AutoPkg.
+fn is_core(name: &str) -> bool {
+    autopkg_processors::contract()["processors"]
+        .get(name)
+        .is_some()
+        && autopkg_processors::community_source(name).is_none()
+}
+
+/// Record the Python source of every non-core processor, as AutoPkg does,
+/// even though Russet runs its own ports and can't run the others. The source
+/// is only read as data; neither discovery nor hashing imports it.
 fn processor_trust(
     parent: &Path,
     dirs: &[PathBuf],
@@ -110,9 +116,7 @@ fn processor_trust(
     let mut processors = Dictionary::new();
     for step in &recipe.process {
         let name = &step.processor;
-        if autopkg_processors::community_source(name).is_none() {
-            // collect() has already rejected unknown processors. Original core
-            // processors never acquire non_core_processors records.
+        if is_core(name) {
             continue;
         }
         if processors.contains_key(name) {
@@ -131,7 +135,11 @@ fn processor_trust(
                 .values()
                 .filter_map(|(path, _)| path.parent().map(Path::to_owned)),
         );
-        let filename = format!("{}.py", autopkg_processors::canonical_name(name));
+        // AutoPkg looks for the part after the shared recipe's identifier.
+        let filename = match autopkg_processors::community_source(name) {
+            Some(_) => format!("{}.py", autopkg_processors::canonical_name(name)),
+            None => format!("{}.py", name.rsplit('/').next().unwrap_or(name)),
+        };
         let source = roots
             .into_iter()
             .map(|root| root.join(&filename))
@@ -321,7 +329,23 @@ fn trust_entry(path: &Path, hash: String) -> Dictionary {
     entry
 }
 
+/// The file a trust record names, with a leading `~` expanded, for messages.
+fn record_path(entry: &Value) -> Option<String> {
+    let path = entry.as_dictionary()?.get("path")?.as_string()?;
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
+    Some(match (path.strip_prefix("~/"), home) {
+        (Some(relative), Some(home)) => PathBuf::from(home)
+            .join(relative)
+            .to_string_lossy()
+            .into_owned(),
+        _ => path.to_owned(),
+    })
+}
+
+/// Compares trust records. Like AutoPkg, it reports every changed processor,
+/// script and parent recipe, one per line with an indented `Path:` line.
 fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
+    let mut errors = String::new();
     let processors = expected
         .get("non_core_processors")
         .ok_or("Missing non_core_processors trust record")?
@@ -336,11 +360,6 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
         })
         .transpose()?
         .unwrap_or(&empty);
-    for name in processors.keys().chain(actual_processors.keys()) {
-        if autopkg_processors::community_source(name).is_none() {
-            return Err(format!("Custom processor trust is unsupported: {name}"));
-        }
-    }
     if processors.len() != actual_processors.len()
         || processors
             .keys()
@@ -360,10 +379,12 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
             .and_then(Value::as_string)
             .ok_or("Invalid processor SHA-256 trust record")?;
         if actual_hash == "PROCESSOR FILEPATH NOT FOUND" {
-            return Err(format!("Expected processor {name} can't be found"));
-        }
-        if hash != actual_hash {
-            return Err(format!("Processor {name} contents differ from expected"));
+            errors += &format!("Expected processor {name} can't be found.\n");
+        } else if hash != actual_hash {
+            errors += &format!("Processor {name} contents differ from expected.\n");
+            if let Some(path) = record_path(&actual_processors[name]) {
+                errors += &format!("    Path: {path}\n");
+            }
         }
     }
     let expected_scripts = expected
@@ -387,16 +408,20 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
             .and_then(|d| d.get("sha256_hash"))
             .and_then(Value::as_string);
         if actual_hash != Some(hash) {
-            return Err(format!(
-                "Script {key} contents differ from expected or cannot be found"
-            ));
+            errors += &match actual_hash {
+                Some(_) => format!("Script {key} contents differ from expected.\n"),
+                None => format!("Expected script {key} can't be found.\n"),
+            };
+            if let Some(path) = record_path(entry).filter(|path| !path.is_empty()) {
+                errors += &format!("    Path: {path}\n");
+            }
         }
     }
     for key in actual_scripts
         .keys()
         .filter(|key| !expected_scripts.contains_key(key))
     {
-        eprintln!("WARNING: Script trust info missing for {key}. Run autopkg update-trust-info to add script trust info. Starting in AutoPkg 3.1.0, this will be a trust verification error.");
+        eprintln!("WARNING: Script trust info missing for {key}. Run russet update-trust-info to add script trust info. Starting in AutoPkg 3.1.0, this will be a trust verification error.");
     }
     let expected = expected
         .get("parent_recipes")
@@ -413,10 +438,17 @@ fn verify(expected: &Dictionary, actual: &Dictionary) -> Result<(), String> {
             .and_then(Value::as_string)
             .ok_or("Invalid parent recipe SHA-256 trust record")?;
         if actual[id].as_dictionary().unwrap()["sha256_hash"].as_string() != Some(hash) {
-            return Err(format!("Parent recipe {id} contents differ from expected"));
+            errors += &format!("Parent recipe {id} contents differ from expected.\n");
+            if let Some(path) = record_path(&actual[id]) {
+                errors += &format!("    Path: {path}\n");
+            }
         }
     }
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 /// Load a trusted local override. The caller supplies configured directories;
@@ -437,7 +469,9 @@ pub fn load_verified_recipe(
     let expected = data
         .get("ParentRecipeTrustInfo")
         .and_then(Value::as_dictionary)
-        .ok_or("No parent recipe trust information present")?;
+        // AutoPkg treats empty trust information as none.
+        .filter(|info| !info.is_empty())
+        .ok_or("No trust information present.")?;
     let parent = data
         .get("ParentRecipe")
         .or_else(|| data.get("Recipe"))
@@ -562,7 +596,7 @@ mod tests {
     }
 
     #[test]
-    fn promoted_processor_trust_requires_exact_name_sets_and_rejects_unknown() {
+    fn promoted_processor_trust_requires_exact_name_sets() {
         let temp = tempfile::tempdir().unwrap();
         let parent = community_parent(temp.path(), "MozillaURLProvider");
         std::fs::write(temp.path().join("MozillaURLProvider.py"), "source").unwrap();
@@ -587,11 +621,56 @@ mod tests {
             );
         assert!(verify(&unknown, &actual)
             .unwrap_err()
-            .contains("Custom processor trust is unsupported"));
-        community_parent(temp.path(), "evil.identifier/MozillaURLProvider");
-        assert!(parent_trust_info(&parent, &[])
+            .contains("graph differs"));
+    }
+
+    #[test]
+    fn processors_russet_lacks_get_python_trust_records() {
+        let temp = tempfile::tempdir().unwrap();
+        let shared_dir = temp.path().join("shared");
+        std::fs::create_dir(&shared_dir).unwrap();
+        std::fs::write(
+            shared_dir.join("shared.recipe.yaml"),
+            "Identifier: com.example.shared\nInput: {}\nProcess: []\n",
+        )
+        .unwrap();
+        std::fs::write(shared_dir.join("ChangeModeOwner.py"), "shared").unwrap();
+        std::fs::write(temp.path().join("JetbrainsURLProvider.py"), "local").unwrap();
+        let parent = temp.path().join("parent.recipe.yaml");
+        std::fs::write(
+            &parent,
+            "Identifier: org.parent\nInput: {}\nProcess:\n- Processor: JetbrainsURLProvider\n- Processor: com.example.shared/ChangeModeOwner\n- Processor: URLDownloader\n",
+        )
+        .unwrap();
+        let dirs = [temp.path().to_owned()];
+        let info = parent_trust_info(&parent, &dirs).unwrap();
+        let processors = info["non_core_processors"].as_dictionary().unwrap();
+        assert_eq!(processors.len(), 2, "{processors:?}");
+        for (name, source) in [
+            ("JetbrainsURLProvider", "local"),
+            ("com.example.shared/ChangeModeOwner", "shared"),
+        ] {
+            assert_eq!(
+                processors[name].as_dictionary().unwrap()["sha256_hash"].as_string(),
+                Some(format!("{:x}", Sha256::digest(source.as_bytes())).as_str())
+            );
+        }
+        verify(&info, &info).unwrap();
+        std::fs::write(temp.path().join("JetbrainsURLProvider.py"), "changed").unwrap();
+        assert!(verify(&info, &parent_trust_info(&parent, &dirs).unwrap())
             .unwrap_err()
-            .contains("Custom processor trust is unsupported"));
+            .contains("Processor JetbrainsURLProvider contents differ"));
+
+        // A look-alike name is its own processor, not Russet's port.
+        community_parent(temp.path(), "evil.identifier/MozillaURLProvider");
+        std::fs::write(temp.path().join("MozillaURLProvider.py"), "evil").unwrap();
+        let info = parent_trust_info(&parent, &dirs).unwrap();
+        let processors = info["non_core_processors"].as_dictionary().unwrap();
+        assert!(processors.contains_key("evil.identifier/MozillaURLProvider"));
+        assert!(!processors.contains_key("MozillaURLProvider"));
+        assert!(autopkg_processors::contract()["processors"]
+            .get("evil.identifier/MozillaURLProvider")
+            .is_none());
     }
 
     #[test]
@@ -833,7 +912,7 @@ mod tests {
         std::fs::remove_file(root.join("scripts/postinstall")).unwrap();
         assert!(verify(&original, &parent_trust_info(&parent, &[]).unwrap())
             .unwrap_err()
-            .contains("Script scripts/postinstall"));
+            .contains("Expected script scripts/postinstall can't be found.\n"));
     }
     #[test]
     fn verifies_parents_and_rejects_mutation_and_external_origin() {
@@ -898,6 +977,32 @@ mod tests {
         assert!(verify(&expected, &actual).unwrap_err().contains("graph"));
     }
     #[test]
+    fn reports_every_changed_parent_with_its_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let parent = temp.path().join("parent.recipe.yaml");
+        let base = temp.path().join("base.recipe.yaml");
+        std::fs::write(&base, "Identifier: org.base\nInput: {}\nProcess: []\n").unwrap();
+        std::fs::write(
+            &parent,
+            "Identifier: org.parent\nParentRecipe: org.base\nInput: {}\nProcess: []\n",
+        )
+        .unwrap();
+        let info = parent_trust_info(&parent, &[]).unwrap();
+        for path in [&parent, &base] {
+            let text = std::fs::read_to_string(path).unwrap();
+            std::fs::write(path, text.replace("Input: {}", "Input: {NAME: changed}")).unwrap();
+        }
+        let error = verify(&info, &parent_trust_info(&parent, &[]).unwrap()).unwrap_err();
+        for (id, path) in [("org.parent", &parent), ("org.base", &base)] {
+            // The path may be shortened, such as to ~ on Windows.
+            let name = path.file_name().unwrap().to_string_lossy();
+            let line = format!("Parent recipe {id} contents differ from expected.\n    Path: ");
+            let start = error.find(&line).unwrap_or_else(|| panic!("{error}")) + line.len();
+            let shown = error[start..].lines().next().unwrap();
+            assert!(shown.ends_with(name.as_ref()), "{error}");
+        }
+    }
+    #[test]
     fn hashes_entire_inheritance_chain_and_script_contents() {
         let temp = tempfile::tempdir().unwrap();
         let parent = temp.path().join("parent.recipe.yaml");
@@ -934,6 +1039,6 @@ mod tests {
         std::fs::write(scripts.join("postinstall"), b"changed").unwrap();
         assert!(verify(&expected, &parent_trust_info(&parent, &[]).unwrap())
             .unwrap_err()
-            .contains("Script scripts/postinstall"));
+            .contains("Script scripts/postinstall contents differ from expected.\n"));
     }
 }

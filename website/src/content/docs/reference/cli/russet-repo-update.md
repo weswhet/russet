@@ -38,7 +38,7 @@ verification until you review the changes. For details, see
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 
 ## Exit status
 
@@ -61,7 +61,7 @@ When a recipe repository has no changes, the output looks like the
 following:
 
 ```text
-Attempting git pull for /Users/alex/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes...
+Attempting git pull for /Users/alex/Library/Russet/RecipeRepos/com.github.autopkg.recipes...
 Already up to date.
 ```
 

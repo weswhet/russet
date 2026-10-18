@@ -53,7 +53,8 @@ following conditions:
 - The override is inside one of your override folders.
 - The override isn't inside a recipe repository. Recipe repositories are the
   folder in `RECIPE_REPO_DIR`, where `russet repo-add` clones repositories,
-  and every repository in `RECIPE_REPOS`.
+  and every repository in `RECIPE_REPOS`. When you don't set
+  `RECIPE_REPO_DIR`, the folder is `~/Library/Russet/RecipeRepos`.
 
 The second condition stops a recipe repository from supplying its own trust
 information. If an override is inside a recipe repository, for example

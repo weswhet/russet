@@ -62,7 +62,7 @@ fn standalone_stdout_is_only_plist() {
         ("replace", "world".into()),
     ]));
     let mut child = command()
-        .env("AUTOPKG_RS_PREFERENCES_FILE", &preferences)
+        .env("RUSSET_PREFERENCES_FILE", &preferences)
         .env("HOME", root.path())
         .args(["processor-run", "FindAndReplace"])
         .stdin(Stdio::piped())
@@ -102,7 +102,7 @@ fn whole_batch_is_validated_before_file_creation() {
         .arg(isolated_preferences(dir.path()))
         .env("HOME", dir.path())
         .env(
-            "AUTOPKG_RS_PREFERENCES_FILE",
+            "RUSSET_PREFERENCES_FILE",
             dir.path().join("preferences.plist"),
         )
         .arg(&good)
@@ -125,7 +125,7 @@ fn recipe_creates_unicode_file_with_cli_precedence() {
         .arg(isolated_preferences(dir.path()))
         .env("HOME", dir.path())
         .env(
-            "AUTOPKG_RS_PREFERENCES_FILE",
+            "RUSSET_PREFERENCES_FILE",
             dir.path().join("preferences.plist"),
         )
         .args(["-k", "CONTENT=cli"])
@@ -152,7 +152,7 @@ fn reports_processor_failures_with_recipe_exit_code() {
         .arg(isolated_preferences(dir.path()))
         .env("HOME", dir.path())
         .env(
-            "AUTOPKG_RS_PREFERENCES_FILE",
+            "RUSSET_PREFERENCES_FILE",
             dir.path().join("preferences.plist"),
         )
         .arg("--report-plist")
@@ -222,7 +222,7 @@ fn recipe_inputs_override_preferences() {
     let output = command()
         .args(["run", "--prefs"])
         .env("HOME", dir.path())
-        .env("AUTOPKG_RS_PREFERENCES_FILE", &prefs)
+        .env("RUSSET_PREFERENCES_FILE", &prefs)
         .arg(prefs)
         .arg(recipe)
         .output()
@@ -234,4 +234,48 @@ fn recipe_inputs_override_preferences() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(std::fs::read_to_string(target).unwrap(), "recipe");
+}
+
+#[test]
+fn recipe_map_environment_prefers_russet_names_over_autopkg_names() {
+    let dir = tempfile::tempdir().unwrap();
+    let prefs = isolated_preferences(dir.path());
+    let run = |vars: &[(&str, &str)]| {
+        let mut command = command();
+        command
+            .env("HOME", dir.path())
+            .env("RUSSET_PREFERENCES_FILE", &prefs)
+            .env_remove("RUSSET_RECIPE_MAP_PATH")
+            .env_remove("AUTOPKG_RECIPE_MAP_PATH")
+            .env_remove("RUSSET_DISABLE_RECIPE_MAP")
+            .env_remove("AUTOPKG_DISABLE_RECIPE_MAP")
+            .arg("generate-recipe-map");
+        for (name, value) in vars {
+            command.env(name, value);
+        }
+        let output = command.output().unwrap();
+        assert!(output.status.success(), "{output:?}");
+        String::from_utf8(output.stdout).unwrap()
+    };
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+
+    let stdout = run(&[("AUTOPKG_RECIPE_MAP_PATH", &path("autopkg.json"))]);
+    assert!(stdout.contains("overridden via AUTOPKG_RECIPE_MAP_PATH environment variable"));
+    assert!(dir.path().join("autopkg.json").is_file());
+
+    let stdout = run(&[
+        ("AUTOPKG_RECIPE_MAP_PATH", &path("ignored.json")),
+        ("RUSSET_RECIPE_MAP_PATH", &path("russet.json")),
+    ]);
+    assert!(stdout.contains("overridden via RUSSET_RECIPE_MAP_PATH environment variable"));
+    assert!(dir.path().join("russet.json").is_file());
+    assert!(!dir.path().join("ignored.json").exists());
+
+    for name in ["RUSSET_DISABLE_RECIPE_MAP", "AUTOPKG_DISABLE_RECIPE_MAP"] {
+        run(&[
+            (name, "1"),
+            ("RUSSET_RECIPE_MAP_PATH", &path("disabled.json")),
+        ]);
+        assert!(!dir.path().join("disabled.json").exists());
+    }
 }

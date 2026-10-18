@@ -15,7 +15,11 @@ fn invalid(message: impl Into<String>) -> io::Error {
 /// What a payload path is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NodeKind {
-    Directory,
+    /// A folder, with the number of entries it holds on disk, including
+    /// ones left out of the payload.
+    Directory {
+        entries: usize,
+    },
     /// A regular file, read from this path when the package is built.
     File(PathBuf),
     Symlink(String),
@@ -58,8 +62,12 @@ pub fn collect(root: &Path, filters: &[regex::Regex]) -> io::Result<Vec<Node>> {
             )
         } else if metadata.is_dir() {
             let mut names = Vec::new();
+            let mut entries = 0;
             for entry in fs::read_dir(&path)? {
                 let name = entry?.file_name();
+                if name != russet_fs::SIDECAR {
+                    entries += 1;
+                }
                 let name = name
                     .to_str()
                     .ok_or_else(|| invalid(format!("A name in {} isn't UTF-8", path.display())))?
@@ -81,7 +89,7 @@ pub fn collect(root: &Path, filters: &[regex::Regex]) -> io::Result<Vec<Node>> {
             }
             names.sort();
             stack.extend(names.into_iter().rev());
-            NodeKind::Directory
+            NodeKind::Directory { entries }
         } else if metadata.is_file() {
             NodeKind::File(path.clone())
         } else {
@@ -115,39 +123,43 @@ pub struct Options<'a> {
     pub components: &'a [Component],
 }
 
-/// Counts bytes passing through, for the payload size.
-struct Counting<W> {
-    inner: W,
-    count: u64,
-}
-
-impl<W: Write> Write for Counting<W> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let count = self.inner.write(buf)?;
-        self.count += count as u64;
-        Ok(count)
+/// The installed size in KiB, as `pkgbuild` reports it: each entry but the
+/// root takes whole 512-byte blocks of its size on disk, and a hard-linked
+/// file counts once. `pkgbuild` reads folder sizes from an APFS volume,
+/// which reports 64 bytes plus 32 per entry. AppleDouble members take none.
+fn install_kilobytes(nodes: &[Node]) -> io::Result<u64> {
+    let mut seen = std::collections::HashSet::new();
+    let mut blocks = 0;
+    for node in nodes.iter().filter(|n| !n.path.is_empty()) {
+        let bytes = match &node.kind {
+            NodeKind::Directory { entries } => 64 + 32 * *entries as u64,
+            NodeKind::Symlink(target) => target.len() as u64,
+            NodeKind::File(source) => {
+                let metadata = fs::metadata(source)?;
+                if metadata.nlink() > 1 && !seen.insert((metadata.dev(), metadata.ino())) {
+                    continue;
+                }
+                metadata.len()
+            }
+        };
+        blocks += bytes.div_ceil(512);
     }
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
-    }
+    Ok(blocks.div_ceil(2))
 }
 
 fn type_bits(kind: &NodeKind) -> u32 {
     match kind {
-        NodeKind::Directory => 0o040000,
+        NodeKind::Directory { .. } => 0o040000,
         NodeKind::File(_) => 0o100000,
         NodeKind::Symlink(_) => 0o120000,
     }
 }
 
-/// Writes the payload and returns its BOM entries and uncompressed size.
-fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, u64)> {
+/// Writes the payload and returns its BOM entries.
+fn payload(nodes: &[Node], out: &Path) -> io::Result<Vec<russet_mkbom::Entry>> {
     let file = fs::File::create(out)?;
     let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
-    let mut writer = russet_ditto::CpioWriter::new(Counting {
-        inner: encoder,
-        count: 0,
-    });
+    let mut writer = russet_ditto::CpioWriter::new(encoder);
     let mut entries = Vec::with_capacity(nodes.len());
     let mut next_ino = nodes.len() as u64;
     for (index, node) in nodes.iter().enumerate() {
@@ -165,7 +177,7 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, 
             nlink: 1,
         };
         let kind = match &node.kind {
-            NodeKind::Directory => {
+            NodeKind::Directory { .. } => {
                 writer.append(&name, header, io::empty(), 0)?;
                 russet_mkbom::Kind::Directory
             }
@@ -201,10 +213,8 @@ fn payload(nodes: &[Node], out: &Path) -> io::Result<(Vec<russet_mkbom::Entry>, 
             apple_double(node, source, &mut writer, header, next_ino, &mut entries)?;
         }
     }
-    let counting = writer.finish()?;
-    let size = counting.count;
-    counting.inner.finish()?.flush()?;
-    Ok((entries, size))
+    writer.finish()?.finish()?.flush()?;
+    Ok(entries)
 }
 
 /// Writes a file's extended attributes, including those kept in an
@@ -228,7 +238,7 @@ fn apple_double<W: Write>(
     if xattrs.is_empty() {
         return Ok(());
     }
-    let bytes = russet_ditto::encode_apple_double(&xattrs);
+    let bytes = russet_ditto::encode_apple_double(&xattrs)?;
     let path = match node.path.rsplit_once('/') {
         Some((parent, name)) => format!("{parent}/._{name}"),
         None => format!("._{}", node.path),
@@ -457,7 +467,7 @@ fn package_info(options: &Options, files: usize, kilobytes: u64) -> io::Result<S
 pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
     if nodes
         .first()
-        .is_none_or(|n| !n.path.is_empty() || n.kind != NodeKind::Directory)
+        .is_none_or(|n| !n.path.is_empty() || !matches!(n.kind, NodeKind::Directory { .. }))
     {
         return Err(invalid("The payload must start with its root folder"));
     }
@@ -467,7 +477,7 @@ pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
         .unwrap_or(Path::new("."));
     let scratch = tempfile::tempdir_in(directory)?;
     let payload_path = scratch.path().join("Payload");
-    let (entries, size) = payload(nodes, &payload_path)?;
+    let entries = payload(nodes, &payload_path)?;
     let bom = russet_mkbom::write(&entries).map_err(invalid)?;
     let mut builder = Builder::new();
     builder.add_file(Path::new("Bom"), 0o644, Content::Bytes(bom), Encoding::Zlib)?;
@@ -500,7 +510,7 @@ pub fn build(nodes: &[Node], options: &Options, out: &Path) -> io::Result<()> {
             Encoding::None,
         )?;
     }
-    let info = package_info(options, entries.len(), size.div_ceil(1024))?;
+    let info = package_info(options, entries.len(), install_kilobytes(nodes)?)?;
     builder.add_file(
         Path::new("PackageInfo"),
         0o644,

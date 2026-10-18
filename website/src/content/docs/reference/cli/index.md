@@ -55,10 +55,11 @@ Russet parses options the same way that Python AutoPkg does:
 
 ## Preferences option
 
-Most verbs accept `--prefs FILE`. Russet reads your platform preferences
-first and then applies the values from `FILE`. If the verb changes
-preferences, such as `repo-add`, Russet saves the change to `FILE`. For
-details, see [Preferences](/reference/preferences/).
+Most verbs accept `--prefs FILE`. Russet reads its own preferences first and
+then applies the values from `FILE`, so a value in `FILE` wins. If the verb
+changes preferences, such as `repo-add`, Russet saves the changed keys to
+`FILE` and keeps the file's other values. For details, see
+[Preferences](/reference/preferences/).
 
 ## Verbs
 
@@ -75,6 +76,7 @@ The following verbs are available:
 | [`list-processors`](/reference/cli/russet-list-processors/) | Lists the processors that Russet implements. The alias `processor-list` does the same thing. |
 | [`list-recipes`](/reference/cli/russet-list-recipes/) | Lists the recipes in your search and override folders. |
 | [`make-override`](/reference/cli/russet-make-override/) | Creates a recipe override. |
+| [`migrate`](/reference/cli/russet-migrate/) | Copies Python AutoPkg's preferences into Russet's preferences. Russet-only. |
 | [`new-recipe`](/reference/cli/russet-new-recipe/) | Creates a recipe from a template. |
 | [`processor-info`](/reference/cli/russet-processor-info/) | Shows a processor's description and variables. |
 | [`repo-add`](/reference/cli/russet-repo-add/) | Clones recipe repositories and adds them to the search path. |

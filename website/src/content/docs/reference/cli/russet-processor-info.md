@@ -36,7 +36,7 @@ Some defaults depend on the platform:
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-r RECIPE`, `--recipe RECIPE` | Accepted for compatibility. Russet ignores it. |
 | `-d FOLDER`, `--search-dir FOLDER` | Accepted for compatibility. Russet ignores it. |
 | `--override-dir FOLDER` | Accepted for compatibility. Russet ignores it. |

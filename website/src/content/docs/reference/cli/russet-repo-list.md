@@ -24,7 +24,7 @@ added any recipe repositories, Russet prints `No recipe repos.`
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 
 ## Exit status
 
@@ -45,7 +45,7 @@ russet repo-list
 The output looks like the following:
 
 ```text
-/Users/alex/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes (https://github.com/autopkg/recipes)
+/Users/alex/Library/Russet/RecipeRepos/com.github.autopkg.recipes (https://github.com/autopkg/recipes)
 ```
 
 ## Related pages

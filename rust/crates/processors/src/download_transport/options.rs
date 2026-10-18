@@ -449,9 +449,13 @@ fn trust(
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    // Schannel curl doesn't support CA directories.
+    // Schannel curl doesn't support CA directories, and verifies against a
+    // CA file with Windows' own chain rules, which the engine can't match.
     if cfg!(windows) && !directories.is_empty() {
         return Err("the SSL_CERT_DIR environment variable".into());
+    }
+    if cfg!(windows) && variable(command, "SSL_CERT_FILE").is_some_and(|v| !v.is_empty()) {
+        return Err("the SSL_CERT_FILE environment variable".into());
     }
     let file = match variable(command, "SSL_CERT_FILE").filter(|v| !v.is_empty()) {
         Some(file) => PathBuf::from(file),

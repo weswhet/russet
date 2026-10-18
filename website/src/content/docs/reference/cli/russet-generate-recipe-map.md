@@ -19,8 +19,12 @@ Replace `OPTIONS` with any of the options in the following table.
 The recipe map is a JSON file with a `schema_version` of `1` and four
 sections: `identifiers`, `shortnames`, `overrides`, and
 `overrides-identifiers`. Russet writes it to the path in the
-`AUTOPKG_RECIPE_MAP_PATH` environment variable, the `RECIPE_MAP_PATH`
-preference, or `~/Library/AutoPkg/recipe_map.json`, in that order.
+`RUSSET_RECIPE_MAP_PATH` environment variable, the `AUTOPKG_RECIPE_MAP_PATH`
+environment variable, the `RECIPE_MAP_PATH` preference, or
+`~/Library/Russet/recipe_map.json`, in that order. When Russet uses an
+environment variable, it logs
+`Recipe map path overridden via NAME environment variable: PATH`. Russet
+ignores both environment variables when it runs as root.
 
 Russet also refreshes the map automatically after `repo-add`, after
 `repo-update` changes a recipe repository, and after `make-override`. It
@@ -31,13 +35,14 @@ not by reading the map.
 
 By default, Russet leaves the current folder, `.`, out of the map. If you turn
 off the recipe map with the `DISABLE_RECIPE_MAP` preference or the
-`AUTOPKG_DISABLE_RECIPE_MAP` environment variable, the command does nothing.
+`RUSSET_DISABLE_RECIPE_MAP` or `AUTOPKG_DISABLE_RECIPE_MAP` environment
+variable, the command does nothing.
 
 ## Options
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `--include-cwd` | Includes the current folder in the map. |
 | `-d FOLDER`, `--search-dir FOLDER` | Not supported. Russet exits with an error. Set the `RECIPE_SEARCH_DIRS` preference instead. |
 | `--override-dir FOLDER` | Not supported. Russet exits with an error. Set the `RECIPE_OVERRIDE_DIRS` preference instead. |
@@ -61,7 +66,7 @@ russet generate-recipe-map
 The output looks like the following:
 
 ```text
-Recipe map written to /Users/alex/Library/AutoPkg/recipe_map.json:
+Recipe map written to /Users/alex/Library/Russet/recipe_map.json:
   identifiers:           228
   shortnames:            228
   overrides:             1

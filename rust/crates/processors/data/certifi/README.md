@@ -20,5 +20,10 @@ not add trust. If this import is needed and `openssl` is unavailable, execution
 fails with an explicit dependency error. The import does not change host trust
 settings.
 
+`subject-hashes.txt` lists `openssl x509 -subject_hash` for each certificate
+in `cacert.pem`, in order. A test checks Russet's own subject hash, which the
+native downloader uses for hashed CA directories, against it. Regenerate it
+when the bundle changes.
+
 Source: https://pypi.org/project/certifi/2025.10.5/
 License: Mozilla Public License 2.0; see LICENSE.

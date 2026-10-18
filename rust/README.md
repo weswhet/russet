@@ -21,11 +21,11 @@ From the repository root:
 cargo build --manifest-path rust/Cargo.toml --workspace
 rust/target/debug/russet list-processors
 rust/target/debug/russet processor-info FileCreator
-env AUTOPKG_RS_CACHE_DIR=/tmp/autopkg-rust-example rust/target/debug/russet run -v rust/examples/files.recipe.yaml
+env RUSSET_CACHE_DIR=/tmp/russet-example rust/target/debug/russet run -v rust/examples/files.recipe.yaml
 ```
 
-Cache paths follow Python AutoPkg: `CACHE_DIR` preferences, then `~/Library/AutoPkg/Cache`, with home expansion and absolute-path normalization. `AUTOPKG_RS_CACHE_DIR` supplies a separate cache when the preference is unset; `--key CACHE_DIR=...` overrides the per-recipe cache. To keep experiments and their run reports isolated, use a separate preference cache or `AUTOPKG_RS_CACHE_DIR`, and a separate mutable Munki repository.
-`AUTOPKG_RS_DEBUG=1` enables execution diagnostics on stderr. Standalone
+Cache paths come from the `CACHE_DIR` preference, then `~/Library/Russet/Cache`, with home expansion and absolute-path normalization. `RUSSET_CACHE_DIR` supplies a separate cache when the preference is unset; `--key CACHE_DIR=...` overrides the per-recipe cache. To keep experiments and their run reports isolated, use a separate preference cache or `RUSSET_CACHE_DIR`, and a separate mutable Munki repository.
+`RUSSET_DEBUG=1` enables execution diagnostics on stderr. Standalone
 processors read a dictionary plist from stdin and write a dictionary plist to
 stdout:
 

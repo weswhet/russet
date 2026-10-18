@@ -543,3 +543,73 @@ fn compare_downloaded_images() {
         }
     }
 }
+
+/// `hdiutil create -srcfolder` puts a package, such as an app, on the volume
+/// as itself and copies any other folder's contents; native creation matches.
+#[test]
+fn created_images_hold_packages_like_hdiutil() {
+    use crate::{create, CreateOptions};
+    let temp = tempfile::tempdir().unwrap();
+    for name in [
+        "Foo.app",
+        "Two.dots.app",
+        "UP.APP",
+        "Pk.PKG",
+        "Fw.framework",
+        "Thing.foo",
+    ] {
+        let source = temp.path().join("src").join(name);
+        fs::create_dir_all(source.join("Contents")).unwrap();
+        fs::write(source.join("Contents/Info.plist"), "<plist/>").unwrap();
+        let apple = temp.path().join(format!("apple-{name}.dmg"));
+        // hdiutil create sometimes fails without a message on CI runners,
+        // so try it a few times.
+        let mut output = None;
+        for _ in 0..3 {
+            let attempt = Command::new("/usr/bin/hdiutil")
+                .args(["create", "-ov", "-srcfolder"])
+                .arg(&source)
+                .args(["-fs", "HFS+", "-format", "UDRO"])
+                .arg(&apple)
+                .output()
+                .unwrap();
+            if attempt.status.success() {
+                output = None;
+                break;
+            }
+            output = Some(attempt);
+            std::thread::sleep(std::time::Duration::from_secs(5));
+        }
+        if let Some(output) = output {
+            panic!(
+                "hdiutil create {name}: {}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        let native = temp.path().join(format!("native-{name}.dmg"));
+        create(
+            &source,
+            &native,
+            &CreateOptions {
+                filesystem: "HFS+",
+                format: "UDRO",
+                zlib_level: 5,
+                megabytes: None,
+            },
+        )
+        .unwrap();
+        let strip = |entries: Vec<russet_fs::Entry>| -> Vec<_> {
+            entries
+                .into_iter()
+                .filter(|e| !e.path.starts_with(".fseventsd"))
+                .map(|e| (e.path, e.kind, e.sha256))
+                .collect()
+        };
+        assert_eq!(
+            strip(mounted(&native).remove(0)),
+            strip(mounted(&apple).remove(0)),
+            "{name}"
+        );
+    }
+}

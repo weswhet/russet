@@ -30,7 +30,7 @@ local path or a `file://` URL.
 To set the repository for every run, run the following command:
 
 ```sh
-defaults write com.github.autopkg MUNKI_REPO MUNKI_REPO_PATH
+defaults write com.github.russet MUNKI_REPO MUNKI_REPO_PATH
 ```
 
 Replace `MUNKI_REPO_PATH` with the absolute path to the repository, such as

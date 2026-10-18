@@ -1,6 +1,5 @@
 //! Repository, override, trust, and recipe-map persistence commands.
 use autopkg_engine::{
-    preferences::Preferences,
     read_recipe,
     trust::{load_verified_recipe, parent_trust_info, TrustPolicy},
 };
@@ -14,13 +13,13 @@ use std::{
 };
 
 const EXTENSIONS: [&str; 3] = [".recipe", ".recipe.plist", ".recipe.yaml"];
-fn home() -> Result<PathBuf, String> {
+pub(crate) fn home() -> Result<PathBuf, String> {
     env::var_os("HOME")
         .or_else(|| env::var_os("USERPROFILE"))
         .map(PathBuf::from)
         .ok_or("Home directory is unavailable".into())
 }
-fn expand(path: &str) -> Result<PathBuf, String> {
+pub(crate) fn expand(path: &str) -> Result<PathBuf, String> {
     let path = if path == "~" {
         home()?
     } else if let Some(relative) = path.strip_prefix("~/") {
@@ -45,182 +44,9 @@ fn truth(value: Option<&Value>) -> bool {
         _ => true,
     }
 }
+use crate::config::Store;
 pub fn load_preferences(explicit: Option<&str>) -> Result<Dictionary, String> {
     Ok(Store::load(explicit)?.values)
-}
-#[cfg(target_os = "macos")]
-fn native_keys() -> Result<Vec<String>, String> {
-    use core_foundation_sys::{
-        array::{CFArrayGetCount, CFArrayGetValueAtIndex},
-        base::CFRelease,
-        preferences::{kCFPreferencesAnyHost, kCFPreferencesCurrentUser, CFPreferencesCopyKeyList},
-        string::{
-            kCFStringEncodingUTF8, CFStringCreateWithCString, CFStringGetCString,
-            CFStringGetLength, CFStringGetMaximumSizeForEncoding,
-        },
-    };
-    unsafe {
-        let domain = CFStringCreateWithCString(
-            std::ptr::null(),
-            c"com.github.autopkg".as_ptr(),
-            kCFStringEncodingUTF8,
-        );
-        let array =
-            CFPreferencesCopyKeyList(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-        CFRelease(domain.cast());
-        if array.is_null() {
-            return Ok(vec![]);
-        }
-        let mut result = Vec::new();
-        for index in 0..CFArrayGetCount(array) {
-            let key = CFArrayGetValueAtIndex(array, index).cast();
-            let size =
-                CFStringGetMaximumSizeForEncoding(CFStringGetLength(key), kCFStringEncodingUTF8)
-                    + 1;
-            let mut bytes = vec![0u8; size as usize];
-            if CFStringGetCString(key, bytes.as_mut_ptr().cast(), size, kCFStringEncodingUTF8) != 0
-            {
-                result.push(
-                    std::ffi::CStr::from_ptr(bytes.as_ptr().cast())
-                        .to_string_lossy()
-                        .into_owned(),
-                );
-            }
-        }
-        CFRelease(array.cast());
-        Ok(result)
-    }
-}
-struct Store {
-    values: Dictionary,
-    file: Option<Preferences>,
-}
-impl Store {
-    fn load(explicit: Option<&str>) -> Result<Self, String> {
-        // Development comparison runs must not consult the user's native domain.
-        if let Some(path) = env::var_os("AUTOPKG_RS_PREFERENCES_FILE") {
-            let mut file = Preferences::load(Path::new(&path))?;
-            if let Some(path) = explicit {
-                file.overlay(&expand(path)?)?;
-            }
-            return Ok(Self {
-                values: file.values.clone(),
-                file: Some(file),
-            });
-        }
-        let mut values = Dictionary::new();
-        #[cfg(target_os = "macos")]
-        for key in native_keys()? {
-            if let Some(value) = autopkg_platform::preference("com.github.autopkg", &key)? {
-                values.insert(key, value);
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
-        let default_file = {
-            let directory = if cfg!(windows) {
-                env::var_os("LOCALAPPDATA")
-                    .map(PathBuf::from)
-                    .ok_or("LOCALAPPDATA is unavailable")?
-                    .join("Autopkg")
-            } else {
-                env::var_os("XDG_CONFIG_HOME")
-                    .map(PathBuf::from)
-                    .unwrap_or(home()?.join(".config"))
-                    .join("Autopkg")
-            };
-            Preferences::load_directory(&directory)?
-        };
-        #[cfg(target_os = "macos")]
-        let default_file: Option<Preferences> = None;
-        if let Some(file) = &default_file {
-            values.extend(file.values.clone());
-        }
-        let file = if let Some(path) = explicit {
-            let file = Preferences::load(&expand(path)?)?;
-            values.extend(file.values.clone());
-            Some(file)
-        } else {
-            default_file
-        };
-        Ok(Self { values, file })
-    }
-    fn save(&mut self, keys: &[&str]) -> Result<(), String> {
-        if let Some(file) = &mut self.file {
-            file.values = self.values.clone();
-            file.save()
-        } else {
-            #[cfg(target_os = "macos")]
-            {
-                for key in keys {
-                    native_set(key, self.values.get(key).ok_or("Missing preference value")?)?;
-                }
-                Ok(())
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                let _ = keys;
-                Err("No writable preference file loaded; use --prefs FILE".into())
-            }
-        }
-    }
-}
-#[cfg(target_os = "macos")]
-fn native_set(key: &str, value: &Value) -> Result<(), String> {
-    use core_foundation_sys::{
-        base::{CFRelease, CFTypeRef},
-        data::CFDataCreate,
-        preferences::{CFPreferencesAppSynchronize, CFPreferencesSetAppValue},
-        propertylist::CFPropertyListCreateWithData,
-        string::{kCFStringEncodingUTF8, CFStringCreateWithCString},
-    };
-    use std::{ffi::CString, ptr};
-    struct Owned(CFTypeRef);
-    impl Drop for Owned {
-        fn drop(&mut self) {
-            if !self.0.is_null() {
-                unsafe { CFRelease(self.0) }
-            }
-        }
-    }
-    let mut bytes = Vec::new();
-    value.to_writer_xml(&mut bytes).map_err(|e| e.to_string())?;
-    let key = CString::new(key).map_err(|e| e.to_string())?;
-    unsafe {
-        let domain = Owned(
-            CFStringCreateWithCString(
-                ptr::null(),
-                c"com.github.autopkg".as_ptr(),
-                kCFStringEncodingUTF8,
-            )
-            .cast(),
-        );
-        let key = Owned(
-            CFStringCreateWithCString(ptr::null(), key.as_ptr(), kCFStringEncodingUTF8).cast(),
-        );
-        let data = Owned(CFDataCreate(ptr::null(), bytes.as_ptr(), bytes.len() as isize).cast());
-        if domain.0.is_null() || key.0.is_null() || data.0.is_null() {
-            return Err("Cannot allocate native preference".into());
-        }
-        let mut error = ptr::null_mut();
-        let value = Owned(CFPropertyListCreateWithData(
-            ptr::null(),
-            data.0.cast(),
-            0,
-            ptr::null_mut(),
-            &mut error,
-        ));
-        if !error.is_null() {
-            CFRelease(error.cast());
-        }
-        if value.0.is_null() {
-            return Err("Cannot decode native preference".into());
-        }
-        CFPreferencesSetAppValue(key.0.cast(), value.0, domain.0.cast());
-        if CFPreferencesAppSynchronize(domain.0.cast()) == 0 {
-            return Err("Could not synchronize native preferences".into());
-        }
-    }
-    Ok(())
 }
 #[derive(Default)]
 struct Options {
@@ -238,6 +64,8 @@ struct Options {
 }
 fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
     let mut o = Options::default();
+    // AutoPkg adds a recipe list's recipes after the named ones.
+    let mut listed = Vec::new();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
@@ -265,32 +93,24 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
                 )
             }
             "--ignore-deprecation" if verb == "make-override" => o.ignore_deprecation = true,
+            // AutoPkg pulls a missing parent's repo from GitHub. Russet never
+            // searches GitHub, so a found recipe behaves the same either way.
+            "-p" | "--pull" if verb == "make-override" => {}
             "-v" | "--verbose" if verb == "verify-trust-info" => o.verbose = true,
             "-l" | "--recipe-list" if verb == "verify-trust-info" => {
                 let file = expand(iter.next().ok_or("--recipe-list requires a file")?)?;
-                let bytes = fs::read(file).map_err(|e| e.to_string())?;
-                if let Ok(value) = Value::from_reader(std::io::Cursor::new(&bytes)) {
-                    let recipes = value
-                        .as_dictionary()
-                        .and_then(|d| d.get("recipes"))
-                        .and_then(Value::as_array)
-                        .ok_or("Recipe list plist requires recipes array")?;
-                    for recipe in recipes {
-                        o.args.push(
-                            recipe
-                                .as_string()
-                                .ok_or("Recipe names must be strings")?
-                                .into(),
-                        );
-                    }
-                } else {
-                    o.args.extend(
-                        String::from_utf8(bytes)
-                            .map_err(|e| e.to_string())?
-                            .lines()
-                            .map(str::trim)
-                            .filter(|s| !s.is_empty() && !s.starts_with('#'))
-                            .map(str::to_owned),
+                let list = crate::read_recipe_list(&file)?;
+                for recipe in list
+                    .get("recipes")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
+                    listed.push(
+                        recipe
+                            .as_string()
+                            .ok_or("Recipe names must be strings")?
+                            .into(),
                     );
                 }
             }
@@ -305,9 +125,14 @@ fn parse(verb: &str, args: &[String]) -> Result<Options, String> {
             _ => o.args.push(arg.clone()),
         }
     }
+    o.args.extend(listed);
     Ok(o)
 }
-fn pref_dirs(values: &Dictionary, key: &str, defaults: &[&str]) -> Result<Vec<String>, String> {
+pub(crate) fn pref_dirs(
+    values: &Dictionary,
+    key: &str,
+    defaults: &[&str],
+) -> Result<Vec<String>, String> {
     let paths = match values.get(key) {
         Some(Value::String(v)) if !v.is_empty() => vec![v.clone()],
         Some(Value::Array(v)) if !v.is_empty() => v
@@ -322,19 +147,30 @@ fn pref_dirs(values: &Dictionary, key: &str, defaults: &[&str]) -> Result<Vec<St
     };
     Ok(paths)
 }
+/// Folders searched when `RECIPE_SEARCH_DIRS` is unset.
+pub(crate) const DEFAULT_SEARCH_DIRS: [&str; 3] =
+    [".", "~/Library/Russet/Recipes", "/Library/Russet/Recipes"];
+/// Override folders when `RECIPE_OVERRIDE_DIRS` is unset.
+pub(crate) const DEFAULT_OVERRIDE_DIRS: [&str; 1] = ["~/Library/Russet/RecipeOverrides"];
+const DEFAULT_REPO_DIR: &str = "~/Library/Russet/RecipeRepos";
+/// An environment setting by its Russet name, or by its AutoPkg name when the
+/// Russet one is unset or empty, with the name that supplied it.
+fn env_setting(russet: &'static str, autopkg: &'static str) -> Option<(&'static str, String)> {
+    [russet, autopkg].into_iter().find_map(|name| {
+        env::var_os(name)
+            .filter(|v| !v.is_empty())
+            .map(|v| (name, v.to_string_lossy().into_owned()))
+    })
+}
+fn recipe_map_disabled(values: &Dictionary) -> bool {
+    env_setting("RUSSET_DISABLE_RECIPE_MAP", "AUTOPKG_DISABLE_RECIPE_MAP").is_some()
+        || truth(values.get("DISABLE_RECIPE_MAP"))
+}
 fn search_dirs(values: &Dictionary) -> Result<Vec<String>, String> {
-    pref_dirs(
-        values,
-        "RECIPE_SEARCH_DIRS",
-        &[".", "~/Library/AutoPkg/Recipes", "/Library/AutoPkg/Recipes"],
-    )
+    pref_dirs(values, "RECIPE_SEARCH_DIRS", &DEFAULT_SEARCH_DIRS)
 }
 fn override_dirs(values: &Dictionary) -> Result<Vec<String>, String> {
-    pref_dirs(
-        values,
-        "RECIPE_OVERRIDE_DIRS",
-        &["~/Library/AutoPkg/RecipeOverrides"],
-    )
+    pref_dirs(values, "RECIPE_OVERRIDE_DIRS", &DEFAULT_OVERRIDE_DIRS)
 }
 pub fn recipe_directories(values: &Dictionary) -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
     effective(values, &Options::default())
@@ -344,7 +180,7 @@ fn repo_root(values: &Dictionary) -> Result<PathBuf, String> {
         values
             .get("RECIPE_REPO_DIR")
             .and_then(Value::as_string)
-            .unwrap_or("~/Library/AutoPkg/RecipeRepos"),
+            .unwrap_or(DEFAULT_REPO_DIR),
     )
 }
 /// Folders whose overrides can't carry trust records: the repo-add clone root
@@ -433,7 +269,7 @@ fn scan(directory: &Path, follow: bool) -> Result<Vec<PathBuf>, String> {
     }
     Ok(result)
 }
-fn locate(request: &str, dirs: &[PathBuf], follow: bool) -> Result<PathBuf, String> {
+pub(crate) fn locate(request: &str, dirs: &[PathBuf], follow: bool) -> Result<PathBuf, String> {
     let direct = expand(request)?;
     if direct.is_file() {
         return Ok(direct);
@@ -493,21 +329,29 @@ fn map_data(values: &Dictionary, include_cwd: bool) -> Result<Json, String> {
 fn map_path(values: &Dictionary) -> Result<PathBuf, String> {
     map_path_output(values, false)
 }
+/// The recipe map path, without the messages that say where it came from.
+fn map_path_quiet(values: &Dictionary) -> Result<PathBuf, String> {
+    map_path_logged(values, None)
+}
 fn map_path_output(values: &Dictionary, stderr: bool) -> Result<PathBuf, String> {
+    map_path_logged(values, Some(stderr))
+}
+/// `log` is `None` for no messages, or whether they go to stderr.
+fn map_path_logged(values: &Dictionary, log: Option<bool>) -> Result<PathBuf, String> {
     #[cfg(unix)]
     let root = unsafe { libc::geteuid() } == 0;
     #[cfg(not(unix))]
     let root = false;
-    let environment = env::var("AUTOPKG_RECIPE_MAP_PATH")
-        .ok()
-        .filter(|s| !s.is_empty());
-    if root && environment.is_some() {
+    let environment = env_setting("RUSSET_RECIPE_MAP_PATH", "AUTOPKG_RECIPE_MAP_PATH");
+    if let Some((name, _)) = environment.as_ref().filter(|_| root && log.is_some()) {
         autopkg_platform::text_eprintln!(
-            "SECURITY WARNING: autopkg is running as root and AUTOPKG_RECIPE_MAP_PATH was ignored."
+            "SECURITY WARNING: russet is running as root and {name} was ignored."
         );
     }
+    let environment = environment.filter(|_| !root);
     let target = environment
-        .filter(|_| !root)
+        .as_ref()
+        .map(|(_, value)| value.clone())
         .or_else(|| {
             values
                 .get("RECIPE_MAP_PATH")
@@ -515,22 +359,23 @@ fn map_path_output(values: &Dictionary, stderr: bool) -> Result<PathBuf, String>
                 .filter(|s| !s.is_empty())
                 .map(str::to_owned)
         })
-        .unwrap_or_else(|| "~/Library/AutoPkg/recipe_map.json".into());
-    if env::var("AUTOPKG_RECIPE_MAP_PATH")
-        .ok()
-        .is_some_and(|s| !s.is_empty())
-        && !root
-    {
-        map_log(&format!("Recipe map path overridden via AUTOPKG_RECIPE_MAP_PATH environment variable: {target}"), stderr);
-    } else if values
-        .get("RECIPE_MAP_PATH")
-        .and_then(Value::as_string)
-        .is_some_and(|s| !s.is_empty())
-    {
-        map_log(
-            &format!("Recipe map path overridden via RECIPE_MAP_PATH preference: {target}"),
-            stderr,
-        );
+        .unwrap_or_else(|| "~/Library/Russet/recipe_map.json".into());
+    if let Some(stderr) = log {
+        if let Some((name, _)) = environment {
+            map_log(
+                &format!("Recipe map path overridden via {name} environment variable: {target}"),
+                stderr,
+            );
+        } else if values
+            .get("RECIPE_MAP_PATH")
+            .and_then(Value::as_string)
+            .is_some_and(|s| !s.is_empty())
+        {
+            map_log(
+                &format!("Recipe map path overridden via RECIPE_MAP_PATH preference: {target}"),
+                stderr,
+            );
+        }
     }
     #[cfg(unix)]
     if root && (target == "~" || target.starts_with("~/")) {
@@ -569,25 +414,21 @@ pub fn ensure_recipe_map(values: &Dictionary) -> Result<(), String> {
     ensure_recipe_map_output(values, false)
 }
 pub fn ensure_recipe_map_output(values: &Dictionary, stderr: bool) -> Result<(), String> {
-    if env::var_os("AUTOPKG_DISABLE_RECIPE_MAP").is_some_and(|v| !v.is_empty())
-        || truth(values.get("DISABLE_RECIPE_MAP"))
-    {
+    if recipe_map_disabled(values) {
         return Ok(());
     }
     let path = map_path_output(values, stderr)?;
     if path.exists() {
         return Ok(());
     }
-    map_log("Recipe map not found; generating it on demand. Run `autopkg generate-recipe-map` explicitly (e.g. in CI) to avoid paying this cost on every fresh run.",stderr);
+    map_log("Recipe map not found; generating it on demand. Run `russet generate-recipe-map` explicitly (e.g. in CI) to avoid paying this cost on every fresh run.",stderr);
     let mut bytes =
         serde_json::to_vec_pretty(&map_data(values, false)?).map_err(|e| e.to_string())?;
     bytes.push(b'\n');
     atomic_write(&map_path_output(values, stderr)?, &bytes, true)
 }
 fn refresh_map(values: &Dictionary) -> Result<(), String> {
-    if env::var_os("AUTOPKG_DISABLE_RECIPE_MAP").is_some_and(|v| !v.is_empty())
-        || truth(values.get("DISABLE_RECIPE_MAP"))
-    {
+    if recipe_map_disabled(values) {
         return Ok(());
     }
     let path = map_path(values)?;
@@ -597,9 +438,7 @@ fn refresh_map(values: &Dictionary) -> Result<(), String> {
     atomic_write(&path, &bytes, true)
 }
 fn write_map(values: &Dictionary, include_cwd: bool) -> Result<(), String> {
-    if env::var_os("AUTOPKG_DISABLE_RECIPE_MAP").is_some_and(|v| !v.is_empty())
-        || truth(values.get("DISABLE_RECIPE_MAP"))
-    {
+    if recipe_map_disabled(values) {
         return Ok(());
     }
     let _ = map_path(values)?;
@@ -643,13 +482,15 @@ fn make_override(store: &Store, o: &Options) -> Result<i32, String> {
     let raw = read_recipe(&path)?;
     let id = identifier(&raw).ok_or("Parent recipe is missing an Identifier")?;
     let recipe = autopkg_engine::load_recipe(&path, &search)?;
-    if !o.ignore_deprecation
-        && recipe
-            .process
-            .iter()
-            .any(|p| p.processor == "DeprecationWarning")
+    if recipe
+        .process
+        .iter()
+        .any(|p| p.processor == "DeprecationWarning")
     {
-        return Err("Recipe or one of its parents is deprecated. Use --ignore-deprecation to make an override regardless.".into());
+        if !o.ignore_deprecation {
+            return Err(format!("{} or one of its parents is deprecated. Will not make an override. Use --ignore-deprecation to make an override regardless of deprecation status.",path.display()));
+        }
+        autopkg_platform::text_eprintln!("WARNING: {} or one of its parents is deprecated. Making an override anyway, because --ignore-deprecation is specified.",path.display());
     }
     let name = o
         .name
@@ -670,9 +511,6 @@ fn make_override(store: &Store, o: &Options) -> Result<i32, String> {
         })
         .unwrap_or("plist")
         .to_lowercase();
-    if !matches!(format.as_str(), "plist" | "yaml") {
-        return Err("Override format must be plist or yaml".into());
-    }
     let mut input = recipe.input;
     input.remove("IDENTIFIER");
     let data = Dictionary::from_iter([
@@ -698,24 +536,62 @@ fn make_override(store: &Store, o: &Options) -> Result<i32, String> {
             if format == "yaml" { ".yaml" } else { "" }
         ));
     if output.exists() && !o.force {
-        return Err(format!("A recipe override already exists at {}, will not overwrite it. Use --force to overwrite anyway.",output.display()));
+        autopkg_platform::text_eprintln!("A recipe override already exists at {}, will not overwrite it. Use --force to overwrite anyway.",output.display());
+        return Ok(255);
     }
     write_recipe(&output, data, o.force)?;
     autopkg_platform::text_println!("Override file saved to {}", output.display());
-    // Build only preference-scoped buckets. A transient --override-dir must
-    // never become visible to unrelated invocations through the persistent map.
+    // Only preference-scoped folders go in the map. A transient
+    // --override-dir must never become visible to unrelated invocations
+    // through the persistent map.
     let configured = override_dirs(&store.values)?
         .iter()
         .map(|p| expand(p))
         .collect::<Result<Vec<_>, _>>()?;
     if configured.iter().any(|p| output.starts_with(p)) {
-        let path = map_path(&store.values)?;
-        let mut bytes = serde_json::to_vec_pretty(&map_data(&store.values, false)?)
-            .map_err(|e| e.to_string())?;
-        bytes.push(b'\n');
-        atomic_write(&path, &bytes, true)?;
+        add_override_to_map(&store.values, &output)?;
     }
     Ok(0)
+}
+/// Adds one override to the persisted map, keeping existing entries the way
+/// AutoPkg's `add_recipe_to_map` does, and writes the map only if it changed.
+fn add_override_to_map(values: &Dictionary, override_path: &Path) -> Result<(), String> {
+    if recipe_map_disabled(values) {
+        return Ok(());
+    }
+    let mut data = fs::read(map_path_quiet(values)?)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Json>(&bytes).ok())
+        .filter(Json::is_object)
+        .unwrap_or_else(|| json!({"schema_version":1,"identifiers":{},"shortnames":{},"overrides":{},"overrides-identifiers":{}}));
+    let path_text = Json::String(override_path.to_string_lossy().into_owned());
+    let id = read_recipe(override_path)
+        .ok()
+        .as_ref()
+        .and_then(identifier)
+        .map(str::to_owned);
+    let mut changed = false;
+    for (key, entry) in [
+        ("overrides-identifiers", id),
+        ("overrides", name(override_path)),
+    ] {
+        let Some(entry) = entry.filter(|e| !e.is_empty()) else {
+            continue;
+        };
+        let table = data[key]
+            .as_object_mut()
+            .ok_or_else(|| format!("Recipe map {key} must be an object"))?;
+        if !table.contains_key(&entry) {
+            table.insert(entry, path_text.clone());
+            changed = true;
+        }
+    }
+    if changed {
+        let mut bytes = serde_json::to_vec_pretty(&data).map_err(|e| e.to_string())?;
+        bytes.push(b'\n');
+        atomic_write(&map_path(values)?, &bytes, true)?;
+    }
+    Ok(())
 }
 fn trust(store: &Store, o: &Options, verify: bool) -> Result<i32, String> {
     if o.args.is_empty() {
@@ -741,6 +617,9 @@ fn trust(store: &Store, o: &Options, verify: bool) -> Result<i32, String> {
     if verify && o.args.iter().any(|name| !Path::new(name).is_file()) {
         ensure_recipe_map(&store.values)?;
     }
+    // AutoPkg's update-trust-info finds overrides on disk and reads the map
+    // once, when it first loads a parent.
+    let mapped = std::cell::Cell::new(verify);
     for requested in &o.args {
         let operation = (|| {
             let path = locate(requested, &dirs, true)?;
@@ -774,6 +653,9 @@ fn trust(store: &Store, o: &Options, verify: bool) -> Result<i32, String> {
                 .get("ParentRecipe")
                 .and_then(Value::as_string)
                 .ok_or("Recipe is not an override and has no parent recipe")?;
+            if !mapped.replace(true) {
+                ensure_recipe_map(&store.values)?;
+            }
             let mut parent_dirs = search.clone();
             parent_dirs.push(path.parent().unwrap().to_owned());
             let parent = locate(parent, &parent_dirs, false)?;
@@ -789,7 +671,9 @@ fn trust(store: &Store, o: &Options, verify: bool) -> Result<i32, String> {
             status = 1;
             autopkg_platform::text_eprintln!("{requested}: FAILED");
             if o.verbose || !verify {
-                autopkg_platform::text_eprintln!("    {error}");
+                for line in error.lines() {
+                    autopkg_platform::text_eprintln!("    {line}");
+                }
             }
         }
     }
@@ -1052,6 +936,12 @@ fn repo_delete(store: &mut Store, o: &Options) -> Result<i32, String> {
         repos.remove(&path);
         search.retain(|p| p != &path);
         changed = true;
+        if store.shared_with_autopkg(&path) {
+            autopkg_platform::text_println!(
+                "Leaving {path} in place because AutoPkg's preferences list it."
+            );
+            continue;
+        }
         let deletion = if fs::symlink_metadata(destination)
             .map(|m| m.file_type().is_symlink())
             .unwrap_or(false)
@@ -1304,7 +1194,8 @@ pub fn run(verb: &str, args: &[String]) -> Result<i32, String> {
     if verb == "generate-recipe-map"
         && (!options.search.is_empty() || !options.overrides.is_empty())
     {
-        return Err("generate-recipe-map writes to the persistent on-disk cache, so transient --search-dir / --override-dir flags are not accepted".into());
+        autopkg_platform::text_eprintln!("ERROR: generate-recipe-map writes to the persistent on-disk cache, so transient --search-dir / --override-dir flags are not accepted (they would leak into every later run). To include a directory permanently, add it to RECIPE_SEARCH_DIRS / RECIPE_OVERRIDE_DIRS via `russet repo-add <dir>` or `defaults write com.github.russet RECIPE_SEARCH_DIRS ...`.");
+        return Ok(1);
     }
     let mut store = Store::load(options.prefs.as_deref())?;
     match verb {
@@ -1331,6 +1222,8 @@ pub fn run(verb: &str, args: &[String]) -> Result<i32, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Layer;
+    use autopkg_engine::preferences::Preferences;
     fn recipe(path: &Path, id: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         Value::Dictionary(Dictionary::from_iter([
@@ -1367,16 +1260,38 @@ mod tests {
                     .into(),
             ),
         ]);
-        let file = Preferences {
-            values: values.clone(),
-            path: root.join("prefs.plist"),
-            format: autopkg_engine::preferences::Format::Plist,
-        };
-        file.save().unwrap();
-        Store {
+        Value::Dictionary(values)
+            .to_file_xml(root.join("russet.plist"))
+            .unwrap();
+        let mut store = Store::new(Layer::load(&root.join("russet.plist")).unwrap(), None);
+        store.set_autopkg_repos(Dictionary::new());
+        store
+    }
+    /// A local Git repository with one recipe, for repo-add.
+    fn source_repository(root: &Path, values: &Dictionary) -> PathBuf {
+        let source = root.join("source");
+        fs::create_dir(&source).unwrap();
+        git(values, Some(&source), &["init", "--initial-branch=main"]).unwrap();
+        recipe(&source.join("App.recipe"), "org.app");
+        git(values, Some(&source), &["add", "App.recipe"]).unwrap();
+        git(
             values,
-            file: Some(file),
-        }
+            Some(&source),
+            &[
+                "-c",
+                "user.name=AutoPkg Test",
+                "-c",
+                "user.email=autopkg@example.invalid",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "commit",
+                "--no-gpg-sign",
+                "-m",
+                "fixture",
+            ],
+        )
+        .unwrap();
+        source
     }
     #[test]
     fn yaml_recipe_writer_preserves_environment_types() {
@@ -1404,7 +1319,7 @@ mod tests {
     #[test]
     fn new_recipe_templates_and_yaml_extension() {
         let temp = tempfile::tempdir().unwrap();
-        let store = store(temp.path());
+        store(temp.path());
         for (filename, format, version) in [
             ("Example.download.recipe", "plist", "1.0"),
             ("Example.recipe.yaml", "plist", "2.3"),
@@ -1413,11 +1328,8 @@ mod tests {
             let target = temp.path().join(filename);
             let args = vec![
                 "--prefs".into(),
-                store
-                    .file
-                    .as_ref()
-                    .unwrap()
-                    .path
+                temp.path()
+                    .join("russet.plist")
                     .to_string_lossy()
                     .into_owned(),
                 "--format".into(),
@@ -1506,10 +1418,10 @@ mod tests {
             ..Default::default()
         };
         make_override(&store, &options).unwrap();
-        let child = temp.path().join("overrides/App.download.recipe");
+        let child = temp.path().join("overrides").join("App.download.recipe");
         let data = read_recipe(&child).unwrap();
         assert_eq!(identifier(&data), Some("local.download.App"));
-        assert!(make_override(&store, &options).is_err());
+        assert_eq!(make_override(&store, &options), Ok(255));
         assert_eq!(trust(&store, &options, true).unwrap(), 0);
         let mut changed = read_recipe(&parent).unwrap();
         changed.insert("Description".into(), "changed".into());
@@ -1524,6 +1436,82 @@ mod tests {
         };
         make_override(&store, &yaml).unwrap();
         assert!(read_recipe(&temp.path().join("overrides/Yaml.download.recipe.yaml")).is_ok());
+    }
+    #[test]
+    fn make_override_adds_to_the_map_like_autopkg() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = store(temp.path());
+        recipe(
+            &temp.path().join("recipes/App.download.recipe"),
+            "org.app.download",
+        );
+        let map = temp.path().join("recipe_map.json");
+        // An existing entry wins, as in AutoPkg's add_recipe_to_map.
+        fs::write(
+            &map,
+            r#"{"overrides":{"App.download":"/elsewhere"},"overrides-identifiers":{}}"#,
+        )
+        .unwrap();
+        let options = Options {
+            args: vec!["App.download".into()],
+            // AutoPkg writes a plist for any format other than yaml.
+            format: Some("json".into()),
+            ..Default::default()
+        };
+        assert_eq!(make_override(&store, &options), Ok(0));
+        let child = temp.path().join("overrides").join("App.download.recipe");
+        assert!(read_recipe(&child).is_ok());
+        let data: Json = serde_json::from_slice(&fs::read(&map).unwrap()).unwrap();
+        assert_eq!(data["overrides"]["App.download"], "/elsewhere");
+        assert_eq!(
+            data["overrides-identifiers"]["local.download.App"],
+            child.to_string_lossy().as_ref()
+        );
+        // Nothing changed, so the map isn't written again.
+        let compact = serde_json::to_vec(&data).unwrap();
+        fs::write(&map, &compact).unwrap();
+        let forced = Options {
+            force: true,
+            ..options
+        };
+        assert_eq!(make_override(&store, &forced), Ok(0));
+        assert_eq!(fs::read(&map).unwrap(), compact);
+    }
+    #[test]
+    fn make_override_names_the_deprecated_recipe() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut store = store(temp.path());
+        store
+            .values
+            .insert("DISABLE_RECIPE_MAP".into(), true.into());
+        let path = temp.path().join("recipes").join("Old.recipe");
+        Value::Dictionary(Dictionary::from_iter([
+            ("Identifier", Value::from("org.old")),
+            ("Input", Dictionary::new().into()),
+            (
+                "Process",
+                Value::Array(vec![Dictionary::from_iter([(
+                    "Processor",
+                    Value::from("DeprecationWarning"),
+                )])
+                .into()]),
+            ),
+        ]))
+        .to_file_xml(&path)
+        .unwrap();
+        let options = Options {
+            args: vec!["Old".into()],
+            ..Default::default()
+        };
+        assert_eq!(
+            make_override(&store, &options),
+            Err(format!("{} or one of its parents is deprecated. Will not make an override. Use --ignore-deprecation to make an override regardless of deprecation status.", path.display()))
+        );
+        let ignore = Options {
+            ignore_deprecation: true,
+            ..options
+        };
+        assert_eq!(make_override(&store, &ignore), Ok(0));
     }
     #[test]
     fn repository_url_expansion_and_names_match_reference() {
@@ -1557,7 +1545,8 @@ mod tests {
             "com.github.user.recipes"
         );
         assert!(parse("generate-recipe-map", &["--unknown".into()]).is_err());
-        assert!(parse("make-override", &["--pull".into()]).is_err());
+        assert!(parse("make-override", &["--pull".into(), "-p".into()]).is_ok());
+        assert!(parse("update-trust-info", &["--pull".into()]).is_err());
     }
     #[cfg(windows)]
     #[test]
@@ -1581,33 +1570,7 @@ mod tests {
         store
             .values
             .insert("DISABLE_RECIPE_MAP".into(), true.into());
-        let source = temp.path().join("source");
-        fs::create_dir(&source).unwrap();
-        git(
-            &store.values,
-            Some(&source),
-            &["init", "--initial-branch=main"],
-        )
-        .unwrap();
-        recipe(&source.join("App.recipe"), "org.app");
-        git(&store.values, Some(&source), &["add", "App.recipe"]).unwrap();
-        git(
-            &store.values,
-            Some(&source),
-            &[
-                "-c",
-                "user.name=AutoPkg Test",
-                "-c",
-                "user.email=autopkg@example.invalid",
-                "-c",
-                "core.hooksPath=/dev/null",
-                "commit",
-                "--no-gpg-sign",
-                "-m",
-                "fixture",
-            ],
-        )
-        .unwrap();
+        let source = source_repository(temp.path(), &store.values);
         let options = Options {
             args: vec![source.to_string_lossy().into_owned()],
             ..Default::default()
@@ -1617,6 +1580,11 @@ mod tests {
         assert_eq!(repos.len(), 1);
         let path = repos.keys().next().unwrap().clone();
         assert!(Path::new(&path).join("App.recipe").exists());
+        let russet = Preferences::load(&temp.path().join("russet.plist"))
+            .unwrap()
+            .values;
+        assert_eq!(repositories(&russet).unwrap().len(), 1);
+        assert!(search_dirs(&russet).unwrap().contains(&path));
         assert_eq!(
             repo_update(
                 &store,
@@ -1640,11 +1608,71 @@ mod tests {
         assert!(!Path::new(&path).exists());
         assert!(source.exists());
         assert!(repositories(
-            &Preferences::load(&temp.path().join("prefs.plist"))
+            &Preferences::load(&temp.path().join("russet.plist"))
                 .unwrap()
                 .values
         )
         .unwrap()
         .is_empty());
+    }
+    #[test]
+    fn repo_delete_keeps_clones_that_autopkg_lists() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut store = store(temp.path());
+        store
+            .values
+            .insert("DISABLE_RECIPE_MAP".into(), true.into());
+        let clone = temp.path().join("repos/com.example.recipes");
+        fs::create_dir_all(&clone).unwrap();
+        let clone = clone.to_string_lossy().into_owned();
+        let repos = Dictionary::from_iter([(
+            clone.as_str(),
+            Value::from(Dictionary::from_iter([(
+                "URL",
+                "https://example.invalid/r",
+            )])),
+        )]);
+        store
+            .values
+            .insert("RECIPE_REPOS".into(), repos.clone().into());
+        store.set_autopkg_repos(repos);
+        repo_delete(
+            &mut store,
+            &Options {
+                args: vec![clone.clone()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        // The clone is AutoPkg's too, so Russet only stops using it.
+        assert!(Path::new(&clone).is_dir());
+        let saved = Preferences::load(&temp.path().join("russet.plist"))
+            .unwrap()
+            .values;
+        assert!(repositories(&saved).unwrap().is_empty());
+    }
+    #[test]
+    fn unset_folders_default_to_russet() {
+        let values = Dictionary::new();
+        let home = home().unwrap();
+        let (search, overrides) = recipe_directories(&values).unwrap();
+        assert_eq!(
+            search[1..],
+            [
+                home.join("Library/Russet/Recipes"),
+                // Windows resolves a rooted path against the current drive.
+                expand("/Library/Russet/Recipes").unwrap()
+            ]
+        );
+        assert_eq!(overrides, [home.join("Library/Russet/RecipeOverrides")]);
+        assert_eq!(
+            repository_dirs(&values).unwrap(),
+            [home.join("Library/Russet/RecipeRepos")]
+        );
+        let configured = Dictionary::from_iter([("RECIPE_REPO_DIR", Value::from("/srv/repos"))]);
+        assert_eq!(
+            repository_dirs(&configured).unwrap(),
+            [expand("/srv/repos").unwrap()]
+        );
     }
 }

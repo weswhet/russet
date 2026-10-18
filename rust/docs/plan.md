@@ -23,7 +23,7 @@ Updated October 9, 2026.
 - Trust follows each processor variant. `URLDownloaderPython` uses the generated bundle and CA path. `URLDownloader` follows the curl tool: the `SSL_CERT_FILE` the curl child would see (the certifi bundle on macOS) or the distribution bundle, plus any `SSL_CERT_DIR` directories, as curl adds them to its bundle; with neither variable set, Linux and Windows use the platform verifier. GitHub's Ubuntu images set `SSL_CERT_DIR`.
 - The default `User-Agent` is the one the fallback curl sends, read once from `curl --version` (for example, `curl/8.7.1`), so vendor servers that check the user agent see no change. A recipe user agent or `User-Agent` header replaces it.
 - `download_transport/chunks.rs` splits a `200` response with a known length of at least 64 MiB, a strong ETag, and no content coding into 8 MiB chunks. The original response keeps streaming from the start while up to three HTTP/1.1 range workers take chunks from the end, with `Range` and `If-Range` on every request, positional writes, exact `206`, `Content-Range`, ETag, and length validation, and caps of eight range requests overall and three per origin. On any anomaly, the workers are cancelled and joined and the original response takes over the remaining chunks; if it has already stopped, the transfer restarts once as a single stream.
-- `AUTOPKG_RS_DEBUG=1` prints the backend chosen, the redacted fallback reason, the transfer mode, and the elapsed time.
+- `RUSSET_DEBUG=1` prints the backend chosen, the redacted fallback reason, the transfer mode, and the elapsed time.
 
 ### Deviations from the proposal
 
@@ -60,7 +60,7 @@ The current command builder assembles generated curl arguments, operation argume
 
 Continue honoring [curl discovery and `CURL_PATH`](../crates/platform/src/downloads.rs) and [certificate policy](../crates/processors/src/processors/url_downloader/trust.rs). An explicit `CURL_PATH`, including a wrapper executable, selects curl in `auto` until its behavior can be proven equivalent; recognizing the filename alone is insufficient.
 
-Use the existing processor dispatch for both aliases; support both recipe execution and standalone processor runs without introducing another processor name. Keep recipe and processor execution sequential in this project. Parallelism is inside one eligible transfer, with shared limits that remain safe if recipe concurrency is added later.
+Use the existing processor dispatch for both aliases; support both recipe execution and standalone processor runs without introducing another processor name. Keep processor execution sequential in this project. Parallelism is inside one eligible transfer, with shared limits that remain safe across recipes. `run --jobs` later added recipe concurrency: each recipe runs on its own thread, the range-request limits in [chunks.rs](../crates/processors/src/download_transport/chunks.rs) are shared by every recipe in the run, and the transport emits its messages on the recipe's thread after the transfer, so they keep the recipe's output prefix and processor context.
 
 ## Proposed module boundaries
 
@@ -233,7 +233,7 @@ These names and values are design proposals. Resolve placement and precedence ag
 
 Validate settings before execution and include them in bounded resource accounting. Document global and recipe override precedence, invalid values, and how to return to curl immediately.
 
-Use the existing `AUTOPKG_RS_DEBUG=1` development diagnostics for backend choice, redacted fallback reasons, chunk counts, reused bytes, retry counts, timing, and publication recovery. Redact URL queries, credentials, headers, and sensitive paths. Normal output should retain existing recipe-facing behavior.
+Use the existing `RUSSET_DEBUG=1` development diagnostics for backend choice, redacted fallback reasons, chunk counts, reused bytes, retry counts, timing, and publication recovery. Redact URL queries, credentials, headers, and sensitive paths. Normal output should retain existing recipe-facing behavior.
 
 ## Deliver in phases
 

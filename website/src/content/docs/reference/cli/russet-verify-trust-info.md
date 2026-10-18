@@ -39,7 +39,7 @@ lines that start with `#`.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-l FILE`, `--recipe-list FILE` | Verifies the overrides in the recipe list `FILE`. |
 | `-v`, `--verbose` | Prints the reason for each failure. Repeating this option doesn't add more detail. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for parent recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |

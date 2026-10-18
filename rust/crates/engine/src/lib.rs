@@ -579,6 +579,7 @@ pub fn run_recipe_detailed(
             autopkg_platform::text_println!("{}", pretty_repr(&Value::Dictionary(env.clone()), 0));
         }
         for step in &recipe.process {
+            autopkg_platform::live::processor_started(&step.processor);
             if verbose > 0 {
                 autopkg_platform::text_println!("{}", step.processor);
             }
@@ -618,7 +619,9 @@ pub fn run_recipe_detailed(
                 autopkg_processors::execute_with_outputs(&step.processor, &mut env)
             };
             let output_names = execution.map_err(|e| {
-                autopkg_platform::text_eprintln!("{e}");
+                if !autopkg_platform::live::processor_failed(&e.to_string()) {
+                    autopkg_platform::text_eprintln!("{e}");
+                }
                 format!(
                     "Error in {}: Processor: {}: Error: {e}",
                     recipe.identifier, step.processor
@@ -650,6 +653,7 @@ pub fn run_recipe_detailed(
                 ("Output", Value::Dictionary(outputs)),
             ])));
             executed.push(step.processor.clone());
+            autopkg_platform::live::processor_finished();
             if env.get("stop_processing_recipe").is_some_and(truthy) {
                 stopped = true;
                 break;

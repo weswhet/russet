@@ -170,6 +170,7 @@ mod shell {
         daemons: [PathBuf; 2],
         managed: Vec<PathBuf>,
         /// Preferences and a Python AutoPkg installation, which Russet never touches.
+        /// Russet's own preferences survive installs and uninstalls too.
         unrelated: Vec<PathBuf>,
     }
 
@@ -196,6 +197,7 @@ mod shell {
                 "Library/AutoPkg/autopkg",
                 "Library/LaunchDaemons/com.github.autopkg.autopkgserver.plist",
                 "usr/local/bin/autopkg",
+                "Library/Preferences/com.github.russet.plist",
             ]
             .map(|path| root.join(path))
             .to_vec();
@@ -216,6 +218,7 @@ mod shell {
             write(&stage.unrelated[2], b"python autopkg daemon", 0o644);
             fs::create_dir_all(stage.unrelated[3].parent().unwrap()).unwrap();
             symlink(Path::new("/Library/AutoPkg/autopkg"), &stage.unrelated[3]);
+            write(&stage.unrelated[4], b"russet preferences\x00\xff", 0o600);
             stage
         }
 

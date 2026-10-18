@@ -49,7 +49,7 @@ cat > "$work/package.input.plist" <<EOF
 EOF
 run_processor() {
     /usr/bin/sudo -u nobody /usr/bin/env PATH=/nonexistent HOME="$work/home" \
-        AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
+        RUSSET_PREFERENCES_FILE="$work/preferences.plist" \
         /usr/local/bin/russet processor-run "$1" < "$2" > "$3"
 }
 run_processor PkgCreator "$work/package.input.plist" "$work/package.output.plist"
@@ -115,7 +115,7 @@ cat > "$work/dmg.input.plist" <<EOF
 </dict></array></dict></plist>
 EOF
 /usr/bin/env PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$work/home" \
-    AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
+    RUSSET_PREFERENCES_FILE="$work/preferences.plist" \
     /usr/local/bin/russet processor-run InstallFromDMG < "$work/dmg.input.plist" > "$work/dmg.output.plist"
 [ "$(/usr/bin/plutil -extract install_result raw -o - "$work/dmg.output.plist")" = DONE ]
 /usr/bin/cmp "$work/image-source/copied.txt" "$work/copied/copied.txt"
@@ -123,7 +123,7 @@ EOF
 # This preference is confined to the disposable VM; never write it on the host.
 /usr/bin/defaults write com.googlecode.munki.munkiimport default_catalog -string FixtureStable
 /usr/bin/env PATH=/nonexistent HOME="$work/home" \
-    AUTOPKG_RS_PREFERENCES_FILE="$work/preferences.plist" \
+    RUSSET_PREFERENCES_FILE="$work/preferences.plist" \
     /usr/local/bin/russet processor-run MunkiSetDefaultCatalog < "$work/preferences.plist" > "$work/catalog.output.plist"
 [ "$(/usr/bin/plutil -extract pkginfo.catalogs.0 raw -o - "$work/catalog.output.plist")" = FixtureStable ]
 /usr/bin/defaults delete com.googlecode.munki.munkiimport default_catalog

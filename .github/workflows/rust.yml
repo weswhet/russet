@@ -1,12 +1,25 @@
 name: Rust development
 on:
+  # Pull requests run from pull_request, so push covers only main. Otherwise
+  # each pull request commit would run every job twice.
   push:
+    branches: [main]
     paths: ['rust/**', 'compatibility/**', 'Scripts/**', '.gitattributes', '.github/workflows/rust.yml']
   pull_request:
     paths: ['rust/**', 'compatibility/**', 'Scripts/**', '.gitattributes', '.github/workflows/rust.yml']
+  schedule:
+    # Nightly, for full-length fuzzing.
+    - cron: '17 9 * * *'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: rust-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  # Pull requests skip work that only main needs: the Intel macOS job, and
+  # release packaging on every target but Linux. Releases come from main.
+  FULL: ${{ github.event_name != 'pull_request' }}
 jobs:
   fuzz:
     # Short runs of every parser fuzz target; see rust/fuzz/README.md.
@@ -19,12 +32,19 @@ jobs:
         with:
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-fuzz --version 0.13.2 --locked
-      - name: Run each target for 60 seconds
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz@0.13.2
+      - name: Run each target
+        # 10 seconds a target on pull requests, 60 on main and nightly.
+        env:
+          SECONDS_PER_TARGET: ${{ github.event_name == 'pull_request' && 10 || 60 }}
         run: |
           failed=""
           for target in $(cargo fuzz list); do
-            cargo fuzz run "$target" -- -max_total_time=60 -rss_limit_mb=2048 || failed="$failed $target"
+            # The prebuilt cargo-fuzz is a musl binary and would default to
+            # its own target, which the sanitizer doesn't support.
+            cargo fuzz run --target x86_64-unknown-linux-gnu "$target" -- -max_total_time="$SECONDS_PER_TARGET" -rss_limit_mb=2048 || failed="$failed $target"
           done
           if [ -n "$failed" ]; then
             echo "::error::Fuzz targets failed:$failed"
@@ -36,18 +56,13 @@ jobs:
           name: fuzz-artifacts
           path: rust/fuzz/artifacts
   test:
+    if: github.event_name != 'schedule'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-15
-            target: aarch64-apple-darwin
-          - os: macos-15-intel
-            target: x86_64-apple-darwin
-          - os: windows-2025
-            target: x86_64-pc-windows-msvc
-          - os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
+        # Apple silicon covers macOS on pull requests; main adds Intel, which
+        # releases need.
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '[{"os":"macos-15","target":"aarch64-apple-darwin"},{"os":"windows-2025","target":"x86_64-pc-windows-msvc"},{"os":"ubuntu-24.04","target":"x86_64-unknown-linux-gnu"}]' || '[{"os":"macos-15","target":"aarch64-apple-darwin"},{"os":"macos-15-intel","target":"x86_64-apple-darwin"},{"os":"windows-2025","target":"x86_64-pc-windows-msvc"},{"os":"ubuntu-24.04","target":"x86_64-unknown-linux-gnu"}]') }}
     runs-on: ${{ matrix.os }}
     # Only macOS jobs on main can read the Developer ID and notary secrets.
     # The russet-signing environment deploys only from main, so a branch can't
@@ -64,7 +79,14 @@ jobs:
         with:
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
-      - run: cargo fmt --all -- --check
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: ${{ matrix.target }}
+          # Pull requests read main's cache but don't save their own.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - if: runner.os == 'Linux'
+        run: cargo fmt --all -- --check
       - name: Check third-party license files
         if: runner.os == 'Linux'
         run: cargo xtask licenses --check
@@ -80,7 +102,8 @@ jobs:
         run: cargo test -p russet-pkgbuild --locked --target ${{ matrix.target }} -- --ignored installs_with_apple_installer
       - name: Verify archive install, upgrade, rollback, and failure recovery
         run: cargo test --package xtask --locked --no-fail-fast --target ${{ matrix.target }}
-      - run: cargo build --release --locked --target ${{ matrix.target }} -p russet
+      - if: env.FULL == 'true' || runner.os == 'Linux'
+        run: cargo build --release --locked --target ${{ matrix.target }} -p russet
       - name: Import the Developer ID identity
         if: github.ref == 'refs/heads/main' && contains(matrix.target, 'apple')
         env:
@@ -157,14 +180,15 @@ jobs:
         if: always() && github.ref == 'refs/heads/main' && contains(matrix.target, 'apple')
         shell: bash
         run: security delete-keychain "$RUNNER_TEMP/russet-signing.keychain-db" 2>/dev/null || true
-      - run: cargo xtask package --target ${{ matrix.target }} --bin-dir target/${{ matrix.target }}/release
+      - if: env.FULL == 'true' || runner.os == 'Linux'
+        run: cargo xtask package --target ${{ matrix.target }} --bin-dir target/${{ matrix.target }}/release
       - name: Verify installed macOS helpers, upgrade, and rollback
-        if: runner.os == 'macOS'
+        if: env.FULL == 'true' && runner.os == 'macOS'
         run: |
           tar -xzf dist/russet-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
           sudo env AUTOPKG_DISPOSABLE_CI=1 GITHUB_ACTIONS=true RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" RUNNER_OS="$RUNNER_OS" /bin/sh ../Scripts/verify_rust_macos_vm.sh "$RUNNER_TEMP/russet-development-${{ matrix.target }}"
       - name: Verify native Windows workflows
-        if: runner.os == 'Windows'
+        if: env.FULL == 'true' && runner.os == 'Windows'
         shell: pwsh
         run: ../Scripts/verify_rust_windows.ps1 -ArchivePath (Resolve-Path dist/russet-development-${{ matrix.target }}.zip)
       - name: Verify Linux installation without Python
@@ -172,7 +196,8 @@ jobs:
         run: |
           tar -xzf dist/russet-development-${{ matrix.target }}.tar.gz -C "$RUNNER_TEMP"
           docker run --rm --network none -e AUTOPKG_DISPOSABLE_CONTAINER=1 -v "$RUNNER_TEMP/russet-development-${{ matrix.target }}:/candidate:ro" -v "$GITHUB_WORKSPACE/Scripts/verify_rust_linux.sh:/verify.sh:ro" mirror.gcr.io/library/ubuntu:24.04 /bin/sh /verify.sh /candidate
-      - uses: actions/upload-artifact@v4
+      - if: env.FULL == 'true' || runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
         with:
           name: russet-development-${{ matrix.target }}
           path: rust/dist/*

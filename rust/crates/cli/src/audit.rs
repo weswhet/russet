@@ -451,6 +451,49 @@ fn details(check: &str, value: &Value) -> Vec<String> {
         _ => value.as_array().unwrap().iter().map(py).collect(),
     }
 }
+/// Formats findings like Python's `json.dumps(findings, indent=2)`: keys in
+/// insertion order and non-ASCII characters escaped.
+fn json_dumps(all: &[Value]) -> Result<String, String> {
+    #[derive(serde::Serialize)]
+    struct Finding<'a> {
+        severity: &'a Value,
+        check: &'a Value,
+        detail: &'a Value,
+    }
+    #[derive(serde::Serialize)]
+    struct Row<'a> {
+        recipe: &'a Value,
+        findings: Vec<Finding<'a>>,
+    }
+    let rows = all
+        .iter()
+        .map(|row| Row {
+            recipe: &row["recipe"],
+            findings: row["findings"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|f| Finding {
+                    severity: &f["severity"],
+                    check: &f["check"],
+                    detail: &f["detail"],
+                })
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    let text = serde_json::to_string_pretty(&rows).map_err(|e| e.to_string())?;
+    Ok(text
+        .chars()
+        .map(|c| match c {
+            ' '..='~' | '\n' => c.to_string(),
+            c => c
+                .encode_utf16(&mut [0; 2])
+                .iter()
+                .map(|unit| format!("\\u{unit:04x}"))
+                .collect(),
+        })
+        .collect())
+}
 fn findings(result: &Value) -> Vec<Value> {
     let mut out = vec![];
     for (check, key, severity) in CHECKS {
@@ -662,17 +705,16 @@ pub fn run(args: &[String]) -> Result<i32, String> {
         }
         return Ok(0);
     }
+    // AutoPkg returns -1 for these, so the exit status is 255.
+    let invalid = |message: String| {
+        autopkg_platform::text_eprintln!("{message}");
+        Ok(255)
+    };
     if plist && json {
-        return Err("Only one of --plist and --json may be used.".into());
+        return invalid("Only one of --plist and --json may be used.".into());
     }
     if only.is_some() && skip.is_some() {
-        return Err("Only one of --only-check and --skip-check may be used.".into());
-    }
-    if fail.is_some_and(|s| rank(s).is_none()) {
-        return Err(format!(
-            "Unknown severity '{}'. Valid severities: info, warning, error.",
-            fail.unwrap()
-        ));
+        return invalid("Only one of --only-check and --skip-check may be used.".into());
     }
     let names: Vec<_> = only
         .or(skip)
@@ -681,10 +723,25 @@ pub fn run(args: &[String]) -> Result<i32, String> {
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .collect();
-    for name in &names {
-        if !CHECKS.iter().any(|c| c.0 == *name) {
-            return Err(format!("Unknown check name: {name}"));
-        }
+    let unknown: Vec<_> = names
+        .iter()
+        .filter(|name| !CHECKS.iter().any(|c| c.0 == **name))
+        .copied()
+        .collect();
+    if !unknown.is_empty() {
+        let mut valid: Vec<_> = CHECKS.iter().map(|c| c.0).collect();
+        valid.sort();
+        return invalid(format!(
+            "Unknown check name(s): {}. Valid checks: {}.",
+            unknown.join(", "),
+            valid.join(", ")
+        ));
+    }
+    if fail.is_some_and(|s| rank(s).is_none()) {
+        return invalid(format!(
+            "Unknown severity '{}'. Valid severities: info, warning, error.",
+            fail.unwrap()
+        ));
     }
     if let Some(path) = recipe_list {
         recipes.extend(super::list_strings(
@@ -739,25 +796,13 @@ pub fn run(args: &[String]) -> Result<i32, String> {
     if plist {
         let output: Plist =
             serde_json::from_value(results.clone().into()).map_err(|e| e.to_string())?;
-        output
-            .to_writer_xml(std::io::stdout())
-            .map_err(|e| e.to_string())?;
+        let mut xml = vec![];
+        output.to_writer_xml(&mut xml).map_err(|e| e.to_string())?;
+        // print(plistlib.dumps(...).decode()) ends with a blank line.
+        let xml = String::from_utf8(xml).map_err(|e| e.to_string())?;
+        autopkg_platform::text_println!("{}\n", xml.trim_end_matches('\n'));
     } else if json {
-        autopkg_platform::text_println!("{}", {
-            #[derive(serde::Serialize)]
-            struct Row<'a> {
-                recipe: &'a Value,
-                findings: &'a Value,
-            }
-            let rows = all
-                .iter()
-                .map(|row| Row {
-                    recipe: &row["recipe"],
-                    findings: &row["findings"],
-                })
-                .collect::<Vec<_>>();
-            serde_json::to_string_pretty(&rows).map_err(|e| e.to_string())?
-        });
+        autopkg_platform::text_println!("{}", json_dumps(&all)?);
     } else if recipes.len() > 1 {
         autopkg_platform::text_println!("\nSummary:\n    {} recipes audited\n    {issues} recipes with audit issues\n    {} recipes triggered no audit flags",results.len(),results.len()-issues);
     }
@@ -794,8 +839,22 @@ mod tests {
     }
     #[test]
     fn check_option_errors_do_not_touch_files() {
-        assert!(run(&["--json".into(), "--plist".into()]).is_err());
-        assert!(run(&["--only-check".into(), "future_check".into()]).is_err());
-        assert!(run(&["--fail-on".into(), "critical".into()]).is_err());
+        assert_eq!(run(&["--json".into(), "--plist".into()]), Ok(255));
+        assert_eq!(
+            run(&["--only-check".into(), "future_check".into()]),
+            Ok(255)
+        );
+        assert_eq!(run(&["--fail-on".into(), "critical".into()]), Ok(255));
+    }
+    #[test]
+    fn json_keeps_python_key_order_and_escapes_non_ascii() {
+        let all = [
+            json!({"recipe":"Café","findings":[{"check":"weak_hash","detail":"✓","severity":"warning"}]}),
+        ];
+        assert_eq!(
+            json_dumps(&all).unwrap(),
+            "[\n  {\n    \"recipe\": \"Caf\\u00e9\",\n    \"findings\": [\n      {\n        \"severity\": \"warning\",\n        \"check\": \"weak_hash\",\n        \"detail\": \"\\u2713\"\n      }\n    ]\n  }\n]"
+        );
+        assert_eq!(json_dumps(&[]).unwrap(), "[]");
     }
 }

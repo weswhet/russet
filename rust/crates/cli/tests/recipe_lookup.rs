@@ -67,7 +67,7 @@ impl Sandbox {
             .env("HOME", &self.home)
             .env("USERPROFILE", &self.home)
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
-            .env("AUTOPKG_RS_PREFERENCES_FILE", &self.prefs)
+            .env("RUSSET_PREFERENCES_FILE", &self.prefs)
             .args(args)
             .current_dir(cwd)
             .output()
@@ -95,10 +95,15 @@ fn run_finds_repository_recipes_by_short_name() {
 fn overrides_keep_trust_when_run_from_a_folder_that_contains_them() {
     let sandbox = Sandbox::new();
     assert_success(&sandbox.autopkg(&sandbox.home, &["make-override", "App.download"]));
+    // New overrides go to Russet's folder, never AutoPkg's.
     assert!(sandbox
         .home
-        .join("Library/AutoPkg/RecipeOverrides/App.download.recipe")
+        .join("Library/Russet/RecipeOverrides/App.download.recipe")
         .is_file());
+    assert!(!sandbox
+        .home
+        .join("Library/AutoPkg/RecipeOverrides/App.download.recipe")
+        .exists());
     // The home folder is the search folder `.`, and it contains the override
     // folder; that must not make the override look like repository content.
     let mut folders = vec![sandbox.home.clone()];

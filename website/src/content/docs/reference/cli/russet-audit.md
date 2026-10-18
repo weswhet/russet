@@ -43,7 +43,7 @@ continues with the next recipe.
 
 | Option | Description |
 | --- | --- |
-| `--prefs FILE` | Reads preferences from `FILE` in addition to your platform preferences. |
+| `--prefs FILE` | Reads preferences from `FILE` on top of Russet's preferences. |
 | `-d FOLDER`, `--search-dir FOLDER` | Searches `FOLDER` for recipes instead of the folders in `RECIPE_SEARCH_DIRS`. You can repeat this option. |
 | `--override-dir FOLDER` | Searches `FOLDER` for recipe overrides instead of the folders in `RECIPE_OVERRIDE_DIRS`. You can repeat this option. |
 | `-l FILE`, `--recipe-list FILE` | Audits the recipes in the recipe list `FILE`. |

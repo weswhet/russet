@@ -32,12 +32,12 @@ Russet clones the repository and adds it to your recipe search folders:
 ```text
 Attempting git clone for https://github.com/autopkg/recipes...
 
-Adding /Users/USERNAME/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes to RECIPE_SEARCH_DIRS...
+Adding /Users/USERNAME/Library/Russet/RecipeRepos/com.github.autopkg.recipes to RECIPE_SEARCH_DIRS...
 Updated search path:
   '.'
-  '~/Library/AutoPkg/Recipes'
-  '/Library/AutoPkg/Recipes'
-  '/Users/USERNAME/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes'
+  '~/Library/Russet/Recipes'
+  '/Library/Russet/Recipes'
+  '/Users/USERNAME/Library/Russet/RecipeRepos/com.github.autopkg.recipes'
 ```
 
 In the output, `USERNAME` is your user name.
@@ -91,7 +91,7 @@ russet make-override TheUnarchiver.download
 Russet saves the override in your overrides folder:
 
 ```text
-Override file saved to /Users/USERNAME/Library/AutoPkg/RecipeOverrides/TheUnarchiver.download.recipe
+Override file saved to /Users/USERNAME/Library/Russet/RecipeOverrides/TheUnarchiver.download.recipe
 ```
 
 ## Run the recipe
@@ -110,7 +110,7 @@ Processing TheUnarchiver.download...
 SparkleUpdateInfoProvider
 SparkleUpdateInfoProvider: Version retrieved from appcast: 147
 URLDownloader
-URLDownloader: Downloaded /Users/USERNAME/Library/AutoPkg/Cache/local.download.TheUnarchiver/downloads/TheUnarchiver-147.zip
+URLDownloader: Downloaded /Users/USERNAME/Library/Russet/Cache/local.download.TheUnarchiver/downloads/TheUnarchiver-147.zip
 EndOfCheckPhase
 Unarchiver
 CodeSignatureVerifier
@@ -119,7 +119,7 @@ CodeSignatureVerifier: Signature is valid
 The following new items were downloaded:
     Download Path
     -------------
-    /Users/USERNAME/Library/AutoPkg/Cache/local.download.TheUnarchiver/downloads/TheUnarchiver-147.zip
+    /Users/USERNAME/Library/Russet/Cache/local.download.TheUnarchiver/downloads/TheUnarchiver-147.zip
 ```
 
 The version number depends on the current release of The Unarchiver.
@@ -155,13 +155,13 @@ If you don't want to keep the files from this quickstart, delete them:
 1. Delete the override:
 
    ```sh
-   rm ~/Library/AutoPkg/RecipeOverrides/TheUnarchiver.download.recipe
+   rm ~/Library/Russet/RecipeOverrides/TheUnarchiver.download.recipe
    ```
 
 1. Delete the recipe's cache folder:
 
    ```sh
-   rm -r ~/Library/AutoPkg/Cache/local.download.TheUnarchiver
+   rm -r ~/Library/Russet/Cache/local.download.TheUnarchiver
    ```
 
 1. Optional: if you don't plan to use the recipe repository, remove it:
