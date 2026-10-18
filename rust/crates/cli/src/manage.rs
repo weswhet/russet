@@ -1418,7 +1418,7 @@ mod tests {
             ..Default::default()
         };
         make_override(&store, &options).unwrap();
-        let child = temp.path().join("overrides/App.download.recipe");
+        let child = temp.path().join("overrides").join("App.download.recipe");
         let data = read_recipe(&child).unwrap();
         assert_eq!(identifier(&data), Some("local.download.App"));
         assert_eq!(make_override(&store, &options), Ok(255));
@@ -1459,7 +1459,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(make_override(&store, &options), Ok(0));
-        let child = temp.path().join("overrides/App.download.recipe");
+        let child = temp.path().join("overrides").join("App.download.recipe");
         assert!(read_recipe(&child).is_ok());
         let data: Json = serde_json::from_slice(&fs::read(&map).unwrap()).unwrap();
         assert_eq!(data["overrides"]["App.download"], "/elsewhere");
@@ -1484,7 +1484,7 @@ mod tests {
         store
             .values
             .insert("DISABLE_RECIPE_MAP".into(), true.into());
-        let path = temp.path().join("recipes/Old.recipe");
+        let path = temp.path().join("recipes").join("Old.recipe");
         Value::Dictionary(Dictionary::from_iter([
             ("Identifier", Value::from("org.old")),
             ("Input", Dictionary::new().into()),

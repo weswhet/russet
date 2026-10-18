@@ -994,14 +994,12 @@ mod tests {
         }
         let error = verify(&info, &parent_trust_info(&parent, &[]).unwrap()).unwrap_err();
         for (id, path) in [("org.parent", &parent), ("org.base", &base)] {
-            let path = crate::normal_recipe_path(path.canonicalize().unwrap());
-            assert!(
-                error.contains(&format!(
-                    "Parent recipe {id} contents differ from expected.\n    Path: {}\n",
-                    path.display()
-                )),
-                "{error}"
-            );
+            // The path may be shortened, such as to ~ on Windows.
+            let name = path.file_name().unwrap().to_string_lossy();
+            let line = format!("Parent recipe {id} contents differ from expected.\n    Path: ");
+            let start = error.find(&line).unwrap_or_else(|| panic!("{error}")) + line.len();
+            let shown = error[start..].lines().next().unwrap();
+            assert!(shown.ends_with(name.as_ref()), "{error}");
         }
     }
     #[test]

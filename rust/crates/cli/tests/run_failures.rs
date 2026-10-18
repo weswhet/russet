@@ -63,8 +63,9 @@ impl Home {
     }
 }
 
-fn text(bytes: &[u8]) -> &str {
-    std::str::from_utf8(bytes).unwrap()
+/// Output with Windows line endings normalized.
+fn text(bytes: &[u8]) -> String {
+    std::str::from_utf8(bytes).unwrap().replace("\r\n", "\n")
 }
 
 #[test]
