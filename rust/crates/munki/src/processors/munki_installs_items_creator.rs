@@ -4,7 +4,7 @@
 //!
 //! Inputs and outputs: run `russet processor-info MunkiInstallsItemsCreator`, or see
 //! `MunkiInstallsItemsCreator` in `compatibility/reference.json`.
-use md5::{Digest, Md5};
+use md5::Md5;
 use plist::{Dictionary, Value};
 use std::{
     cmp::Ordering,
@@ -123,11 +123,7 @@ pub fn create_item(path: &Path) -> Result<Dictionary, String> {
         item.insert("type".into(), Value::String("file".into()));
         if path.is_file() || path.is_symlink() {
             let hash = std::fs::File::open(path)
-                .and_then(|mut file| {
-                    let mut hasher = Md5::new();
-                    std::io::copy(&mut file, &mut hasher)?;
-                    Ok(format!("{:x}", hasher.finalize()))
-                })
+                .and_then(|mut file| crate::metadata::hex_digest::<Md5>(&mut file))
                 .unwrap_or_default();
             item.insert("md5checksum".into(), Value::String(hash));
         }

@@ -497,11 +497,26 @@ fn normalize(path: &Path) -> PathBuf {
 
 /// Hashes a file in fixed-size reads, so a multi-gigabyte resource doesn't
 /// have to fit in memory.
-fn digest_file<D: Digest + std::io::Write>(path: &Path) -> Result<Vec<u8>, String> {
+fn digest_file<D: Digest>(path: &Path) -> Result<Vec<u8>, String> {
     let mut file = fs::File::open(path).map_err(|e| failure(path, e))?;
-    let mut hasher = D::new();
+    let mut hasher = Hasher(D::new());
     std::io::copy(&mut file, &mut hasher).map_err(|e| failure(path, e))?;
-    Ok(hasher.finalize().to_vec())
+    Ok(hasher.0.finalize().to_vec())
+}
+
+/// Feeds what `io::copy` writes to a hash, which digest 0.11 no longer does
+/// itself.
+struct Hasher<D>(D);
+
+impl<D: Digest> std::io::Write for Hasher<D> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.update(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// Verifies a bundle or a single Mach-O file at time `now`.

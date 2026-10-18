@@ -382,12 +382,9 @@ fn hashes(env: &mut Dictionary, path: &Path) -> Result<()> {
         sha256.update(&bytes[..count]);
         md5.update(&bytes[..count]);
     }
-    env.insert("file_sha1".into(), format!("{:x}", sha1.finalize()).into());
-    env.insert(
-        "file_sha256".into(),
-        format!("{:x}", sha256.finalize()).into(),
-    );
-    env.insert("file_md5".into(), format!("{:x}", md5.finalize()).into());
+    env.insert("file_sha1".into(), crate::hex(&sha1.finalize()).into());
+    env.insert("file_sha256".into(), crate::hex(&sha256.finalize()).into());
+    env.insert("file_md5".into(), crate::hex(&md5.finalize()).into());
     Ok(())
 }
 fn existing_hashes(env: &mut Dictionary, path: &Path, metadata: &Json) -> Result<()> {

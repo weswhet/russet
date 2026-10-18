@@ -623,7 +623,7 @@ mod tests {
     #[test]
     fn pinned_certifi_bundle_and_additive_roots() {
         assert_eq!(
-            format!("{:x}", Sha256::digest(CERTIFI)),
+            crate::hex(&Sha256::digest(CERTIFI)),
             "2089fc5a25836401faee99f722460b01b393999746a0fb817943666d6ecc0458"
         );
         let mut pem = CERTIFI;
@@ -635,7 +635,7 @@ mod tests {
         validated(&bytes).unwrap();
         let fingerprints = |bytes: &[u8]| {
             rustls_pemfile::certs(&mut &*bytes)
-                .map(|cert| format!("{:x}", Sha256::digest(cert.unwrap().as_ref())))
+                .map(|cert| crate::hex(&Sha256::digest(cert.unwrap().as_ref())))
                 .collect::<std::collections::BTreeSet<_>>()
         };
         let roots = fingerprints(&bytes);
