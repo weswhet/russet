@@ -89,9 +89,11 @@ fn failed_parent_trust_is_a_failed_recipe() {
     assert!(home.russet(&["make-override", "Parent"]).status.success());
     home.recipe("recipes/Parent.recipe.yaml", "org.test.parent", "changed");
     let parent = home.path("recipes/Parent.recipe.yaml");
+    // Russet shows the canonical path without Windows' \\?\ prefix.
+    let canonical = parent.canonicalize().unwrap().display().to_string();
     let expected = format!(
         "Parent recipe org.test.parent contents differ from expected.\n    Path: {}",
-        parent.canonicalize().unwrap().display()
+        canonical.strip_prefix(r"\\?\").unwrap_or(&canonical)
     );
 
     let output = home.russet(&["run", "Parent"]);
