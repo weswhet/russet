@@ -200,7 +200,8 @@ fn attributes(file: &[u8], header: &[u8], out: &mut Vec<(String, Vec<u8>)>) -> R
 /// `pkgbuild` writes next to a payload file: Finder info and the attribute
 /// block in entry 9, then the resource fork in entry 2. Attributes are
 /// stored in the order given; an empty value is recorded at offset 0.
-pub fn encode(xattrs: &[(String, Vec<u8>)]) -> Vec<u8> {
+/// Fails for a name longer than the 254 bytes an entry can record.
+pub fn encode(xattrs: &[(String, Vec<u8>)]) -> std::io::Result<Vec<u8>> {
     const HEADER: usize = 26 + 2 * 12;
     const ATTR_AT: usize = HEADER + FINDER_INFO_LEN + 2;
     const ENTRIES_AT: usize = ATTR_AT + 36;
@@ -214,6 +215,12 @@ pub fn encode(xattrs: &[(String, Vec<u8>)]) -> Vec<u8> {
                 finder[..n].copy_from_slice(&value[..n]);
             }
             "com.apple.ResourceFork" => fork = value,
+            _ if name.len() > 254 => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("The extended attribute name {name} is longer than 254 bytes"),
+                ));
+            }
             _ => attrs.push((name.as_bytes(), value.as_slice())),
         }
     }
@@ -262,7 +269,7 @@ pub fn encode(xattrs: &[(String, Vec<u8>)]) -> Vec<u8> {
         out.extend_from_slice(value);
     }
     out.extend_from_slice(fork);
-    out
+    Ok(out)
 }
 
 fn read_u16(bytes: &[u8], at: usize) -> Option<u16> {
@@ -352,7 +359,7 @@ pub(crate) mod tests {
         let apple = include_bytes!("../tests/fixtures/pkgbuild-appledouble.bin");
         let decoded = parse(apple).unwrap().xattrs;
         assert_eq!(decoded.len(), 4);
-        assert_eq!(encode(&decoded), apple.to_vec());
+        assert_eq!(encode(&decoded).unwrap(), apple.to_vec());
         let mut finder = vec![0; 32];
         finder[8] = 4;
         let attrs = vec![
@@ -360,7 +367,10 @@ pub(crate) mod tests {
             ("com.example.test".to_owned(), b"hello".to_vec()),
             ("com.apple.ResourceFork".to_owned(), b"RSRC".to_vec()),
         ];
-        assert_eq!(parse(&encode(&attrs)).unwrap().xattrs, attrs);
+        assert_eq!(parse(&encode(&attrs).unwrap()).unwrap().xattrs, attrs);
+        let longest = vec![("x".repeat(254), b"value".to_vec())];
+        assert_eq!(parse(&encode(&longest).unwrap()).unwrap().xattrs, longest);
+        assert!(encode(&[("x".repeat(255), Vec::new())]).is_err());
     }
 
     #[test]

@@ -238,7 +238,7 @@ fn apple_double<W: Write>(
     if xattrs.is_empty() {
         return Ok(());
     }
-    let bytes = russet_ditto::encode_apple_double(&xattrs);
+    let bytes = russet_ditto::encode_apple_double(&xattrs)?;
     let path = match node.path.rsplit_once('/') {
         Some((parent, name)) => format!("{parent}/._{name}"),
         None => format!("._{}", node.path),
