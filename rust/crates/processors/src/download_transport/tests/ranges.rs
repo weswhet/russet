@@ -19,7 +19,10 @@ fn small() -> ChunkPolicy {
 }
 
 fn native() -> Policy {
-    Policy { native: Ok(()) }
+    Policy {
+        native: Ok(()),
+        required: false,
+    }
 }
 
 /// How the fixture answers range requests.

@@ -12,7 +12,6 @@ folder holds the license and notice files the crate publishes.
 | `apfs` | 0.4.1 | MIT | Vendored in `rust/vendor` with Russet patches |
 | `arraydeque` | 0.5.1 | MIT/Apache-2.0 | https://github.com/andylokandy/arraydeque |
 | `atomic-waker` | 1.1.2 | Apache-2.0 OR MIT | https://github.com/smol-rs/atomic-waker |
-| `base64` | 0.22.1 | MIT OR Apache-2.0 | https://github.com/marshallpierce/rust-base64 |
 | `base64` | 0.23.1 | MIT OR Apache-2.0 | https://github.com/marshallpierce/rust-base64 |
 | `base64ct` | 1.8.3 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
 | `bit-set` | 0.8.0 | Apache-2.0 OR MIT | https://github.com/contain-rs/bit-set |
@@ -25,6 +24,7 @@ folder holds the license and notice files the crate publishes.
 | `bzip2` | 0.5.2 | MIT OR Apache-2.0 | https://github.com/trifectatechfoundation/bzip2-rs |
 | `bzip2` | 0.6.1 | MIT OR Apache-2.0 | https://github.com/trifectatechfoundation/bzip2-rs |
 | `bzip2-sys` | 0.1.13+1.0.8 | MIT/Apache-2.0 | https://github.com/alexcrichton/bzip2-rs |
+| `cfg-if` | 0.1.10 | MIT/Apache-2.0 | https://github.com/alexcrichton/cfg-if |
 | `cfg-if` | 1.0.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/cfg-if |
 | `chrono` | 0.4.45 | MIT OR Apache-2.0 | https://github.com/chronotope/chrono |
 | `cmpfs` | 0.1.0 | MIT | https://github.com/Dil4rd/dpp |
@@ -44,6 +44,7 @@ folder holds the license and notice files the crate publishes.
 | `deranged` | 0.5.8 | MIT OR Apache-2.0 | https://github.com/jhpratt/deranged |
 | `digest` | 0.11.3 | MIT OR Apache-2.0 | https://github.com/RustCrypto/traits |
 | `displaydoc` | 0.2.7 | MIT OR Apache-2.0 | https://github.com/yaahc/displaydoc |
+| `encoding_rs` | 0.7.2 | MIT/Apache-2.0 | https://github.com/hsivonen/encoding_rs |
 | `encoding_rs` | 0.8.42 | (Apache-2.0 OR MIT) AND BSD-3-Clause | https://github.com/hsivonen/encoding_rs |
 | `equivalent` | 1.0.2 | Apache-2.0 OR MIT | https://github.com/indexmap-rs/equivalent |
 | `errno` | 0.3.14 | MIT OR Apache-2.0 | https://github.com/lambda-fairy/rust-errno |
@@ -56,7 +57,7 @@ folder holds the license and notice files the crate publishes.
 | `flagset` | 0.4.7 | Apache-2.0 | https://github.com/enarx/flagset |
 | `flate2` | 1.1.10 | MIT OR Apache-2.0 | https://github.com/rust-lang/flate2-rs |
 | `fnv` | 1.0.7 | Apache-2.0 / MIT | https://github.com/servo/rust-fnv |
-| `foldhash` | 0.1.5 | Zlib | https://github.com/orlp/foldhash |
+| `foldhash` | 0.2.0 | Zlib | https://github.com/orlp/foldhash |
 | `form_urlencoded` | 1.2.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-url |
 | `fstool` | 0.4.35 | MIT | https://github.com/KarpelesLab/fstool |
 | `futures-channel` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
@@ -68,9 +69,8 @@ folder holds the license and notice files the crate publishes.
 | `getrandom` | 0.4.3 | MIT OR Apache-2.0 | https://github.com/rust-random/getrandom |
 | `glob` | 0.3.4 | MIT OR Apache-2.0 | https://github.com/rust-lang/glob |
 | `h2` | 0.4.20 | MIT | https://github.com/hyperium/h2 |
-| `hashbrown` | 0.15.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
 | `hashbrown` | 0.17.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
-| `hashlink` | 0.10.0 | MIT OR Apache-2.0 | https://github.com/kyren/hashlink |
+| `hashlink` | 0.12.2 | MIT OR Apache-2.0 | https://github.com/djc/hashlink |
 | `hayro-jpeg2000` | 0.3.5 | Apache-2.0 OR MIT | https://github.com/LaurenzV/hayro |
 | `hfsplus` | 0.4.0 | MIT | Vendored in `rust/vendor` with Russet patches |
 | `http` | 1.5.0 | MIT OR Apache-2.0 | https://github.com/hyperium/http |
@@ -111,7 +111,7 @@ folder holds the license and notice files the crate publishes.
 | `miniz_oxide` | 0.9.1 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | `mio` | 1.2.4 | MIT | https://github.com/tokio-rs/mio |
 | `multiversion_no_op` | 1.0.0 | Apache-2.0 OR MIT | https://github.com/hsivonen/multiversion_no_op |
-| `num-bigint` | 0.4.8 | MIT OR Apache-2.0 | https://github.com/rust-num/num-bigint |
+| `num-bigint` | 0.5.1 | MIT OR Apache-2.0 | https://github.com/rust-num/num-bigint |
 | `num-conv` | 0.2.2 | MIT OR Apache-2.0 | https://github.com/jhpratt/num-conv |
 | `num-integer` | 0.1.47 | MIT OR Apache-2.0 | https://github.com/rust-num/num-integer |
 | `num-traits` | 0.2.19 | MIT OR Apache-2.0 | https://github.com/rust-num/num-traits |
@@ -135,9 +135,9 @@ folder holds the license and notice files the crate publishes.
 | `regex-syntax` | 0.8.11 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
 | `reqwest` | 0.13.5 | MIT OR Apache-2.0 | https://github.com/seanmonstar/reqwest |
 | `ring` | 0.17.14 | Apache-2.0 AND ISC | https://github.com/briansmith/ring |
-| `roxmltree` | 0.20.0 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree |
+| `roxmltree` | 0.21.1 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree |
 | `rustix` | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/rustix |
-| `rustls` | 0.23.45 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls |
+| `rustls` | 0.23.46 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls |
 | `rustls-native-certs` | 0.8.4 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls-native-certs |
 | `rustls-pemfile` | 2.2.0 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/pemfile |
 | `rustls-pki-types` | 1.15.1 | MIT OR Apache-2.0 | https://github.com/rustls/pki-types |
@@ -151,7 +151,7 @@ folder holds the license and notice files the crate publishes.
 | `serde` | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
 | `serde_core` | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
 | `serde_derive` | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
-| `serde_json` | 1.0.151 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
+| `serde_json` | 1.0.154 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
 | `serde_yaml` | 0.9.34+deprecated | MIT OR Apache-2.0 | https://github.com/dtolnay/serde-yaml |
 | `sha1` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
 | `sha2` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
@@ -178,7 +178,7 @@ folder holds the license and notice files the crate publishes.
 | `tinyvec` | 1.13.3 | Zlib OR Apache-2.0 OR MIT | https://github.com/Lokathor/tinyvec |
 | `tls_codec` | 0.4.2 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
 | `tls_codec_derive` | 0.4.2 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats |
-| `tokio` | 1.53.2 | MIT | https://github.com/tokio-rs/tokio |
+| `tokio` | 1.53.3 | MIT | https://github.com/tokio-rs/tokio |
 | `tokio-macros` | 2.7.2 | MIT | https://github.com/tokio-rs/tokio |
 | `tokio-rustls` | 0.26.6 | MIT OR Apache-2.0 | https://github.com/rustls/tokio-rustls |
 | `tokio-util` | 0.7.20 | MIT | https://github.com/tokio-rs/tokio |
@@ -205,10 +205,10 @@ folder holds the license and notice files the crate publishes.
 | `x509-cert` | 0.2.5 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats/tree/master/x509-cert |
 | `x509-tsp` | 0.1.0 | Apache-2.0 OR MIT | https://github.com/RustCrypto/formats/tree/master/x509-tsp |
 | `xattr` | 1.6.1 | MIT OR Apache-2.0 | https://github.com/Stebalien/xattr |
-| `xml-rs` | 0.8.29 | MIT | https://github.com/kornelski/xml-rs |
-| `xmltree` | 0.11.0 | MIT | https://github.com/eminence/xmltree-rs |
+| `xml` | 1.4.0 | MIT | https://github.com/kornelski/xml-rs |
+| `xmltree` | 0.12.0 | MIT | https://github.com/eminence/xmltree-rs |
 | `xz2` | 0.1.7 | MIT/Apache-2.0 | https://github.com/alexcrichton/xz2-rs |
-| `yaml-rust2` | 0.10.4 | MIT OR Apache-2.0 | https://github.com/Ethiraric/yaml-rust2 |
+| `yaml-rust2` | 0.13.0 | MIT OR Apache-2.0 | https://github.com/Ethiraric/yaml-rust2 |
 | `yoke` | 0.8.3 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
 | `yoke-derive` | 0.8.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
 | `zerofrom` | 0.1.8 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
@@ -232,4 +232,4 @@ in the table above.
 - `objc2-0.6.5`
 - `objc2-encode-4.1.0`
 - `objc2-exception-helper-0.1.1`
-- `yaml-rust2-0.10.4`
+- `yaml-rust2-0.13.0`

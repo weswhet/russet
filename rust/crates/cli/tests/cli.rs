@@ -48,7 +48,7 @@ fn inventory_preserves_frozen_contract_and_adds_promoted_processors() {
         .map(String::as_str)
         .collect();
     assert_eq!(names, expected);
-    assert_eq!(names.len(), 59);
+    assert_eq!(names.len(), 60);
 }
 
 #[test]

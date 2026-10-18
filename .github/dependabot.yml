@@ -7,6 +7,13 @@ updates:
     groups:
       rust-dependencies:
         patterns: ['*']
+    ignore:
+      # cms 0.2 still uses der 0.7 and x509-cert 0.2, and mixing versions
+      # doesn't build. Move all three together once cms 0.3 is released.
+      - dependency-name: der
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: x509-cert
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
   - package-ecosystem: github-actions
     directory: /
     schedule:
