@@ -4,6 +4,7 @@
 //! tell the backends apart.
 use super::chunks::{self, ChunkPolicy};
 use super::options::{NativeRequest, Trust, UserAgent};
+use super::verifier::{Rejection, Verifier};
 use super::Headers;
 use reqwest::header::{self, HeaderMap, HeaderValue};
 use reqwest::{Client, Method, Response, StatusCode, Version};
@@ -22,6 +23,13 @@ const MAX_REDIRECTS: u32 = 50;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(300);
 /// curl's own fallback when its version cannot be read.
 const FALLBACK_USER_AGENT: &str = "curl/8.7.1";
+/// What the curl tool prints after a certificate verification failure (60).
+const VERIFICATION_HELP: &str = "More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+";
 /// Redirect statuses the downloader reports as `http_redirected`.
 const REDIRECTS: [u16; 5] = [301, 302, 303, 307, 308];
 
@@ -48,9 +56,14 @@ impl Failure {
         self.effective = effective.into();
         self
     }
-    /// curl's standard error line for this failure.
+    /// curl's standard error for this failure. curl explains every
+    /// certificate verification failure after its error line.
     pub(crate) fn curl_message(&self) -> String {
-        format!("curl: ({}) {}\n", self.code, self.message)
+        let mut message = format!("curl: ({}) {}\n", self.code, self.message);
+        if self.code == 60 {
+            message.push_str(VERIFICATION_HELP);
+        }
+        message
     }
 }
 
@@ -88,17 +101,21 @@ fn runtime() -> Result<&'static tokio::runtime::Runtime, String> {
 struct CurlIdentity {
     user_agent: HeaderValue,
     version: (u32, u32),
+    /// Whether curl uses OpenSSL 3 or later, whose messages differ.
+    openssl3: bool,
 }
 static IDENTITY: OnceLock<CurlIdentity> = OnceLock::new();
 
 fn curl_identity(program: &OsStr) -> &'static CurlIdentity {
     IDENTITY.get_or_init(|| {
-        let version = std::process::Command::new(program)
+        let text = std::process::Command::new(program)
             .arg("--version")
             .output()
             .ok()
-            .and_then(|output| {
-                let text = String::from_utf8(output.stdout).ok()?;
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .unwrap_or_default();
+        let version = Some(text.as_str())
+            .and_then(|text| {
                 let version = text.strip_prefix("curl ")?.split_whitespace().next()?;
                 version
                     .bytes()
@@ -111,7 +128,19 @@ fn curl_identity(program: &OsStr) -> &'static CurlIdentity {
             user_agent: HeaderValue::from_str(&format!("curl/{version}"))
                 .unwrap_or_else(|_| HeaderValue::from_static(FALLBACK_USER_AGENT)),
             version: (parts.next().unwrap_or(0), parts.next().unwrap_or(0)),
+            openssl3: openssl3(&text),
         }
+    })
+}
+
+/// Whether `curl --version` names OpenSSL 3 or later as its TLS library.
+fn openssl3(version: &str) -> bool {
+    let first = version.lines().next().unwrap_or_default();
+    first.split_whitespace().any(|part| {
+        part.strip_prefix("OpenSSL/")
+            .and_then(|v| v.split('.').next())
+            .and_then(|major| major.parse::<u32>().ok())
+            .is_some_and(|major| major >= 3)
     })
 }
 
@@ -145,11 +174,15 @@ fn tls(
         .map_err(|e| e.to_string())?;
     let (mut config, digest) = match trust {
         Trust::Files { files, directories } => {
-            let (roots, digest) =
+            let native =
                 crate::processors::url_downloader::trust::native_roots(files, directories)?;
+            let verifier = Verifier::new(native.roots, native.certificates, provider)?;
             (
-                builder.with_root_certificates(roots).with_no_client_auth(),
-                Some(digest),
+                builder
+                    .dangerous()
+                    .with_custom_certificate_verifier(Arc::new(verifier))
+                    .with_no_client_auth(),
+                Some(native.digest),
             )
         }
         Trust::Platform => {
@@ -400,6 +433,16 @@ fn tls_failure(error: &(dyn std::error::Error + 'static)) -> Option<Failure> {
         let tls = current.downcast_ref::<rustls::Error>();
         if let Some(tls) = tls {
             return Some(match tls {
+                rustls::Error::InvalidCertificate(rustls::CertificateError::Other(other))
+                    if other.0.is::<Rejection>() =>
+                {
+                    let openssl3 = IDENTITY.get().is_some_and(|i| i.openssl3);
+                    let message = other
+                        .0
+                        .downcast_ref::<Rejection>()
+                        .map_or("", |r| r.message(openssl3));
+                    Failure::new(60, format!("SSL certificate problem: {message}"))
+                }
                 rustls::Error::InvalidCertificate(_) => {
                     Failure::new(60, format!("SSL certificate problem: {tls}"))
                 }
@@ -600,4 +643,37 @@ async fn restart(prepared: &Prepared, output: &Path, reason: &str) -> Result<Tra
         effective,
         detail: format!("sequential after parallel attempt ({reason})"),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn certificate_failures_carry_curls_explanation() {
+        let message =
+            Failure::new(60, "SSL certificate problem: self signed certificate").curl_message();
+        assert!(message.starts_with(
+            "curl: (60) SSL certificate problem: self signed certificate\nMore details here:"
+        ));
+        assert!(message.ends_with("please visit the web page mentioned above.\n"));
+        assert_eq!(
+            Failure::new(52, "Empty reply from server").curl_message(),
+            "curl: (52) Empty reply from server\n"
+        );
+    }
+
+    #[test]
+    fn openssl_3_is_read_from_the_default_tls_library() {
+        assert!(openssl3(
+            "curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3\n"
+        ));
+        assert!(!openssl3(
+            "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6\n"
+        ));
+        assert!(!openssl3(
+            "curl 7.68.0 (x86_64-pc-linux-gnu) libcurl/7.68.0 OpenSSL/1.1.1f\n"
+        ));
+        assert!(!openssl3("curl 8.4.0 (Windows) libcurl/8.4.0 Schannel\n"));
+    }
 }

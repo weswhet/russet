@@ -24,8 +24,11 @@ fn generated(extra: &[&str]) -> Command {
     ]);
     command.args(extra);
     // The macOS downloader always gives curl a bundle; mirror that so the
-    // decision does not depend on the test host.
-    command.env("SSL_CERT_FILE", "/tmp/bundle.pem");
+    // decision does not depend on the test host. On Windows a bundle sends
+    // every request to curl.
+    if !cfg!(windows) {
+        command.env("SSL_CERT_FILE", "/tmp/bundle.pem");
+    }
     command
 }
 
@@ -183,4 +186,15 @@ fn preferences_select_curl() {
         ),
     ]);
     assert_eq!(policy(&env).unwrap().native, Err("CURL_PATH is set".into()));
+}
+
+/// Schannel verifies a CA file with Windows' chain rules, so curl keeps it.
+#[cfg(windows)]
+#[test]
+fn windows_ca_file_keeps_curl() {
+    let mut command = generated(&[]);
+    command.env("SSL_CERT_FILE", "C:\\bundle.pem");
+    assert!(inspect(&command, false)
+        .unwrap_err()
+        .contains("SSL_CERT_FILE"));
 }

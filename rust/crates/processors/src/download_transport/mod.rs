@@ -13,6 +13,7 @@ mod native;
 mod options;
 #[cfg(test)]
 mod tests;
+mod verifier;
 
 use plist::{Dictionary, Value};
 use std::process::Command;

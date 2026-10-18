@@ -210,6 +210,21 @@ fn short_bodies_match_curl() {
 }
 
 #[test]
+fn truncated_chunked_bodies_match_curl() {
+    differential(&BOTH, &[], 1, || Scenario {
+        servers: vec![serve(
+            |_| {
+                Reply::new("200 OK")
+                    .header("Transfer-Encoding", "chunked")
+                    .raw_body("4\r\nabcd\r\n")
+            },
+            None,
+        )],
+        path: "/truncated-chunked.pkg",
+    });
+}
+
+#[test]
 fn prefetched_filenames_match_curl() {
     differential(&BOTH, &[("prefetch_filename", true.into())], 1, || {
         Scenario {

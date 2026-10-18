@@ -228,6 +228,7 @@ dependencies = [
  "tokio",
  "unicode-normalization",
  "url",
+ "x509-cert",
  "xattr",
  "xmltree",
  "xz2",

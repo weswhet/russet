@@ -304,11 +304,15 @@ fn bundle_for(
 pub(crate) fn native_roots(
     files: &[PathBuf],
     directories: &[PathBuf],
-) -> Result<(rustls::RootCertStore, [u8; 32]), String> {
+) -> Result<NativeRoots, String> {
     use sha2::Digest;
+    // Directory entries carry the subject hash their file name promises.
     let mut sources = Vec::new();
     for file in files {
-        sources.push(fs::read(file).map_err(|_| "an unreadable CA bundle".to_string())?);
+        sources.push((
+            fs::read(file).map_err(|_| "an unreadable CA bundle".to_string())?,
+            None,
+        ));
     }
     for directory in directories {
         let Ok(entries) = fs::read_dir(directory) else {
@@ -317,43 +321,181 @@ pub(crate) fn native_roots(
         let mut names = entries
             .flatten()
             .map(|entry| entry.path())
-            .filter(|path| {
-                path.file_name()
-                    .and_then(|n| n.to_str())
-                    .and_then(|n| n.split_once('.'))
-                    .is_some_and(|(hash, index)| {
-                        hash.len() == 8
-                            && hash.bytes().all(|c| c.is_ascii_hexdigit())
-                            && !index.is_empty()
-                            && index.bytes().all(|c| c.is_ascii_digit())
-                    })
+            .filter_map(|path| {
+                let (hash, index) = path.file_name()?.to_str()?.split_once('.')?;
+                let valid = hash.len() == 8
+                    && hash.bytes().all(|c| c.is_ascii_hexdigit())
+                    && !index.is_empty()
+                    && index.bytes().all(|c| c.is_ascii_digit());
+                let hash = u32::from_str_radix(hash, 16).ok().filter(|_| valid)?;
+                Some((path, hash))
             })
             .collect::<Vec<_>>();
         names.sort();
-        for path in names {
+        for (path, hash) in names {
             if let Ok(bytes) = fs::read(&path) {
-                sources.push(bytes);
+                sources.push((bytes, Some(hash)));
             }
         }
     }
     let mut roots = rustls::RootCertStore::empty();
+    let mut certificates = Vec::new();
     let mut digest = sha2::Sha256::new();
-    for bytes in &sources {
+    for (bytes, hash) in &sources {
         digest.update((bytes.len() as u64).to_le_bytes());
         digest.update(bytes);
         let mut slice = bytes.as_slice();
-        roots.add_parsable_certificates(rustls_pemfile::certs(&mut slice).flatten());
+        // OpenSSL finds a directory certificate only by its subject's hash.
+        certificates.extend(
+            rustls_pemfile::certs(&mut slice)
+                .flatten()
+                .filter(|der| hash.is_none() || subject_hash(der) == *hash),
+        );
     }
+    roots.add_parsable_certificates(certificates.iter().cloned());
     if roots.is_empty() {
         return Err("a CA bundle without usable certificates".into());
     }
-    Ok((roots, digest.finalize().into()))
+    Ok(NativeRoots {
+        roots,
+        certificates,
+        digest: digest.finalize().into(),
+    })
+}
+
+/// OpenSSL's `X509_NAME_hash` of a certificate's subject, which names the
+/// files in a hashed CA directory: the first four bytes, little-endian, of
+/// the SHA-1 of the canonical subject. Canonical text attributes are UTF-8,
+/// with ASCII lowercased, outer whitespace removed, and inner runs of
+/// whitespace collapsed to one space.
+pub(crate) fn subject_hash(certificate: &[u8]) -> Option<u32> {
+    use sha1::Digest;
+    use x509_cert::der::{Decode, Tagged};
+    let certificate = x509_cert::Certificate::from_der(certificate).ok()?;
+    let mut canonical = Vec::new();
+    for rdn in certificate.tbs_certificate.subject.0.iter() {
+        let mut entries = Vec::new();
+        for entry in rdn.0.iter() {
+            let value = entry.value.value();
+            let tag = u8::from(entry.value.tag());
+            let text: Option<String> = match tag {
+                0x0c => Some(String::from_utf8_lossy(value).into_owned()),
+                // PrintableString, T61String, IA5String, VisibleString.
+                0x13 | 0x14 | 0x16 | 0x1a => Some(value.iter().map(|&b| char::from(b)).collect()),
+                0x1e => char::decode_utf16(
+                    value
+                        .chunks(2)
+                        .map(|c| u16::from_be_bytes([c[0], *c.get(1).unwrap_or(&0)])),
+                )
+                .collect::<Result<String, _>>()
+                .ok(),
+                0x1c => value
+                    .chunks(4)
+                    .map(|c| {
+                        let mut b = [0; 4];
+                        b[..c.len()].copy_from_slice(c);
+                        char::from_u32(u32::from_be_bytes(b))
+                    })
+                    .collect(),
+                _ => None,
+            };
+            let value = match text {
+                Some(text) => {
+                    let space = |c: char| matches!(c, ' ' | '\t' | '\n' | '\x0b' | '\x0c' | '\r');
+                    let mut out = String::new();
+                    let mut pending = false;
+                    for c in text.trim_matches(space).chars() {
+                        if space(c) {
+                            pending = true;
+                            continue;
+                        }
+                        if pending {
+                            out.push(' ');
+                            pending = false;
+                        }
+                        out.push(c.to_ascii_lowercase());
+                    }
+                    der_tlv(0x0c, out.as_bytes())
+                }
+                None => der_tlv(tag, value),
+            };
+            let oid = der_tlv(0x06, entry.oid.as_bytes());
+            entries.push(der_tlv(0x30, &[oid, value].concat()));
+        }
+        entries.sort();
+        canonical.extend(der_tlv(0x31, &entries.concat()));
+    }
+    let digest = sha1::Sha1::digest(&canonical);
+    Some(u32::from_le_bytes([
+        digest[0], digest[1], digest[2], digest[3],
+    ]))
+}
+
+fn der_tlv(tag: u8, content: &[u8]) -> Vec<u8> {
+    let mut out = vec![tag];
+    let length = content.len();
+    if length < 0x80 {
+        out.push(length as u8);
+    } else {
+        let bytes = length.to_be_bytes();
+        let skip = bytes.iter().take_while(|&&b| b == 0).count();
+        out.push(0x80 | (bytes.len() - skip) as u8);
+        out.extend(&bytes[skip..]);
+    }
+    out.extend(content);
+    out
+}
+
+/// The trusted roots for a native request, and a digest of their sources.
+pub(crate) struct NativeRoots {
+    pub(crate) roots: rustls::RootCertStore,
+    /// Every certificate in the sources, as OpenSSL would load them.
+    pub(crate) certificates: Vec<rustls::pki_types::CertificateDer<'static>>,
+    pub(crate) digest: [u8; 32],
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use sha2::{Digest, Sha256};
+    #[test]
+    fn subject_hash_matches_openssl_for_every_certifi_root() {
+        // `openssl x509 -subject_hash` for each certificate in cacert.pem.
+        let expected = include_str!("../../../data/certifi/subject-hashes.txt");
+        let mut slice = CERTIFI;
+        let actual = rustls_pemfile::certs(&mut slice)
+            .map(|der| format!("{:08x}", subject_hash(&der.unwrap()).unwrap()))
+            .collect::<Vec<_>>();
+        assert_eq!(actual, expected.lines().collect::<Vec<_>>());
+    }
+    #[test]
+    fn hashed_directories_trust_only_matching_subject_hashes() {
+        use base64::Engine;
+        let mut slice = CERTIFI;
+        let der = rustls_pemfile::certs(&mut slice).next().unwrap().unwrap();
+        let pem = format!(
+            "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n",
+            base64::engine::general_purpose::STANDARD.encode(&der)
+        );
+        let hash = format!("{:08x}", subject_hash(&der).unwrap());
+        let file = tempfile::NamedTempFile::new().unwrap();
+        fs::write(file.path(), &pem).unwrap();
+        for (name, trusted) in [
+            (format!("{hash}.0"), true),
+            (format!("{hash}.1"), true),
+            ("00000000.0".to_string(), false),
+            (format!("{hash}.pem"), false),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            fs::write(directory.path().join(&name), &pem).unwrap();
+            let native = native_roots(&[file.path().to_owned()], &[directory.path().to_owned()]);
+            assert_eq!(
+                native.unwrap().certificates.len(),
+                1 + usize::from(trusted),
+                "{name}"
+            );
+        }
+    }
     #[cfg(target_os = "macos")]
     #[test]
     fn native_curl_fallback_is_scoped_and_preserves_valid_overrides() {
