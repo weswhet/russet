@@ -24,9 +24,9 @@ bzip2 = "0.6"
 xz2 = { version = "0.1", features = ["static"] }
 tempfile = "3"
 filetime = "0.2"
-sha1 = "0.10"
-sha2 = "0.10"
-md-5 = "0.10"
+sha1 = "0.11"
+sha2 = "0.11"
+md-5 = "0.11"
 rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
 rustls-pemfile = "2"
 base64 = "0.23"
