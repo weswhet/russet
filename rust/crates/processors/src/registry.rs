@@ -1,4 +1,5 @@
-//! The original frozen API plus explicitly promoted, compiled recipe processors.
+//! The original frozen API, explicitly promoted compiled recipe processors,
+//! and the processors Russet adds.
 use serde_json::Value;
 use std::sync::OnceLock;
 
@@ -9,6 +10,17 @@ pub fn community_contract() -> &'static Value {
             "../../../../compatibility/community-processors.json"
         ))
         .expect("valid promoted processor contract")
+    })
+}
+
+/// The processors Russet adds to AutoPkg's, such as `RussetURLDownloader`.
+pub fn russet_contract() -> &'static Value {
+    static VALUE: OnceLock<Value> = OnceLock::new();
+    VALUE.get_or_init(|| {
+        serde_json::from_str(include_str!(
+            "../../../../compatibility/russet-processors.json"
+        ))
+        .expect("valid Russet processor contract")
     })
 }
 
@@ -38,6 +50,9 @@ pub fn contract() -> &'static Value {
             let manifest = processors[canonical.as_str().unwrap()].clone();
             assert!(processors.insert(alias.clone(), manifest).is_none());
         }
+        for (name, manifest) in russet_contract()["processors"].as_object().unwrap() {
+            assert!(processors.insert(name.clone(), manifest.clone()).is_none());
+        }
         merged
     })
 }
@@ -57,6 +72,9 @@ pub fn processor_order() -> &'static Value {
         for (alias, canonical) in promoted["aliases"].as_object().unwrap() {
             let fields = ordering[canonical.as_str().unwrap()].clone();
             assert!(ordering.insert(alias.clone(), fields).is_none());
+        }
+        for (name, fields) in russet_contract()["ordering"].as_object().unwrap() {
+            assert!(ordering.insert(name.clone(), fields.clone()).is_none());
         }
         merged
     })
