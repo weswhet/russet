@@ -618,6 +618,18 @@ mod tests {
         assert!(device
             .strip_prefix("/dev/disk")
             .is_some_and(|s| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit())));
+        /// Force-detaches the setup attachment if the test fails first.
+        struct Setup<'a>(Option<&'a str>);
+        impl Drop for Setup<'_> {
+            fn drop(&mut self) {
+                if let Some(device) = self.0 {
+                    let _ = Command::new("/usr/bin/hdiutil")
+                        .args(["detach", "-force", device])
+                        .output();
+                }
+            }
+        }
+        let mut setup = Setup(Some(device));
         // `device` comes exclusively from attaching this test's fresh image.
         run(
             "/usr/sbin/diskutil",
@@ -637,7 +649,21 @@ mod tests {
         // partitionDisk mounts the new volumes. Release those setup mounts
         // before detaching this validated, freshly attached fixture device.
         run("/usr/sbin/diskutil", &["unmountDisk", "force", device]);
-        run("/usr/bin/hdiutil", &["detach", device]);
+        // The new volumes can stay busy for a moment after unmountDisk, so
+        // retry before forcing the detach.
+        let detached = (0..5).any(|attempt| {
+            std::thread::sleep(std::time::Duration::from_secs(attempt));
+            Command::new("/usr/bin/hdiutil")
+                .args(["detach", device])
+                .output()
+                .unwrap()
+                .status
+                .success()
+        });
+        if !detached {
+            run("/usr/bin/hdiutil", &["detach", "-force", device]);
+        }
+        setup.0 = None;
         let mut mounted = Mount::new(image).unwrap();
         let roots = mounted.paths().to_vec();
         assert_eq!(roots.len(), 2);

@@ -824,10 +824,19 @@ mod tests {
             }
             stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 13\r\nConnection: close\r\n\r\nversion=1.2.3").unwrap();
         });
+        // Name curl so the request doesn't wait on a CURL_PATH preference
+        // lookup. On macOS, the first preference read in a process scans the
+        // test binary's folder, which can take longer than the fixture waits.
+        let curl = if cfg!(windows) {
+            r"C:\Windows\System32\curl.exe"
+        } else {
+            "/usr/bin/curl"
+        };
         let recipe = Recipe {
             identifier: "org.dynamic".into(),
             source: temp.path().join("dynamic.recipe"),
             input: Dictionary::from_iter([
+                ("CURL_PATH", Value::from(curl)),
                 ("url", Value::from(format!("http://{address}/version"))),
                 ("unrelated", Value::from("do not report")),
                 ("output_string", Value::from("previous declared value")),
