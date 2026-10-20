@@ -163,6 +163,10 @@ value can be a Boolean or a string such as `false`, `no`, or `0`. You can also
 set it for one run with the `AUTOPKG_UseRussetDownloader` environment
 variable or with `--key UseRussetDownloader=false`.
 
+To make a recipe's download fail instead of using curl, use the
+[`RussetURLDownloader`](/reference/processors/#russet-processors) processor
+instead of `URLDownloader`.
+
 ## Examples
 
 To use curl instead of Russet's downloader on macOS, run the following

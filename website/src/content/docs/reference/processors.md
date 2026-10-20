@@ -6,8 +6,8 @@ description: Every processor that Russet implements, the platforms where each on
 A processor is a step in a recipe's `Process` array, such as `URLDownloader`
 or `MunkiImporter`. Russet implements processors natively, with the same
 names, input variables, output variables, and default values as AutoPkg.
-This page lists every processor that Russet implements and the platforms
-where each one works.
+Russet also adds one processor of its own. This page lists every processor
+that Russet implements and the platforms where each one works.
 
 To print the list that your installation implements, run
 `russet list-processors`. To see a processor's variables, run
@@ -98,6 +98,30 @@ recipe repository's Python file.
 | `MSOfficeMacURLandUpdateInfoProvider` | Gets downloads and update information for Microsoft products for Mac. | All | Office 2016 products print a warning and stop. Microsoft Edge accepts only `latest` and named channels. |
 | `PuppetlabsProductsURLProvider` | Gets the download URL of a Puppet product. | All | None. |
 | `SassafrasK2ClientCustomizer` | Runs the vendor's `k2clientconfig` script on a K2Client installer. | All | The script that it runs might need a specific platform. |
+
+## Russet processors
+
+Russet adds the following processor, which AutoPkg doesn't have:
+
+| Processor | Purpose | Platform | Notes |
+| --- | --- | --- | --- |
+| `RussetURLDownloader` | Downloads a file with Russet's downloader and never uses curl. | All | Takes the same input variables and sets the same output variables as `URLDownloader`. |
+
+`URLDownloader` already uses Russet's downloader by default, and uses curl
+only for requests that the downloader can't reproduce. Use
+`RussetURLDownloader` when you want a recipe to fail instead of using curl.
+It ignores the `UseRussetDownloader` and `CURL_PATH` preferences and curl
+configuration files, such as `~/.curlrc`. It fails with an error that gives
+the reason in the following cases:
+
+- The recipe's `curl_opts` contains an option that Russet's downloader
+  doesn't support. For the supported options, see
+  [Downloads](/reference/preferences/#downloads).
+- The URL doesn't use HTTP or HTTPS, or it contains a user name or password.
+- You set a proxy environment variable, such as `https_proxy`.
+
+Python AutoPkg can't run a recipe that uses `RussetURLDownloader`. If a
+recipe must also run with AutoPkg, use `URLDownloader` instead.
 
 ## Shared recipe processor alias
 
