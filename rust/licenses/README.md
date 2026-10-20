@@ -154,7 +154,7 @@ folder holds the license and notice files the crate publishes.
 | `serde_json` | 1.0.154 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
 | `serde_yaml` | 0.9.34+deprecated | MIT OR Apache-2.0 | https://github.com/dtolnay/serde-yaml |
 | `sha1` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
-| `sha2` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
+| `sha2` | 0.11.1 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
 | `simd-adler32` | 0.3.10 | MIT | https://github.com/mcountryman/simd-adler32 |
 | `simdutf8` | 0.1.5 | MIT OR Apache-2.0 | https://github.com/rusticstuff/simdutf8 |
 | `slab` | 0.4.12 | MIT | https://github.com/tokio-rs/slab |
