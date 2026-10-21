@@ -12,7 +12,7 @@ hfsplus = { version = "0.4.0", path = "../../vendor/hfsplus" }
 apfs = { version = "0.4.1", path = "../../vendor/apfs" }
 tempfile = "3"
 # Pinned exactly: its API is unstable before 0.5. Only the HFS+ writer is used.
-fstool = { version = "=0.4.35", default-features = false, features = ["hfs-plus", "std"] }
+fstool = { version = "=0.5.0", default-features = false, features = ["hfs-plus", "std"] }
 unicode-normalization = "0.1"
 
 [target.'cfg(unix)'.dev-dependencies]
