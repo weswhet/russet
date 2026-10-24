@@ -59,7 +59,7 @@ folder holds the license and notice files the crate publishes.
 | `fnv` | 1.0.7 | Apache-2.0 / MIT | https://github.com/servo/rust-fnv |
 | `foldhash` | 0.2.0 | Zlib | https://github.com/orlp/foldhash |
 | `form_urlencoded` | 1.2.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-url |
-| `fstool` | 0.4.35 | MIT | https://github.com/KarpelesLab/fstool |
+| `fstool` | 0.5.0 | MIT | https://github.com/KarpelesLab/fstool |
 | `futures-channel` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
 | `futures-core` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
 | `futures-sink` | 0.3.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/futures-rs |
@@ -96,7 +96,7 @@ folder holds the license and notice files the crate publishes.
 | `ipnet` | 2.12.2 | MIT OR Apache-2.0 | https://github.com/krisprice/ipnet |
 | `itoa` | 1.0.18 | MIT OR Apache-2.0 | https://github.com/dtolnay/itoa |
 | `libbz2-rs-sys` | 0.2.5 | bzip2-1.0.6 | https://github.com/trifectatechfoundation/libbzip2-rs |
-| `libc` | 0.2.190 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc |
+| `libc` | 0.2.191 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc |
 | `linux-raw-sys` | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/sunfishcode/linux-raw-sys |
 | `litemap` | 0.8.3 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
 | `log` | 0.4.34 | MIT OR Apache-2.0 | https://github.com/rust-lang/log |
@@ -144,7 +144,7 @@ folder holds the license and notice files the crate publishes.
 | `rustls-platform-verifier` | 0.7.1 | MIT OR Apache-2.0 | https://github.com/rustls/rustls-platform-verifier |
 | `rustls-webpki` | 0.103.15 | ISC | https://github.com/rustls/webpki |
 | `ryu` | 1.0.23 | Apache-2.0 OR BSL-1.0 | https://github.com/dtolnay/ryu |
-| `schannel` | 0.1.29 | MIT | https://github.com/steffengy/schannel-rs |
+| `schannel` | 0.1.30 | MIT | https://github.com/steffengy/schannel-rs |
 | `scopeguard` | 1.2.0 | MIT OR Apache-2.0 | https://github.com/bluss/scopeguard |
 | `security-framework` | 3.7.0 | MIT OR Apache-2.0 | https://github.com/kornelski/rust-security-framework |
 | `security-framework-sys` | 2.17.0 | MIT OR Apache-2.0 | https://github.com/kornelski/rust-security-framework |
@@ -154,7 +154,7 @@ folder holds the license and notice files the crate publishes.
 | `serde_json` | 1.0.154 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
 | `serde_yaml` | 0.9.34+deprecated | MIT OR Apache-2.0 | https://github.com/dtolnay/serde-yaml |
 | `sha1` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
-| `sha2` | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
+| `sha2` | 0.11.1 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
 | `simd-adler32` | 0.3.10 | MIT | https://github.com/mcountryman/simd-adler32 |
 | `simdutf8` | 0.1.5 | MIT OR Apache-2.0 | https://github.com/rusticstuff/simdutf8 |
 | `slab` | 0.4.12 | MIT | https://github.com/tokio-rs/slab |
@@ -192,7 +192,7 @@ folder holds the license and notice files the crate publishes.
 | `typenum` | 1.20.1 | MIT OR Apache-2.0 | https://github.com/paholg/typenum |
 | `udif` | 0.4.2 | MIT | Vendored in `rust/vendor` with Russet patches |
 | `unicode-ident` | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident |
-| `unicode-normalization` | 0.1.25 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-normalization |
+| `unicode-normalization` | 0.1.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/unicode-rs/unicode-normalization |
 | `unsafe-libyaml` | 0.2.11 | MIT | https://github.com/dtolnay/unsafe-libyaml |
 | `untrusted` | 0.9.0 | ISC | https://github.com/briansmith/untrusted |
 | `url` | 2.5.8 | MIT OR Apache-2.0 | https://github.com/servo/rust-url |
