@@ -56,6 +56,9 @@ then, [build Russet from source](/get-started/install/).
 - A built-in HTTP downloader for `URLDownloader` and `URLDownloaderPython`
   that reuses connections and downloads parts of large files at once. Set
   `UseRussetDownloader` to `false` to use curl instead.
+- A `RussetURLDownloader` processor that only Russet has. It works like
+  `URLDownloader`, but never uses curl: a download that Russet's downloader
+  can't reproduce fails with the reason.
 
 ### Platforms and installation
 

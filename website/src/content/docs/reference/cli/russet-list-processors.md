@@ -14,10 +14,11 @@ russet list-processors
 
 ## Description
 
-Russet prints one processor name for each line, sorted by name. It lists 59
+Russet prints one processor name for each line, sorted by name. It lists 60
 names: the 46 AutoPkg built-in processors, 12 processors from the
-`autopkg/recipes` recipe repository that Russet implements natively, and one
-alias for a shared recipe processor.
+`autopkg/recipes` recipe repository that Russet implements natively, one
+alias for a shared recipe processor, and `RussetURLDownloader`, which only
+Russet has.
 
 Russet ignores arguments, including `--prefs`.
 

@@ -11,6 +11,10 @@ compatibility version 3.0.0.
   x86-64, and Linux x86-64, with installation and rollback support.
 - Native ports of 12 primary-repository processors and one shared-recipe alias,
   for 58 implementations under 59 names.
+- `RussetURLDownloader`, a processor that only Russet has. It takes the same
+  inputs and sets the same outputs as `URLDownloader`, but always uses
+  Russet's downloader and never curl, so a request that the downloader can't
+  reproduce fails with the reason. `list-processors` lists 60 names.
 - `run` and `install` find recipes by short name at the top level of each search
   folder and one folder below it, like Python AutoPkg. Identifier lookup covers
   the same two levels.
