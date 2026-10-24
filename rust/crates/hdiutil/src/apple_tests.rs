@@ -18,6 +18,64 @@ fn run(program: &str, args: &[&str]) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+/// Detaches `target`, forcing it if the volume is still busy.
+fn detach(target: &str) {
+    let output = Command::new("/usr/bin/hdiutil")
+        .args(["detach", "-quiet", target])
+        .output()
+        .unwrap();
+    if !output.status.success() {
+        run("/usr/bin/hdiutil", &["detach", "-quiet", "-force", target]);
+    }
+}
+
+/// A temporary folder that force-detaches every image in it that is still
+/// attached when it's dropped, so a failed test doesn't leave a disk behind.
+/// `hdiutil create` has also left a raw APFS volume it created attached.
+struct Scratch(tempfile::TempDir);
+impl Scratch {
+    fn path(&self) -> &Path {
+        self.0.path()
+    }
+}
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let Ok(root) = self.0.path().canonicalize() else {
+            return;
+        };
+        let Ok(info) = Command::new("/usr/bin/hdiutil").arg("info").output() else {
+            return;
+        };
+        // Each image's `image-path` line comes before its whole-disk device.
+        let mut image = None;
+        for line in String::from_utf8_lossy(&info.stdout).lines() {
+            if let Some((_, path)) = line
+                .strip_prefix("image-path")
+                .and_then(|rest| rest.split_once(": "))
+            {
+                image = Some(PathBuf::from(path.trim()));
+            } else if let Some(device) = line
+                .split_whitespace()
+                .next()
+                .filter(|d| d.starts_with("/dev/disk"))
+            {
+                if image
+                    .take()
+                    .and_then(|path| path.canonicalize().ok())
+                    .is_some_and(|path| path.starts_with(&root))
+                {
+                    let _ = Command::new("/usr/bin/hdiutil")
+                        .args(["detach", "-quiet", "-force", device])
+                        .output();
+                }
+            }
+        }
+    }
+}
+fn scratch() -> Scratch {
+    Scratch(tempfile::tempdir().unwrap())
+}
+
 /// A tree with the features disk images carry: modes, symlinks, hard links,
 /// extended attributes, a resource fork, Finder info, and an app copied with
 /// HFS+ transparent compression.
@@ -102,16 +160,13 @@ fn mounted(image: &Path) -> Vec<Vec<russet_fs::Entry>> {
         })
         .collect();
     let manifests = points.iter().map(|p| manifest(p).unwrap()).collect();
-    run(
-        "/usr/bin/hdiutil",
-        &["detach", "-quiet", points[0].to_str().unwrap()],
-    );
+    detach(points[0].to_str().unwrap());
     manifests
 }
 
 #[test]
 fn native_extraction_matches_mounted_images() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = scratch();
     let src = temp.path().join("src");
     source_tree(&src);
     let cases = [
@@ -206,7 +261,7 @@ impl<R: std::io::Seek> std::io::Seek for CountingReader<R> {
 /// of thousands of files took longer than ten minutes to extract.
 #[test]
 fn listing_attributes_reads_only_the_path_to_the_file() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = scratch();
     let source = temp.path().join("source");
     fs::create_dir(&source).unwrap();
     let count = 3000;
@@ -277,7 +332,7 @@ fn listing_attributes_reads_only_the_path_to_the_file() {
 /// took longer than ten minutes.
 #[test]
 fn apfs_path_lookups_read_only_the_path() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = scratch();
     let source = temp.path().join("source");
     let dirs = 30;
     for d in 0..dirs {
@@ -331,7 +386,7 @@ fn regenerate_fixtures() {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let _ = fs::remove_dir_all(&fixtures);
     fs::create_dir_all(&fixtures).unwrap();
-    let temp = tempfile::tempdir().unwrap();
+    let temp = scratch();
     let src = temp.path().join("src");
     source_tree(&src);
     let cases = [
@@ -398,7 +453,7 @@ fn write_expected(fixtures: &Path, name: &str, image: &Path) {
 #[test]
 fn hdiutil_accepts_created_images() {
     use crate::{create, CreateOptions};
-    let temp = tempfile::tempdir().unwrap();
+    let temp = scratch();
     let src = temp.path().join("Source");
     source_tree(&src);
     for (format, filesystem) in [
@@ -458,7 +513,7 @@ fn hdiutil_accepts_created_images() {
             .args(["-n", &device])
             .output()
             .unwrap();
-        run("/usr/bin/hdiutil", &["detach", "-quiet", devices[0]]);
+        detach(devices[0]);
         assert!(
             fsck.status.success(),
             "{format}: {}",
@@ -549,7 +604,7 @@ fn compare_downloaded_images() {
 #[test]
 fn created_images_hold_packages_like_hdiutil() {
     use crate::{create, CreateOptions};
-    let temp = tempfile::tempdir().unwrap();
+    let temp = scratch();
     for name in [
         "Foo.app",
         "Two.dots.app",
